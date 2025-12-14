@@ -6,7 +6,7 @@ Built using **PlatformIO** and targeting the **ESP32-C3** microcontroller.
 CrossPoint Reader is a purpose-built firmware designed to be a drop-in, fully open-source replacement for the official 
 Xteink firmware. It aims to match or improve upon the standard EPUB reading experience.
 
-![](./docs/cover.jpg)
+![](./docs/images/cover.jpg)
 
 ## Motivation
 
