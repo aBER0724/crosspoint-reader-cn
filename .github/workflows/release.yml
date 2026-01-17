@@ -2,26 +2,28 @@ name: Compile Release
 on:
   push:
     tags:
-      - '*'
+      - 'v*'
 
 jobs:
   build-release:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v4
         with:
           submodules: recursive
 
-      - uses: actions/cache@v5
+      - uses: actions/cache@v4
         with:
           path: |
             ~/.cache/pip
             ~/.platformio/.cache
           key: ${{ runner.os }}-pio
 
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@v5
         with:
-          python-version: '3.14'
+          python-version: '3.11'
 
       - name: Install PlatformIO Core
         run: pip install --upgrade platformio
@@ -29,13 +31,27 @@ jobs:
       - name: Build CrossPoint
         run: pio run -e gh_release
 
-      - name: Upload Artifacts
-        uses: actions/upload-artifact@v4
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
         with:
-          name: CrossPoint-${{ github.ref_name }}
-          path: |
-            .pio/build/gh_release/bootloader.bin
+          name: CrossPoint CJK ${{ github.ref_name }}
+          body: |
+            ## CrossPoint Reader CJK ${{ github.ref_name }}
+            
+            基于 [CrossPoint Reader](https://github.com/daveallie/crosspoint-reader) 的 CJK 适配版本。
+            
+            ### 新增功能
+            - 🌏 多语言界面支持 (中文/英文/日语)
+            - 📝 外置 CJK 字体加载支持
+            
+            ### 安装方式
+            1. 下载 `firmware.bin`
+            2. 访问 https://xteink.dve.al/ 使用 OTA 刷入
+            
+            详细说明请参阅 [README](https://github.com/${{ github.repository }})
+          files: |
             .pio/build/gh_release/firmware.bin
-            .pio/build/gh_release/firmware.elf
-            .pio/build/gh_release/firmware.map
+            .pio/build/gh_release/bootloader.bin
             .pio/build/gh_release/partitions.bin
+          draft: false
+          prerelease: false
