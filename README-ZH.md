@@ -23,10 +23,6 @@
   - `SourceHanSansCN-Medium_20_20x20.bin` (思源黑体)
   - `KingHwaOldSong_38_33x39.bin` (京华老宋体)
 
-### 🛠️ 字体生成工具
-- `tools/generate_cjk_ui_font.py` - CJK UI 字体生成脚本
-- `tools/generate_ui_font.py` - 通用 UI 字体生成脚本
-
 ## 📦 功能列表
 
 继承原版所有功能，包括：

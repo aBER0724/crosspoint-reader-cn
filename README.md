@@ -23,10 +23,6 @@ This project extends the original CrossPoint Reader with Chinese/Japanese/Korean
   - `SourceHanSansCN-Medium_20_20x20.bin` (Source Han Sans)
   - `KingHwaOldSong_38_33x39.bin` (KingHwa Old Song)
 
-### 🛠️ Font Generation Tools
-- `tools/generate_cjk_ui_font.py` - CJK UI font generation script
-- `tools/generate_ui_font.py` - General UI font generation script
-
 ## 📦 Features
 
 Inherits all features from the original CrossPoint Reader:
