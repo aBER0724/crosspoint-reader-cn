@@ -4,7 +4,7 @@
 
 > [daveallie/crosspoint-reader](https://github.com/daveallie/crosspoint-reader) をベースにした **Xteink X4** 電子ペーパーリーダー用ファームウェアのCJK対応版です。
 
-本プロジェクトは、オリジナルのCrossPoint Readerに中国語/日本語/韓国語のローカライズサポートとCJKフォントレンダリング機能を追加しています。
+本プロジェクトは、オリジナルのCrossPoint Readerに中国語/日本語のローカライズサポートとCJKフォントレンダリング機能を追加しています。
 
 ![](./docs/images/cover.jpg)
 

@@ -4,7 +4,7 @@
 
 > A CJK-adapted fork of [daveallie/crosspoint-reader](https://github.com/daveallie/crosspoint-reader) firmware for the **Xteink X4** e-paper reader.
 
-This project extends the original CrossPoint Reader with Chinese/Japanese/Korean localization support and CJK font rendering capabilities.
+This project extends the original CrossPoint Reader with Chinese/Japanese localization support and CJK font rendering capabilities.
 
 ![](./docs/images/cover.jpg)
 
