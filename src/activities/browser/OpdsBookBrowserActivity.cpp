@@ -14,10 +14,31 @@
 #include "util/UrlUtils.h"
 
 namespace {
-constexpr int PAGE_ITEMS = 23;
 constexpr int SKIP_PAGE_MS = 700;
 constexpr char OPDS_ROOT_PATH[] = "opds";  // No leading slash - relative to server URL
+
+// Calculate row height based on current UI font size
+// Font sizes: SMALL=20px, MEDIUM=22px, LARGE=24px
+// Row height = font height + spacing (8-12px)
+inline int getRowHeight(const GfxRenderer& renderer) {
+  return 20 + renderer.getUiFontSize() * 2 + 10;  // 30px/32px/34px for small/medium/large
+}
 }  // namespace
+
+int OpdsBookBrowserActivity::getPageItems() const {
+  constexpr int startY = 60;
+  const int lineHeight = getRowHeight(renderer);
+
+  const int screenHeight = renderer.getScreenHeight();
+  const int endY = screenHeight - lineHeight;
+
+  const int availableHeight = endY - startY;
+  int items = availableHeight / lineHeight;
+  if (items < 1) {
+    items = 1;
+  }
+  return items;
+}
 
 void OpdsBookBrowserActivity::taskTrampoline(void* param) {
   auto* self = static_cast<OpdsBookBrowserActivity*>(param);
@@ -122,6 +143,7 @@ void OpdsBookBrowserActivity::loop() {
     const bool nextReleased = mappedInput.wasReleased(MappedInputManager::Button::Down) ||
                               mappedInput.wasReleased(MappedInputManager::Button::Right);
     const bool skipPage = mappedInput.getHeldTime() > SKIP_PAGE_MS;
+    const int pageItems = getPageItems();
 
     if (mappedInput.wasReleased(MappedInputManager::Button::Confirm)) {
       if (!entries.empty()) {
@@ -136,14 +158,14 @@ void OpdsBookBrowserActivity::loop() {
       navigateBack();
     } else if (prevReleased && !entries.empty()) {
       if (skipPage) {
-        selectorIndex = ((selectorIndex / PAGE_ITEMS - 1) * PAGE_ITEMS + entries.size()) % entries.size();
+        selectorIndex = ((selectorIndex / pageItems - 1) * pageItems + entries.size()) % entries.size();
       } else {
         selectorIndex = (selectorIndex + entries.size() - 1) % entries.size();
       }
       updateRequired = true;
     } else if (nextReleased && !entries.empty()) {
       if (skipPage) {
-        selectorIndex = ((selectorIndex / PAGE_ITEMS + 1) * PAGE_ITEMS) % entries.size();
+        selectorIndex = ((selectorIndex / pageItems + 1) * pageItems) % entries.size();
       } else {
         selectorIndex = (selectorIndex + 1) % entries.size();
       }
@@ -212,6 +234,9 @@ void OpdsBookBrowserActivity::render() const {
   }
 
   // Browsing state
+  const int pageItems = getPageItems();
+  const int rowHeight = getRowHeight(renderer);
+
   // Show appropriate button hint based on selected entry type
   const char* confirmLabel = "Open";
   if (!entries.empty() && entries[selectorIndex].type == OpdsEntryType::BOOK) {
@@ -226,10 +251,10 @@ void OpdsBookBrowserActivity::render() const {
     return;
   }
 
-  const auto pageStartIndex = selectorIndex / PAGE_ITEMS * PAGE_ITEMS;
-  renderer.fillRect(0, 60 + (selectorIndex % PAGE_ITEMS) * 30 - 2, pageWidth - 1, 30);
+  const auto pageStartIndex = selectorIndex / pageItems * pageItems;
+  renderer.fillRect(0, 60 + (selectorIndex % pageItems) * rowHeight - 2, pageWidth - 1, rowHeight);
 
-  for (size_t i = pageStartIndex; i < entries.size() && i < static_cast<size_t>(pageStartIndex + PAGE_ITEMS); i++) {
+  for (size_t i = pageStartIndex; i < entries.size() && i < static_cast<size_t>(pageStartIndex + pageItems); i++) {
     const auto& entry = entries[i];
 
     // Format display text with type indicator
@@ -245,7 +270,7 @@ void OpdsBookBrowserActivity::render() const {
     }
 
     auto item = renderer.truncatedText(UI_10_FONT_ID, displayText.c_str(), renderer.getScreenWidth() - 40);
-    renderer.drawText(UI_10_FONT_ID, 20, 60 + (i % PAGE_ITEMS) * 30, item.c_str(),
+    renderer.drawText(UI_10_FONT_ID, 20, 60 + (i % pageItems) * rowHeight, item.c_str(),
                       i != static_cast<size_t>(selectorIndex));
   }
 

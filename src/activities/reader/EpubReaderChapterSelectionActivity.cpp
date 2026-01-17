@@ -1,6 +1,7 @@
 #include "EpubReaderChapterSelectionActivity.h"
 
 #include <GfxRenderer.h>
+#include <I18n.h>
 
 #include "MappedInputManager.h"
 #include "fontIds.h"
@@ -8,12 +9,19 @@
 namespace {
 // Time threshold for treating a long press as a page-up/page-down
 constexpr int SKIP_PAGE_MS = 700;
+
+// Calculate row height based on current UI font size
+// Font sizes: SMALL=20px, MEDIUM=22px, LARGE=24px
+// Row height = font height + spacing (8-12px)
+inline int getRowHeight(const GfxRenderer& renderer) {
+  return 20 + renderer.getUiFontSize() * 2 + 10;  // 30px/32px/34px for small/medium/large
+}
 }  // namespace
 
 int EpubReaderChapterSelectionActivity::getPageItems() const {
   // Layout constants used in renderScreen
   constexpr int startY = 60;
-  constexpr int lineHeight = 30;
+  const int lineHeight = getRowHeight(renderer);
 
   const int screenHeight = renderer.getScreenHeight();
   const int endY = screenHeight - lineHeight;
@@ -122,21 +130,22 @@ void EpubReaderChapterSelectionActivity::renderScreen() {
 
   const auto pageWidth = renderer.getScreenWidth();
   const int pageItems = getPageItems();
+  const int rowHeight = getRowHeight(renderer);
 
   const std::string title =
       renderer.truncatedText(UI_12_FONT_ID, epub->getTitle().c_str(), pageWidth - 40, EpdFontFamily::BOLD);
   renderer.drawCenteredText(UI_12_FONT_ID, 15, title.c_str(), true, EpdFontFamily::BOLD);
 
   const auto pageStartIndex = selectorIndex / pageItems * pageItems;
-  renderer.fillRect(0, 60 + (selectorIndex % pageItems) * 30 - 2, pageWidth - 1, 30);
+  renderer.fillRect(0, 60 + (selectorIndex % pageItems) * rowHeight - 2, pageWidth - 1, rowHeight);
   for (int tocIndex = pageStartIndex; tocIndex < epub->getTocItemsCount() && tocIndex < pageStartIndex + pageItems;
        tocIndex++) {
     auto item = epub->getTocItem(tocIndex);
-    renderer.drawText(UI_10_FONT_ID, 20 + (item.level - 1) * 15, 60 + (tocIndex % pageItems) * 30, item.title.c_str(),
+    renderer.drawText(UI_10_FONT_ID, 20 + (item.level - 1) * 15, 60 + (tocIndex % pageItems) * rowHeight, item.title.c_str(),
                       tocIndex != selectorIndex);
   }
 
-  const auto labels = mappedInput.mapLabels("« Back", "Select", "Up", "Down");
+  const auto labels = mappedInput.mapLabels(TR(BACK), TR(SELECT), "", "");
   renderer.drawButtonHints(UI_10_FONT_ID, labels.btn1, labels.btn2, labels.btn3, labels.btn4);
 
   renderer.displayBuffer();

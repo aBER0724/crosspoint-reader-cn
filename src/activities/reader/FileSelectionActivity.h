@@ -23,6 +23,7 @@ class FileSelectionActivity final : public Activity {
   [[noreturn]] void displayTaskLoop();
   void render() const;
   void loadFiles();
+  int getPageItems() const;
 
   size_t findEntry(const std::string& name) const;
 

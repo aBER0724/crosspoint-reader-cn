@@ -199,6 +199,60 @@ void XMLCALL ChapterHtmlSlimParser::characterData(void* userData, const XML_Char
       }
     }
 
+    // CJK character detection (Chinese/Japanese/Korean)
+    // UTF-8 3-byte sequences starting with 0xE4-0xE9 cover most CJK characters
+    // (U+4E00-U+9FFF CJK Unified Ideographs, and more)
+    const auto byte = static_cast<unsigned char>(s[i]);
+    if (byte >= 0xE4 && byte <= 0xE9 && i + 2 < len) {
+      // This is likely a CJK character (3-byte UTF-8)
+      // First, flush any existing content in the buffer
+      if (self->partWordBufferIndex > 0) {
+        self->partWordBuffer[self->partWordBufferIndex] = '\0';
+        self->currentTextBlock->addWord(self->partWordBuffer, fontStyle);
+        self->partWordBufferIndex = 0;
+      }
+
+      // Add this CJK character as a separate word
+      char cjkChar[4];
+      cjkChar[0] = s[i];
+      cjkChar[1] = s[i + 1];
+      cjkChar[2] = s[i + 2];
+      cjkChar[3] = '\0';
+      self->currentTextBlock->addWord(cjkChar, fontStyle);
+
+      // Skip the next 2 bytes (already processed)
+      i += 2;
+      continue;
+    }
+
+    // Also handle CJK punctuation and other common ranges (0xE3 prefix)
+    // Covers Hiragana, Katakana, CJK punctuation, etc.
+    if (byte == 0xE3 && i + 2 < len) {
+      const auto byte2 = static_cast<unsigned char>(s[i + 1]);
+      // CJK punctuation: U+3000-U+303F (0xE3 0x80 0x80 - 0xE3 0x80 0xBF)
+      // Hiragana: U+3040-U+309F
+      // Katakana: U+30A0-U+30FF
+      if (byte2 >= 0x80 && byte2 <= 0x83) {
+        // Flush existing buffer
+        if (self->partWordBufferIndex > 0) {
+          self->partWordBuffer[self->partWordBufferIndex] = '\0';
+          self->currentTextBlock->addWord(self->partWordBuffer, fontStyle);
+          self->partWordBufferIndex = 0;
+        }
+
+        // Add as separate word
+        char cjkChar[4];
+        cjkChar[0] = s[i];
+        cjkChar[1] = s[i + 1];
+        cjkChar[2] = s[i + 2];
+        cjkChar[3] = '\0';
+        self->currentTextBlock->addWord(cjkChar, fontStyle);
+
+        i += 2;
+        continue;
+      }
+    }
+
     // If we're about to run out of space, then cut the word off and start a new one
     if (self->partWordBufferIndex >= MAX_WORD_SIZE) {
       self->partWordBuffer[self->partWordBufferIndex] = '\0';

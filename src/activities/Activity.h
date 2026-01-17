@@ -23,4 +23,5 @@ class Activity {
   virtual void loop() {}
   virtual bool skipLoopDelay() { return false; }
   virtual bool preventAutoSleep() { return false; }
+  const std::string& getName() const { return name; }
 };

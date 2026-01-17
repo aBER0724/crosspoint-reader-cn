@@ -7,11 +7,18 @@
 
 namespace {
 constexpr int SKIP_PAGE_MS = 700;
+
+// Calculate row height based on current UI font size
+// Font sizes: SMALL=20px, MEDIUM=22px, LARGE=24px
+// Row height = font height + spacing (8-12px)
+inline int getRowHeight(const GfxRenderer& renderer) {
+  return 20 + renderer.getUiFontSize() * 2 + 10;  // 30px/32px/34px for small/medium/large
+}
 }  // namespace
 
 int XtcReaderChapterSelectionActivity::getPageItems() const {
   constexpr int startY = 60;
-  constexpr int lineHeight = 30;
+  const int lineHeight = getRowHeight(renderer);
 
   const int screenHeight = renderer.getScreenHeight();
   const int endY = screenHeight - lineHeight;
@@ -132,6 +139,7 @@ void XtcReaderChapterSelectionActivity::renderScreen() {
 
   const auto pageWidth = renderer.getScreenWidth();
   const int pageItems = getPageItems();
+  const int rowHeight = getRowHeight(renderer);
   renderer.drawCenteredText(UI_12_FONT_ID, 15, "Select Chapter", true, EpdFontFamily::BOLD);
 
   const auto& chapters = xtc->getChapters();
@@ -142,11 +150,11 @@ void XtcReaderChapterSelectionActivity::renderScreen() {
   }
 
   const auto pageStartIndex = selectorIndex / pageItems * pageItems;
-  renderer.fillRect(0, 60 + (selectorIndex % pageItems) * 30 - 2, pageWidth - 1, 30);
+  renderer.fillRect(0, 60 + (selectorIndex % pageItems) * rowHeight - 2, pageWidth - 1, rowHeight);
   for (int i = pageStartIndex; i < static_cast<int>(chapters.size()) && i < pageStartIndex + pageItems; i++) {
     const auto& chapter = chapters[i];
     const char* title = chapter.name.empty() ? "Unnamed" : chapter.name.c_str();
-    renderer.drawText(UI_10_FONT_ID, 20, 60 + (i % pageItems) * 30, title, i != selectorIndex);
+    renderer.drawText(UI_10_FONT_ID, 20, 60 + (i % pageItems) * rowHeight, title, i != selectorIndex);
   }
 
   const auto labels = mappedInput.mapLabels("« Back", "Select", "Up", "Down");

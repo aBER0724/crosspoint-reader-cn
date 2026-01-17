@@ -9,6 +9,7 @@ class CrossPointState {
  public:
   std::string openEpubPath;
   uint8_t lastSleepImage;
+  bool wasInReader;  // True if we were in reader when entering deep sleep
   ~CrossPointState() = default;
 
   // Get singleton instance

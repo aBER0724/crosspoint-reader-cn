@@ -1,19 +1,17 @@
 #include "NetworkModeSelectionActivity.h"
 
 #include <GfxRenderer.h>
+#include <I18n.h>
 
 #include "MappedInputManager.h"
 #include "fontIds.h"
 
 namespace {
 constexpr int MENU_ITEM_COUNT = 2;
-const char* MENU_ITEMS[MENU_ITEM_COUNT] = {"Join a Network", "Create Hotspot"};
-const char* MENU_DESCRIPTIONS[MENU_ITEM_COUNT] = {"Connect to an existing WiFi network",
-                                                  "Create a WiFi network others can join"};
-}  // namespace
+} // namespace
 
-void NetworkModeSelectionActivity::taskTrampoline(void* param) {
-  auto* self = static_cast<NetworkModeSelectionActivity*>(param);
+void NetworkModeSelectionActivity::taskTrampoline(void *param) {
+  auto *self = static_cast<NetworkModeSelectionActivity *>(param);
   self->displayTaskLoop();
 }
 
@@ -29,10 +27,10 @@ void NetworkModeSelectionActivity::onEnter() {
   updateRequired = true;
 
   xTaskCreate(&NetworkModeSelectionActivity::taskTrampoline, "NetworkModeTask",
-              2048,               // Stack size
-              this,               // Parameters
-              1,                  // Priority
-              &displayTaskHandle  // Task handle
+              2048,              // Stack size
+              this,              // Parameters
+              1,                 // Priority
+              &displayTaskHandle // Task handle
   );
 }
 
@@ -58,16 +56,19 @@ void NetworkModeSelectionActivity::loop() {
 
   // Handle confirm button - select current option
   if (mappedInput.wasPressed(MappedInputManager::Button::Confirm)) {
-    const NetworkMode mode = (selectedIndex == 0) ? NetworkMode::JOIN_NETWORK : NetworkMode::CREATE_HOTSPOT;
+    const NetworkMode mode = (selectedIndex == 0) ? NetworkMode::JOIN_NETWORK
+                                                  : NetworkMode::CREATE_HOTSPOT;
     onModeSelected(mode);
     return;
   }
 
   // Handle navigation
-  const bool prevPressed = mappedInput.wasPressed(MappedInputManager::Button::Up) ||
-                           mappedInput.wasPressed(MappedInputManager::Button::Left);
-  const bool nextPressed = mappedInput.wasPressed(MappedInputManager::Button::Down) ||
-                           mappedInput.wasPressed(MappedInputManager::Button::Right);
+  const bool prevPressed =
+      mappedInput.wasPressed(MappedInputManager::Button::Up) ||
+      mappedInput.wasPressed(MappedInputManager::Button::Left);
+  const bool nextPressed =
+      mappedInput.wasPressed(MappedInputManager::Button::Down) ||
+      mappedInput.wasPressed(MappedInputManager::Button::Right);
 
   if (prevPressed) {
     selectedIndex = (selectedIndex + MENU_ITEM_COUNT - 1) % MENU_ITEM_COUNT;
@@ -97,13 +98,15 @@ void NetworkModeSelectionActivity::render() const {
   const auto pageHeight = renderer.getScreenHeight();
 
   // Draw header
-  renderer.drawCenteredText(UI_12_FONT_ID, 15, "File Transfer", true, EpdFontFamily::BOLD);
+  renderer.drawCenteredText(UI_12_FONT_ID, 15, TR(FILE_TRANSFER), true,
+                            EpdFontFamily::BOLD);
 
   // Draw subtitle
-  renderer.drawCenteredText(UI_10_FONT_ID, 50, "How would you like to connect?");
+  renderer.drawCenteredText(UI_10_FONT_ID, 50, TR(HOW_CONNECT));
 
   // Draw menu items centered on screen
-  constexpr int itemHeight = 50;  // Height for each menu item (including description)
+  constexpr int itemHeight =
+      50; // Height for each menu item (including description)
   const int startY = (pageHeight - (MENU_ITEM_COUNT * itemHeight)) / 2 + 10;
 
   for (int i = 0; i < MENU_ITEM_COUNT; i++) {
@@ -116,14 +119,19 @@ void NetworkModeSelectionActivity::render() const {
     }
 
     // Draw text: black=false (white text) when selected (on black background)
-    //            black=true (black text) when not selected (on white background)
-    renderer.drawText(UI_10_FONT_ID, 30, itemY, MENU_ITEMS[i], /*black=*/!isSelected);
-    renderer.drawText(SMALL_FONT_ID, 30, itemY + 22, MENU_DESCRIPTIONS[i], /*black=*/!isSelected);
+    //            black=true (black text) when not selected (on white
+    //            background)
+    const char *label = (i == 0) ? TR(JOIN_NETWORK) : TR(CREATE_HOTSPOT);
+    const char *desc = (i == 0) ? TR(JOIN_DESC) : TR(HOTSPOT_DESC);
+    renderer.drawText(UI_10_FONT_ID, 30, itemY, label, /*black=*/!isSelected);
+    renderer.drawText(SMALL_FONT_ID, 30, itemY + 22, desc,
+                      /*black=*/!isSelected);
   }
 
   // Draw help text at bottom
-  const auto labels = mappedInput.mapLabels("« Back", "Select", "", "");
-  renderer.drawButtonHints(UI_10_FONT_ID, labels.btn1, labels.btn2, labels.btn3, labels.btn4);
+  const auto labels = mappedInput.mapLabels(TR(BACK), TR(SELECT), "", "");
+  renderer.drawButtonHints(UI_10_FONT_ID, labels.btn1, labels.btn2, labels.btn3,
+                           labels.btn4);
 
   renderer.displayBuffer();
 }

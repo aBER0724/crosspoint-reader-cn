@@ -54,6 +54,7 @@ class OpdsBookBrowserActivity final : public ActivityWithSubactivity {
   static void taskTrampoline(void* param);
   [[noreturn]] void displayTaskLoop();
   void render() const;
+  int getPageItems() const;
 
   void checkAndConnectWifi();
   void launchWifiSelection();

@@ -1,50 +1,52 @@
 #include "CrossPointState.h"
 
 #include <HardwareSerial.h>
-#include <SDCardManager.h>
-#include <Serialization.h>
+#include <Preferences.h>
 
 namespace {
-constexpr uint8_t STATE_FILE_VERSION = 2;
-constexpr char STATE_FILE[] = "/.crosspoint/state.bin";
+// Use ESP32's built-in NVS (Non-Volatile Storage) instead of SD card
+// This is much faster and more reliable than SD card writes
+Preferences preferences;
+constexpr char PREFS_NAMESPACE[] = "app_state";
+constexpr char KEY_EPUB_PATH[] = "epub_path";
+constexpr char KEY_SLEEP_IMAGE[] = "sleep_img";
+constexpr char KEY_WAS_IN_READER[] = "was_reader";
 }  // namespace
 
 CrossPointState CrossPointState::instance;
 
 bool CrossPointState::saveToFile() const {
-  FsFile outputFile;
-  if (!SdMan.openFileForWrite("CPS", STATE_FILE, outputFile)) {
+  // Open NVS namespace in read-write mode
+  if (!preferences.begin(PREFS_NAMESPACE, false)) {
+    Serial.printf("[%lu] [CPS] Failed to open NVS namespace\n", millis());
     return false;
   }
 
-  serialization::writePod(outputFile, STATE_FILE_VERSION);
-  serialization::writeString(outputFile, openEpubPath);
-  serialization::writePod(outputFile, lastSleepImage);
-  outputFile.close();
+  // Write all state data to NVS (Flash memory)
+  preferences.putString(KEY_EPUB_PATH, openEpubPath.c_str());
+  preferences.putUChar(KEY_SLEEP_IMAGE, lastSleepImage);
+  preferences.putBool(KEY_WAS_IN_READER, wasInReader);
+
+  preferences.end();
+
+  Serial.printf("[%lu] [CPS] State saved to Flash (wasInReader=%d)\n", millis(), wasInReader);
   return true;
 }
 
 bool CrossPointState::loadFromFile() {
-  FsFile inputFile;
-  if (!SdMan.openFileForRead("CPS", STATE_FILE, inputFile)) {
+  // Open NVS namespace in read-only mode
+  if (!preferences.begin(PREFS_NAMESPACE, true)) {
+    Serial.printf("[%lu] [CPS] Failed to open NVS namespace for reading\n", millis());
     return false;
   }
 
-  uint8_t version;
-  serialization::readPod(inputFile, version);
-  if (version > STATE_FILE_VERSION) {
-    Serial.printf("[%lu] [CPS] Deserialization failed: Unknown version %u\n", millis(), version);
-    inputFile.close();
-    return false;
-  }
+  // Read all state data from NVS (Flash memory)
+  openEpubPath = preferences.getString(KEY_EPUB_PATH, "").c_str();
+  lastSleepImage = preferences.getUChar(KEY_SLEEP_IMAGE, 0);
+  wasInReader = preferences.getBool(KEY_WAS_IN_READER, false);
 
-  serialization::readString(inputFile, openEpubPath);
-  if (version >= 2) {
-    serialization::readPod(inputFile, lastSleepImage);
-  } else {
-    lastSleepImage = 0;
-  }
+  preferences.end();
 
-  inputFile.close();
+  Serial.printf("[%lu] [CPS] State loaded from Flash (wasInReader=%d)\n", millis(), wasInReader);
   return true;
 }

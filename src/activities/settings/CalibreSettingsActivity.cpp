@@ -139,16 +139,18 @@ void CalibreSettingsActivity::render() {
   renderer.clearScreen();
 
   const auto pageWidth = renderer.getScreenWidth();
+  // Calculate row height based on current UI font size
+  const int rowHeight = 20 + renderer.getUiFontSize() * 2 + 10;  // 30px/32px/34px for small/medium/large
 
   // Draw header
   renderer.drawCenteredText(UI_12_FONT_ID, 15, "Calibre", true, EpdFontFamily::BOLD);
 
   // Draw selection highlight
-  renderer.fillRect(0, 60 + selectedIndex * 30 - 2, pageWidth - 1, 30);
+  renderer.fillRect(0, 60 + selectedIndex * rowHeight - 2, pageWidth - 1, rowHeight);
 
   // Draw menu items
   for (int i = 0; i < MENU_ITEMS; i++) {
-    const int settingY = 60 + i * 30;
+    const int settingY = 60 + i * rowHeight;
     const bool isSelected = (i == selectedIndex);
 
     renderer.drawText(UI_10_FONT_ID, 20, settingY, menuNames[i], !isSelected);

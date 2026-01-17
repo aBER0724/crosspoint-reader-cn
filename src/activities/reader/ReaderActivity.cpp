@@ -10,7 +10,7 @@
 #include "activities/util/FullScreenMessageActivity.h"
 #include "util/StringUtils.h"
 
-std::string ReaderActivity::extractFolderPath(const std::string& filePath) {
+std::string ReaderActivity::extractFolderPath(const std::string &filePath) {
   const auto lastSlash = filePath.find_last_of('/');
   if (lastSlash == std::string::npos || lastSlash == 0) {
     return "/";
@@ -18,19 +18,24 @@ std::string ReaderActivity::extractFolderPath(const std::string& filePath) {
   return filePath.substr(0, lastSlash);
 }
 
-bool ReaderActivity::isXtcFile(const std::string& path) {
-  return StringUtils::checkFileExtension(path, ".xtc") || StringUtils::checkFileExtension(path, ".xtch");
+bool ReaderActivity::isXtcFile(const std::string &path) {
+  return StringUtils::checkFileExtension(path, ".xtc") ||
+         StringUtils::checkFileExtension(path, ".xtch") ||
+         StringUtils::checkFileExtension(path, ".xtg") ||
+         StringUtils::checkFileExtension(path, ".xth");
 }
 
-bool ReaderActivity::isTxtFile(const std::string& path) {
-  if (path.length() < 4) return false;
+bool ReaderActivity::isTxtFile(const std::string &path) {
+  if (path.length() < 4)
+    return false;
   std::string ext4 = path.substr(path.length() - 4);
   return ext4 == ".txt" || ext4 == ".TXT";
 }
 
-std::unique_ptr<Epub> ReaderActivity::loadEpub(const std::string& path) {
+std::unique_ptr<Epub> ReaderActivity::loadEpub(const std::string &path) {
   if (!SdMan.exists(path.c_str())) {
-    Serial.printf("[%lu] [   ] File does not exist: %s\n", millis(), path.c_str());
+    Serial.printf("[%lu] [   ] File does not exist: %s\n", millis(),
+                  path.c_str());
     return nullptr;
   }
 
@@ -43,9 +48,10 @@ std::unique_ptr<Epub> ReaderActivity::loadEpub(const std::string& path) {
   return nullptr;
 }
 
-std::unique_ptr<Xtc> ReaderActivity::loadXtc(const std::string& path) {
+std::unique_ptr<Xtc> ReaderActivity::loadXtc(const std::string &path) {
   if (!SdMan.exists(path.c_str())) {
-    Serial.printf("[%lu] [   ] File does not exist: %s\n", millis(), path.c_str());
+    Serial.printf("[%lu] [   ] File does not exist: %s\n", millis(),
+                  path.c_str());
     return nullptr;
   }
 
@@ -58,9 +64,10 @@ std::unique_ptr<Xtc> ReaderActivity::loadXtc(const std::string& path) {
   return nullptr;
 }
 
-std::unique_ptr<Txt> ReaderActivity::loadTxt(const std::string& path) {
+std::unique_ptr<Txt> ReaderActivity::loadTxt(const std::string &path) {
   if (!SdMan.exists(path.c_str())) {
-    Serial.printf("[%lu] [   ] File does not exist: %s\n", millis(), path.c_str());
+    Serial.printf("[%lu] [   ] File does not exist: %s\n", millis(),
+                  path.c_str());
     return nullptr;
   }
 
@@ -73,10 +80,11 @@ std::unique_ptr<Txt> ReaderActivity::loadTxt(const std::string& path) {
   return nullptr;
 }
 
-void ReaderActivity::onSelectBookFile(const std::string& path) {
-  currentBookPath = path;  // Track current book path
+void ReaderActivity::onSelectBookFile(const std::string &path) {
+  currentBookPath = path; // Track current book path
   exitActivity();
-  enterNewActivity(new FullScreenMessageActivity(renderer, mappedInput, "Loading..."));
+  enterNewActivity(
+      new FullScreenMessageActivity(renderer, mappedInput, "Loading..."));
 
   if (isXtcFile(path)) {
     // Load XTC file
@@ -85,8 +93,9 @@ void ReaderActivity::onSelectBookFile(const std::string& path) {
       onGoToXtcReader(std::move(xtc));
     } else {
       exitActivity();
-      enterNewActivity(new FullScreenMessageActivity(renderer, mappedInput, "Failed to load XTC",
-                                                     EpdFontFamily::REGULAR, EInkDisplay::HALF_REFRESH));
+      enterNewActivity(new FullScreenMessageActivity(
+          renderer, mappedInput, "Failed to load XTC", EpdFontFamily::REGULAR,
+          EInkDisplay::HALF_REFRESH));
       delay(2000);
       onGoToFileSelection();
     }
@@ -97,8 +106,9 @@ void ReaderActivity::onSelectBookFile(const std::string& path) {
       onGoToTxtReader(std::move(txt));
     } else {
       exitActivity();
-      enterNewActivity(new FullScreenMessageActivity(renderer, mappedInput, "Failed to load TXT",
-                                                     EpdFontFamily::REGULAR, EInkDisplay::HALF_REFRESH));
+      enterNewActivity(new FullScreenMessageActivity(
+          renderer, mappedInput, "Failed to load TXT", EpdFontFamily::REGULAR,
+          EInkDisplay::HALF_REFRESH));
       delay(2000);
       onGoToFileSelection();
     }
@@ -109,20 +119,25 @@ void ReaderActivity::onSelectBookFile(const std::string& path) {
       onGoToEpubReader(std::move(epub));
     } else {
       exitActivity();
-      enterNewActivity(new FullScreenMessageActivity(renderer, mappedInput, "Failed to load epub",
-                                                     EpdFontFamily::REGULAR, EInkDisplay::HALF_REFRESH));
+      enterNewActivity(new FullScreenMessageActivity(
+          renderer, mappedInput, "Failed to load epub", EpdFontFamily::REGULAR,
+          EInkDisplay::HALF_REFRESH));
       delay(2000);
       onGoToFileSelection();
     }
   }
 }
 
-void ReaderActivity::onGoToFileSelection(const std::string& fromBookPath) {
+void ReaderActivity::onGoToFileSelection(const std::string &fromBookPath) {
   exitActivity();
-  // If coming from a book, start in that book's folder; otherwise start from root
-  const auto initialPath = fromBookPath.empty() ? "/" : extractFolderPath(fromBookPath);
+  // If coming from a book, start in that book's folder; otherwise start from
+  // root
+  const auto initialPath =
+      fromBookPath.empty() ? "/" : extractFolderPath(fromBookPath);
   enterNewActivity(new FileSelectionActivity(
-      renderer, mappedInput, [this](const std::string& path) { onSelectBookFile(path); }, onGoBack, initialPath));
+      renderer, mappedInput,
+      [this](const std::string &path) { onSelectBookFile(path); }, onGoBack,
+      initialPath));
 }
 
 void ReaderActivity::onGoToEpubReader(std::unique_ptr<Epub> epub) {
@@ -130,7 +145,8 @@ void ReaderActivity::onGoToEpubReader(std::unique_ptr<Epub> epub) {
   currentBookPath = epubPath;
   exitActivity();
   enterNewActivity(new EpubReaderActivity(
-      renderer, mappedInput, std::move(epub), [this, epubPath] { onGoToFileSelection(epubPath); },
+      renderer, mappedInput, std::move(epub),
+      [this, epubPath] { onGoToFileSelection(epubPath); },
       [this] { onGoBack(); }));
 }
 
@@ -139,7 +155,8 @@ void ReaderActivity::onGoToXtcReader(std::unique_ptr<Xtc> xtc) {
   currentBookPath = xtcPath;
   exitActivity();
   enterNewActivity(new XtcReaderActivity(
-      renderer, mappedInput, std::move(xtc), [this, xtcPath] { onGoToFileSelection(xtcPath); },
+      renderer, mappedInput, std::move(xtc),
+      [this, xtcPath] { onGoToFileSelection(xtcPath); },
       [this] { onGoBack(); }));
 }
 
@@ -148,7 +165,8 @@ void ReaderActivity::onGoToTxtReader(std::unique_ptr<Txt> txt) {
   currentBookPath = txtPath;
   exitActivity();
   enterNewActivity(new TxtReaderActivity(
-      renderer, mappedInput, std::move(txt), [this, txtPath] { onGoToFileSelection(txtPath); },
+      renderer, mappedInput, std::move(txt),
+      [this, txtPath] { onGoToFileSelection(txtPath); },
       [this] { onGoBack(); }));
 }
 
@@ -156,7 +174,7 @@ void ReaderActivity::onEnter() {
   ActivityWithSubactivity::onEnter();
 
   if (initialBookPath.empty()) {
-    onGoToFileSelection();  // Start from root when entering via Browse
+    onGoToFileSelection(); // Start from root when entering via Browse
     return;
   }
 
