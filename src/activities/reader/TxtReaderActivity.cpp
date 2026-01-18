@@ -1,4 +1,5 @@
 #include "TxtReaderActivity.h"
+#include <cstring>
 
 #include <FontManager.h>
 #include <FsHelpers.h>
@@ -21,7 +22,8 @@ constexpr size_t CHUNK_SIZE = 8 * 1024; // 8KB chunk for reading
 
 // Cache file magic and version
 constexpr uint32_t CACHE_MAGIC = 0x54585449; // "TXTI"
-constexpr uint8_t CACHE_VERSION = 2; // Increment when cache format changes
+constexpr uint8_t CACHE_VERSION =
+    3; // Increment when cache format changes (v3: removed paragraph alignment)
 } // namespace
 
 void TxtReaderActivity::taskTrampoline(void *param) {
@@ -155,7 +157,6 @@ void TxtReaderActivity::initializeReader() {
   // Store current settings for cache validation
   cachedFontId = SETTINGS.getReaderFontId();
   cachedScreenMargin = SETTINGS.screenMargin;
-  cachedParagraphAlignment = SETTINGS.paragraphAlignment;
 
   // Calculate viewport dimensions
   int orientedMarginTop, orientedMarginRight, orientedMarginBottom,
@@ -220,6 +221,7 @@ void TxtReaderActivity::buildPageIndex() {
   const int barY = boxY + renderer.getLineHeight(UI_12_FONT_ID) + boxMargin * 2;
 
   // Draw initial progress box
+  renderer.clearScreen();  // Clear to correct background color first
   renderer.fillRect(boxX, boxY, boxWidth, boxHeight, false);
   renderer.drawText(UI_12_FONT_ID, boxX + boxMargin, boxY + boxMargin,
                     TR(INDEXING));
@@ -460,31 +462,8 @@ void TxtReaderActivity::renderPage() {
     int y = orientedMarginTop;
     for (const auto &line : currentPageLines) {
       if (!line.empty()) {
-        int x = orientedMarginLeft;
-
-        // Apply text alignment
-        switch (cachedParagraphAlignment) {
-        case CrossPointSettings::LEFT_ALIGN:
-        default:
-          // x already set to left margin
-          break;
-        case CrossPointSettings::CENTER_ALIGN: {
-          int textWidth = renderer.getTextWidth(cachedFontId, line.c_str());
-          x = orientedMarginLeft + (contentWidth - textWidth) / 2;
-          break;
-        }
-        case CrossPointSettings::RIGHT_ALIGN: {
-          int textWidth = renderer.getTextWidth(cachedFontId, line.c_str());
-          x = orientedMarginLeft + contentWidth - textWidth;
-          break;
-        }
-        case CrossPointSettings::JUSTIFIED:
-          // For plain text, justified is treated as left-aligned
-          // (true justification would require word spacing adjustments)
-          break;
-        }
-
-        renderer.drawText(cachedFontId, x, y, line.c_str());
+        // Always use left alignment for plain text files
+        renderer.drawText(cachedFontId, orientedMarginLeft, y, line.c_str());
       }
       y += lineHeight;
     }
@@ -513,12 +492,14 @@ void TxtReaderActivity::renderPage() {
     // Save BW buffer for restoration after grayscale pass
     renderer.storeBwBuffer();
 
-    renderer.clearScreen(0x00);
+    // Clear to raw 0x00 (black) for mask generation
+    // Use memset to explicitly clear buffer without dark mode inversion
+    memset(renderer.getFrameBuffer(), 0x00, GfxRenderer::getBufferSize());
     renderer.setRenderMode(GfxRenderer::GRAYSCALE_LSB);
     renderLines();
     renderer.copyGrayscaleLsbBuffers();
 
-    renderer.clearScreen(0x00);
+    memset(renderer.getFrameBuffer(), 0x00, GfxRenderer::getBufferSize());
     renderer.setRenderMode(GfxRenderer::GRAYSCALE_MSB);
     renderLines();
     renderer.copyGrayscaleMsbBuffers();
@@ -699,16 +680,6 @@ bool TxtReaderActivity::loadPageIndexCache() {
     return false;
   }
 
-  uint8_t alignment;
-  serialization::readPod(f, alignment);
-  if (alignment != cachedParagraphAlignment) {
-    Serial.printf(
-        "[%lu] [TRS] Cache paragraph alignment mismatch, rebuilding\n",
-        millis());
-    f.close();
-    return false;
-  }
-
   uint32_t numPages;
   serialization::readPod(f, numPages);
 
@@ -745,7 +716,6 @@ void TxtReaderActivity::savePageIndexCache() const {
   serialization::writePod(f, static_cast<int32_t>(linesPerPage));
   serialization::writePod(f, static_cast<int32_t>(cachedFontId));
   serialization::writePod(f, static_cast<int32_t>(cachedScreenMargin));
-  serialization::writePod(f, cachedParagraphAlignment);
   serialization::writePod(f, static_cast<uint32_t>(pageOffsets.size()));
 
   // Write page offsets

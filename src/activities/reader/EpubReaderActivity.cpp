@@ -1,4 +1,5 @@
 #include "EpubReaderActivity.h"
+#include <cstring>
 
 #include <Epub/Page.h>
 #include <FontManager.h>
@@ -287,8 +288,7 @@ void EpubReaderActivity::renderScreen() {
 
     if (!section->loadSectionFile(
             SETTINGS.getReaderFontId(), SETTINGS.getReaderLineCompression(),
-            SETTINGS.extraParagraphSpacing, SETTINGS.paragraphAlignment,
-            viewportWidth, viewportHeight)) {
+            SETTINGS.extraParagraphSpacing, viewportWidth, viewportHeight)) {
       Serial.printf("[%lu] [ERS] Cache not found, building...\n", millis());
 
       // Progress bar dimensions
@@ -312,6 +312,7 @@ void EpubReaderActivity::renderScreen() {
 
       // Always show "Indexing..." text first
       {
+        renderer.clearScreen();  // Clear to correct background color first
         renderer.fillRect(boxXNoBar, boxY, boxWidthNoBar, boxHeightNoBar,
                           false);
         renderer.drawText(UI_12_FONT_ID, boxXNoBar + boxMargin,
@@ -326,6 +327,7 @@ void EpubReaderActivity::renderScreen() {
       // progress bar
       auto progressSetup = [this, boxXWithBar, boxWidthWithBar,
                             boxHeightWithBar, barX, barY] {
+        renderer.clearScreen();  // Clear to correct background color first
         renderer.fillRect(boxXWithBar, boxY, boxWidthWithBar, boxHeightWithBar,
                           false);
         renderer.drawText(UI_12_FONT_ID, boxXWithBar + boxMargin,
@@ -346,8 +348,8 @@ void EpubReaderActivity::renderScreen() {
 
       if (!section->createSectionFile(
               SETTINGS.getReaderFontId(), SETTINGS.getReaderLineCompression(),
-              SETTINGS.extraParagraphSpacing, SETTINGS.paragraphAlignment,
-              viewportWidth, viewportHeight, progressSetup, progressCallback)) {
+              SETTINGS.extraParagraphSpacing, viewportWidth, viewportHeight,
+              progressSetup, progressCallback)) {
         Serial.printf("[%lu] [ERS] Failed to persist page data to SD\n",
                       millis());
         section.reset();
@@ -444,14 +446,15 @@ void EpubReaderActivity::renderContents(std::unique_ptr<Page> page,
   const bool useExternalFont =
       FontManager::getInstance().isExternalFontEnabled();
   if (SETTINGS.textAntiAliasing && !useExternalFont) {
-    renderer.clearScreen(0x00);
+    // Clear to raw 0x00 (black) for mask generation
+    memset(renderer.getFrameBuffer(), 0x00, GfxRenderer::getBufferSize());
     renderer.setRenderMode(GfxRenderer::GRAYSCALE_LSB);
     page->render(renderer, SETTINGS.getReaderFontId(), orientedMarginLeft,
                  orientedMarginTop);
     renderer.copyGrayscaleLsbBuffers();
 
     // Render and copy to MSB buffer
-    renderer.clearScreen(0x00);
+    memset(renderer.getFrameBuffer(), 0x00, GfxRenderer::getBufferSize());
     renderer.setRenderMode(GfxRenderer::GRAYSCALE_MSB);
     page->render(renderer, SETTINGS.getReaderFontId(), orientedMarginLeft,
                  orientedMarginTop);

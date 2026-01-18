@@ -40,6 +40,10 @@ private:
   std::map<int, EpdFontFamily> fontMap;
   // UI font size: 0=20px(SMALL), 1=22px(MEDIUM), 2=24px(LARGE)
   uint8_t uiFontSize = 0;
+  // Dark mode: true = black background, false = white background
+  bool darkMode = false;
+  // Skip dark mode inversion for images (cover art should not be inverted)
+  mutable bool skipDarkModeForImages = false;
   void renderChar(int fontId, const EpdFontFamily &fontFamily, uint32_t cp,
                   int *x, const int *y, bool pixelState,
                   EpdFontFamily::Style style) const;
@@ -73,6 +77,10 @@ public:
   // UI font size control (0=20px, 1=22px, 2=24px)
   void setUiFontSize(uint8_t size) { uiFontSize = (size > 2) ? 2 : size; }
   uint8_t getUiFontSize() const { return uiFontSize; }
+
+  // Dark mode control
+  void setDarkMode(bool darkMode) { this->darkMode = darkMode; }
+  bool isDarkMode() const { return darkMode; }
 
   // Screen ops
   int getScreenWidth() const;

@@ -127,7 +127,8 @@ void XMLCALL ChapterHtmlSlimParser::startElement(void* userData, const XML_Char*
     if (strcmp(name, "br") == 0) {
       self->startNewTextBlock(self->currentTextBlock->getStyle());
     } else {
-      self->startNewTextBlock((TextBlock::Style)self->paragraphAlignment);
+      // Default to LEFT_ALIGN for paragraphs (instead of using paragraphAlignment)
+      self->startNewTextBlock(TextBlock::LEFT_ALIGN);
       if (strcmp(name, "li") == 0) {
         self->currentTextBlock->addWord("\xe2\x80\xa2", EpdFontFamily::REGULAR);
       }
@@ -322,7 +323,8 @@ void XMLCALL ChapterHtmlSlimParser::endElement(void* userData, const XML_Char* n
 }
 
 bool ChapterHtmlSlimParser::parseAndBuildPages() {
-  startNewTextBlock((TextBlock::Style)this->paragraphAlignment);
+  // Start with LEFT_ALIGN for default paragraph alignment
+  startNewTextBlock(TextBlock::LEFT_ALIGN);
 
   const XML_Parser parser = XML_ParserCreate(nullptr);
   int done;

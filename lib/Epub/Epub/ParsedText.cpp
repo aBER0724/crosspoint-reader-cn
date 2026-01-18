@@ -42,10 +42,12 @@ std::vector<uint16_t> ParsedText::calculateWordWidths(const GfxRenderer& rendere
   std::vector<uint16_t> wordWidths;
   wordWidths.reserve(totalWordCount);
 
-  // add em-space at the beginning of first word in paragraph to indent
-  if ((style == TextBlock::JUSTIFIED || style == TextBlock::LEFT_ALIGN) && !extraParagraphSpacing) {
+  // Add two em-spaces at the beginning of first word in paragraph for CJK indentation
+  // This ensures 2-character indentation for Chinese/Japanese text
+  if ((style == TextBlock::LEFT_ALIGN || style == TextBlock::JUSTIFIED) && !words.empty()) {
     std::string& first_word = words.front();
-    first_word.insert(0, "\xe2\x80\x83");
+    // Insert two em-spaces (U+2003) for 2-character indentation
+    first_word.insert(0, "\xe2\x80\x83\xe2\x80\x83");
   }
 
   auto wordsIt = words.begin();

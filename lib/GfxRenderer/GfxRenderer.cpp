@@ -124,10 +124,18 @@ void GfxRenderer::drawPixel(const int x, const int y, const bool state) const {
       rotatedY * EInkDisplay::DISPLAY_WIDTH_BYTES + (rotatedX / 8);
   const uint8_t bitPosition = 7 - (rotatedX % 8); // MSB first
 
-  if (state) {
-    frameBuffer[byteIndex] &= ~(1 << bitPosition); // Clear bit
+  // In dark mode, invert the pixel state (black <-> white)
+  // But NOT in grayscale mode - grayscale rendering uses special pixel marking
+  // And NOT when skipDarkModeForImages is set - cover art should keep original
+  // colors
+  const bool shouldInvert =
+      darkMode && !skipDarkModeForImages && renderMode == BW;
+  const bool actualState = shouldInvert ? !state : state;
+
+  if (actualState) {
+    frameBuffer[byteIndex] &= ~(1 << bitPosition); // Clear bit = black pixel
   } else {
-    frameBuffer[byteIndex] |= 1 << bitPosition; // Set bit
+    frameBuffer[byteIndex] |= 1 << bitPosition; // Set bit = white pixel
   }
 }
 
@@ -371,6 +379,18 @@ void GfxRenderer::drawBitmap(const Bitmap &bitmap, const int x, const int y,
     return;
   }
 
+  // Cover art and images should keep their original colors in dark mode
+  skipDarkModeForImages = true;
+  auto cleanup = [this]() { skipDarkModeForImages = false; };
+
+  // If in dark mode and drawing a positive image, we need a white background
+  // first, as the global background is black.
+  if (darkMode && renderMode == BW) {
+    // skipDarkModeForImages is true, so drawPixel(..., false) will not invert
+    // and will set the bit (White).
+    fillRect(x, y, maxWidth, maxHeight, false);
+  }
+
   float scale = 1.0f;
   bool isScaled = false;
   int cropPixX = std::floor(bitmap.getWidth() * cropX / 2.0f);
@@ -464,11 +484,24 @@ void GfxRenderer::drawBitmap(const Bitmap &bitmap, const int x, const int y,
 
   free(outputRow);
   free(rowBytes);
+  cleanup();
 }
 
 void GfxRenderer::drawBitmap1Bit(const Bitmap &bitmap, const int x, const int y,
                                  const int maxWidth,
                                  const int maxHeight) const {
+  // Cover art and images should keep their original colors in dark mode
+  skipDarkModeForImages = true;
+  auto cleanup = [this]() { skipDarkModeForImages = false; };
+
+  // If in dark mode and drawing a positive image, we need a white background
+  // first, as the global background is black.
+  if (darkMode && renderMode == BW) {
+    // skipDarkModeForImages is true, so drawPixel(..., false) will not invert
+    // and will set the bit (White).
+    fillRect(x, y, maxWidth, maxHeight, false);
+  }
+
   float scale = 1.0f;
   bool isScaled = false;
   if (maxWidth > 0 && bitmap.getWidth() > maxWidth) {
@@ -543,6 +576,7 @@ void GfxRenderer::drawBitmap1Bit(const Bitmap &bitmap, const int x, const int y,
 
   free(outputRow);
   free(rowBytes);
+  cleanup();
 }
 
 void GfxRenderer::fillPolygon(const int *xPoints, const int *yPoints,
@@ -625,7 +659,11 @@ void GfxRenderer::fillPolygon(const int *xPoints, const int *yPoints,
 }
 
 void GfxRenderer::clearScreen(const uint8_t color) const {
-  einkDisplay.clearScreen(color);
+  // In dark mode, the default background should be black (0x00)
+  // We use bitwise NOT to invert the color parameter for dark mode
+  // This means clearScreen(0xFF) becomes clearScreen(0x00) in dark mode
+  const uint8_t actualColor = darkMode ? ~color : color;
+  einkDisplay.clearScreen(actualColor);
 }
 
 void GfxRenderer::invertScreen() const {
@@ -1157,9 +1195,24 @@ void GfxRenderer::renderChar(const int fontId, const EpdFontFamily &fontFamily,
           // light grey, 3 -> white
           const uint8_t bmpVal = 3 - (byte >> bit_index) & 0x3;
 
-          if (renderMode == BW && bmpVal < 3) {
-            // Black (also paints over the grays in BW mode)
-            drawPixel(screenX, screenY, pixelState);
+          if (renderMode == BW) {
+            bool shouldDraw = false;
+            if (darkMode) {
+              // In dark mode, do NOT draw anti-aliasing edges (bmpVal 1, 2)
+              // as they must remain black (background) to be lightened to gray
+              // in the grayscale pass. Only draw core ink (bmpVal 0).
+              if (bmpVal == 0) {
+                shouldDraw = true;
+              }
+            } else if (bmpVal < 3) {
+              // In light mode, draw core and grays as black.
+              // They will be lightened to grays later.
+              shouldDraw = true;
+            }
+
+            if (shouldDraw) {
+              drawPixel(screenX, screenY, pixelState);
+            }
           } else if (renderMode == GRAYSCALE_MSB &&
                      (bmpVal == 1 || bmpVal == 2)) {
             // Light gray (also mark the MSB if it's going to be a dark gray

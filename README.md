@@ -10,6 +10,12 @@ This project extends the original CrossPoint Reader with Chinese/Japanese locali
 
 ## ✨ New Features in CJK Edition
 
+### 🌙 Dark Mode Support
+- Full dark mode with inverted colors (black background, white text)
+- Properly handles chapter transitions and reader entry without white flashes
+- Compatible with grayscale anti-aliasing rendering
+- Toggle in Settings → Color Mode
+
 ### 🌏 Multi-language UI Support (I18n)
 - Supports **Chinese**, **English**, and **Japanese** interface languages
 - Switch languages anytime in Settings

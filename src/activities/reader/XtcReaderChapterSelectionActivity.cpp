@@ -154,7 +154,12 @@ void XtcReaderChapterSelectionActivity::renderScreen() {
   for (int i = pageStartIndex; i < static_cast<int>(chapters.size()) && i < pageStartIndex + pageItems; i++) {
     const auto& chapter = chapters[i];
     const char* title = chapter.name.empty() ? "Unnamed" : chapter.name.c_str();
-    renderer.drawText(UI_10_FONT_ID, 20, 60 + (i % pageItems) * rowHeight, title, i != selectorIndex);
+    const int yPos = 60 + (i % pageItems) * rowHeight;
+    // Calculate max width for title to prevent overlap
+    const int maxWidth = pageWidth - 30;
+    // Truncate title if too long to prevent overlap with screen edge
+    const std::string truncatedTitle = renderer.truncatedText(UI_10_FONT_ID, title, maxWidth);
+    renderer.drawText(UI_10_FONT_ID, 20, yPos, truncatedTitle.c_str(), i != selectorIndex);
   }
 
   const auto labels = mappedInput.mapLabels("« Back", "Select", "Up", "Down");

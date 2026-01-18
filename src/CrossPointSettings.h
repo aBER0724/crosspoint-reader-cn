@@ -55,12 +55,6 @@ public:
   // Font size options (UI and Reader)
   enum FONT_SIZE { SMALL = 0, MEDIUM = 1, LARGE = 2 };
   enum LINE_COMPRESSION { TIGHT = 0, NORMAL = 1, WIDE = 2 };
-  enum PARAGRAPH_ALIGNMENT {
-    JUSTIFIED = 0,
-    LEFT_ALIGN = 1,
-    CENTER_ALIGN = 2,
-    RIGHT_ALIGN = 3
-  };
 
   // Auto-sleep timeout options (in minutes)
   enum SLEEP_TIMEOUT {
@@ -90,6 +84,12 @@ public:
     HIDE_ALWAYS = 2
   };
 
+  // Display color mode
+  enum COLOR_MODE {
+    LIGHT_MODE = 0,  // White background, black text (default)
+    DARK_MODE = 1    // Black background, white text
+  };
+
   // Sleep screen settings
   uint8_t sleepScreen = DARK;
   // Sleep screen cover mode settings
@@ -112,7 +112,7 @@ public:
   uint8_t fontFamily = NOTOSANS;
   uint8_t fontSize = MEDIUM;
   uint8_t lineSpacing = NORMAL;
-  uint8_t paragraphAlignment = JUSTIFIED;
+  uint8_t colorMode = LIGHT_MODE;
   // Auto-sleep timeout setting (default 10 minutes)
   uint8_t sleepTimeout = SLEEP_10_MIN;
   // E-ink refresh frequency (default 15 pages)
@@ -137,6 +137,7 @@ public:
     return (shortPwrBtn == CrossPointSettings::SHORT_PWRBTN::SLEEP) ? 10 : 400;
   }
   int getReaderFontId() const;
+  bool isDarkMode() const;
 
   bool saveToFile() const;
   bool loadFromFile();

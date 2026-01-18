@@ -54,11 +54,10 @@ const SettingInfo settingsList[settingsCount] = {
                       {"Small", "Medium", "Large"}),
     SettingInfo::Enum("Reader Line Spacing", &CrossPointSettings::lineSpacing,
                       {"Tight", "Normal", "Wide"}),
+    SettingInfo::Enum("Color Mode", &CrossPointSettings::colorMode,
+                      {"Light", "Dark"}),
     SettingInfo::Value("Reader Screen Margin",
                        &CrossPointSettings::screenMargin, {5, 40, 5}),
-    SettingInfo::Enum("Reader Paragraph Alignment",
-                      &CrossPointSettings::paragraphAlignment,
-                      {"Justify", "Left", "Center", "Right"}),
     SettingInfo::Enum("Time to Sleep", &CrossPointSettings::sleepTimeout,
                       {"1 min", "5 min", "10 min", "15 min", "30 min"}),
     SettingInfo::Enum(
@@ -101,10 +100,10 @@ const char *translateSettingName(const char *name) {
     return TR(FONT_SIZE);
   if (strcmp(name, "Reader Line Spacing") == 0)
     return TR(LINE_SPACING);
+  if (strcmp(name, "Color Mode") == 0)
+    return TR(COLOR_MODE);
   if (strcmp(name, "Reader Screen Margin") == 0)
     return TR(SCREEN_MARGIN);
-  if (strcmp(name, "Reader Paragraph Alignment") == 0)
-    return TR(PARA_ALIGNMENT);
   if (strcmp(name, "Time to Sleep") == 0)
     return TR(TIME_TO_SLEEP);
   if (strcmp(name, "Refresh Frequency") == 0)
@@ -187,15 +186,11 @@ const char *translateSettingValue(const char *value) {
     return TR(NORMAL);
   if (strcmp(value, "Wide") == 0)
     return TR(WIDE);
-  // Alignment
-  if (strcmp(value, "Justify") == 0)
-    return TR(JUSTIFY);
-  if (strcmp(value, "Left") == 0)
-    return TR(LEFT);
-  if (strcmp(value, "Center") == 0)
-    return TR(CENTER);
-  if (strcmp(value, "Right") == 0)
-    return TR(RIGHT);
+  // Color Mode
+  if (strcmp(value, "Light") == 0)
+    return TR(LIGHT);
+  if (strcmp(value, "Dark") == 0)
+    return TR(DARK);
   // Time to Sleep
   if (strcmp(value, "1 min") == 0)
     return TR(MIN_1);
@@ -323,6 +318,12 @@ void SettingsActivity::toggleCurrentSetting() {
       renderer.setUiFontSize(SETTINGS.fontSize);
       Serial.printf("[%lu] [SET] UI font size updated to %d (%dpx)\n", millis(),
                     SETTINGS.fontSize, 20 + SETTINGS.fontSize * 2);
+    }
+    // Hot update: Apply color mode change immediately
+    if (setting.valuePtr == &CrossPointSettings::colorMode) {
+      renderer.setDarkMode(SETTINGS.isDarkMode());
+      Serial.printf("[%lu] [SET] Color mode updated to %s\n", millis(),
+                    SETTINGS.isDarkMode() ? "Dark" : "Light");
     }
   } else if (setting.type == SettingType::VALUE &&
              setting.valuePtr != nullptr) {

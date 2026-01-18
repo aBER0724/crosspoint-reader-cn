@@ -31,7 +31,6 @@ class TxtReaderActivity final : public ActivityWithSubactivity {
   // Cached settings for cache validation (different fonts/margins require re-indexing)
   int cachedFontId = 0;
   int cachedScreenMargin = 0;
-  uint8_t cachedParagraphAlignment = CrossPointSettings::LEFT_ALIGN;
 
   static void taskTrampoline(void* param);
   [[noreturn]] void displayTaskLoop();

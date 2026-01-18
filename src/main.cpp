@@ -365,6 +365,11 @@ void setup() {
   Serial.printf("[%lu] [   ] UI font size set to %d (%dpx)\n", millis(),
                 SETTINGS.fontSize, 20 + SETTINGS.fontSize * 2);
 
+  // Set dark mode based on colorMode setting
+  renderer.setDarkMode(SETTINGS.isDarkMode());
+  Serial.printf("[%lu] [   ] Color mode set to %s\n", millis(),
+                SETTINGS.isDarkMode() ? "Dark" : "Light");
+
   exitActivity();
   enterNewActivity(new BootActivity(renderer, mappedInputManager));
 

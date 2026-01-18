@@ -86,6 +86,7 @@ enum class StrId : uint16_t {
   EXT_UI_FONT,      // "External UI Font" / "UI字体"
   FONT_SIZE,        // "Reader Font Size" / "字体大小"
   LINE_SPACING,     // "Reader Line Spacing" / "行间距"
+  COLOR_MODE,       // "Color Mode" / "颜色模式"
   SCREEN_MARGIN,    // "Reader Screen Margin" / "页面边距"
   PARA_ALIGNMENT,   // "Reader Paragraph Alignment" / "段落对齐"
   TIME_TO_SLEEP,    // "Time to Sleep" / "休眠时间"

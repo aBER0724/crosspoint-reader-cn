@@ -141,7 +141,13 @@ void EpubReaderChapterSelectionActivity::renderScreen() {
   for (int tocIndex = pageStartIndex; tocIndex < epub->getTocItemsCount() && tocIndex < pageStartIndex + pageItems;
        tocIndex++) {
     auto item = epub->getTocItem(tocIndex);
-    renderer.drawText(UI_10_FONT_ID, 20 + (item.level - 1) * 15, 60 + (tocIndex % pageItems) * rowHeight, item.title.c_str(),
+    const int xPos = 20 + (item.level - 1) * 15;
+    const int yPos = 60 + (tocIndex % pageItems) * rowHeight;
+    // Calculate max width for title to prevent overlap
+    const int maxWidth = pageWidth - xPos - 10;
+    // Truncate title if too long to prevent overlap with screen edge
+    const std::string truncatedTitle = renderer.truncatedText(UI_10_FONT_ID, item.title.c_str(), maxWidth);
+    renderer.drawText(UI_10_FONT_ID, xPos, yPos, truncatedTitle.c_str(),
                       tocIndex != selectorIndex);
   }
 

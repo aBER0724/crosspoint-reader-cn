@@ -6,6 +6,7 @@
  */
 
 #include "XtcReaderActivity.h"
+#include <cstring>
 
 #include <FsHelpers.h>
 #include <GfxRenderer.h>
@@ -20,10 +21,10 @@
 namespace {
 constexpr unsigned long skipPageMs = 700;
 constexpr unsigned long goHomeMs = 1000;
-}  // namespace
+} // namespace
 
-void XtcReaderActivity::taskTrampoline(void* param) {
-  auto* self = static_cast<XtcReaderActivity*>(param);
+void XtcReaderActivity::taskTrampoline(void *param) {
+  auto *self = static_cast<XtcReaderActivity *>(param);
   self->displayTaskLoop();
 }
 
@@ -49,10 +50,10 @@ void XtcReaderActivity::onEnter() {
   updateRequired = true;
 
   xTaskCreate(&XtcReaderActivity::taskTrampoline, "XtcReaderActivityTask",
-              4096,               // Stack size (smaller than EPUB since no parsing needed)
-              this,               // Parameters
-              1,                  // Priority
-              &displayTaskHandle  // Task handle
+              4096, // Stack size (smaller than EPUB since no parsing needed)
+              this, // Parameters
+              1,    // Priority
+              &displayTaskHandle // Task handle
   );
 }
 
@@ -98,23 +99,27 @@ void XtcReaderActivity::loop() {
   }
 
   // Long press BACK (1s+) goes directly to home
-  if (mappedInput.isPressed(MappedInputManager::Button::Back) && mappedInput.getHeldTime() >= goHomeMs) {
+  if (mappedInput.isPressed(MappedInputManager::Button::Back) &&
+      mappedInput.getHeldTime() >= goHomeMs) {
     onGoHome();
     return;
   }
 
   // Short press BACK goes to file selection
-  if (mappedInput.wasReleased(MappedInputManager::Button::Back) && mappedInput.getHeldTime() < goHomeMs) {
+  if (mappedInput.wasReleased(MappedInputManager::Button::Back) &&
+      mappedInput.getHeldTime() < goHomeMs) {
     onGoBack();
     return;
   }
 
-  const bool prevReleased = mappedInput.wasReleased(MappedInputManager::Button::PageBack) ||
-                            mappedInput.wasReleased(MappedInputManager::Button::Left);
-  const bool nextReleased = mappedInput.wasReleased(MappedInputManager::Button::PageForward) ||
-                            (SETTINGS.shortPwrBtn == CrossPointSettings::SHORT_PWRBTN::PAGE_TURN &&
-                             mappedInput.wasReleased(MappedInputManager::Button::Power)) ||
-                            mappedInput.wasReleased(MappedInputManager::Button::Right);
+  const bool prevReleased =
+      mappedInput.wasReleased(MappedInputManager::Button::PageBack) ||
+      mappedInput.wasReleased(MappedInputManager::Button::Left);
+  const bool nextReleased =
+      mappedInput.wasReleased(MappedInputManager::Button::PageForward) ||
+      (SETTINGS.shortPwrBtn == CrossPointSettings::SHORT_PWRBTN::PAGE_TURN &&
+       mappedInput.wasReleased(MappedInputManager::Button::Power)) ||
+      mappedInput.wasReleased(MappedInputManager::Button::Right);
 
   if (!prevReleased && !nextReleased) {
     return;
@@ -127,7 +132,8 @@ void XtcReaderActivity::loop() {
     return;
   }
 
-  const bool skipPages = SETTINGS.longPressChapterSkip && mappedInput.getHeldTime() > skipPageMs;
+  const bool skipPages =
+      SETTINGS.longPressChapterSkip && mappedInput.getHeldTime() > skipPageMs;
   const int skipAmount = skipPages ? 10 : 1;
 
   if (prevReleased) {
@@ -140,7 +146,7 @@ void XtcReaderActivity::loop() {
   } else if (nextReleased) {
     currentPage += skipAmount;
     if (currentPage >= xtc->getPageCount()) {
-      currentPage = xtc->getPageCount();  // Allow showing "End of book"
+      currentPage = xtc->getPageCount(); // Allow showing "End of book"
     }
     updateRequired = true;
   }
@@ -167,7 +173,8 @@ void XtcReaderActivity::renderScreen() {
   if (currentPage >= xtc->getPageCount()) {
     // Show end of book screen
     renderer.clearScreen();
-    renderer.drawCenteredText(UI_12_FONT_ID, 300, "End of book", true, EpdFontFamily::BOLD);
+    renderer.drawCenteredText(UI_12_FONT_ID, 300, "End of book", true,
+                              EpdFontFamily::BOLD);
     renderer.displayBuffer();
     return;
   }
@@ -183,20 +190,24 @@ void XtcReaderActivity::renderPage() {
 
   // Calculate buffer size for one page
   // XTG (1-bit): Row-major, ((width+7)/8) * height bytes
-  // XTH (2-bit): Two bit planes, column-major, ((width * height + 7) / 8) * 2 bytes
+  // XTH (2-bit): Two bit planes, column-major, ((width * height + 7) / 8) * 2
+  // bytes
   size_t pageBufferSize;
   if (bitDepth == 2) {
-    pageBufferSize = ((static_cast<size_t>(pageWidth) * pageHeight + 7) / 8) * 2;
+    pageBufferSize =
+        ((static_cast<size_t>(pageWidth) * pageHeight + 7) / 8) * 2;
   } else {
     pageBufferSize = ((pageWidth + 7) / 8) * pageHeight;
   }
 
   // Allocate page buffer
-  uint8_t* pageBuffer = static_cast<uint8_t*>(malloc(pageBufferSize));
+  uint8_t *pageBuffer = static_cast<uint8_t *>(malloc(pageBufferSize));
   if (!pageBuffer) {
-    Serial.printf("[%lu] [XTR] Failed to allocate page buffer (%lu bytes)\n", millis(), pageBufferSize);
+    Serial.printf("[%lu] [XTR] Failed to allocate page buffer (%lu bytes)\n",
+                  millis(), pageBufferSize);
     renderer.clearScreen();
-    renderer.drawCenteredText(UI_12_FONT_ID, 300, "Memory error", true, EpdFontFamily::BOLD);
+    renderer.drawCenteredText(UI_12_FONT_ID, 300, "Memory error", true,
+                              EpdFontFamily::BOLD);
     renderer.displayBuffer();
     return;
   }
@@ -204,10 +215,12 @@ void XtcReaderActivity::renderPage() {
   // Load page data
   size_t bytesRead = xtc->loadPage(currentPage, pageBuffer, pageBufferSize);
   if (bytesRead == 0) {
-    Serial.printf("[%lu] [XTR] Failed to load page %lu\n", millis(), currentPage);
+    Serial.printf("[%lu] [XTR] Failed to load page %lu\n", millis(),
+                  currentPage);
     free(pageBuffer);
     renderer.clearScreen();
-    renderer.drawCenteredText(UI_12_FONT_ID, 300, "Page load error", true, EpdFontFamily::BOLD);
+    renderer.drawCenteredText(UI_12_FONT_ID, 300, "Page load error", true,
+                              EpdFontFamily::BOLD);
     renderer.displayBuffer();
     return;
   }
@@ -216,7 +229,8 @@ void XtcReaderActivity::renderPage() {
   renderer.clearScreen();
 
   // Copy page bitmap using GfxRenderer's drawPixel
-  // XTC/XTCH pages are pre-rendered with status bar included, so render full page
+  // XTC/XTCH pages are pre-rendered with status bar included, so render full
+  // page
   const uint16_t maxSrcY = pageHeight;
 
   if (bitDepth == 2) {
@@ -227,10 +241,12 @@ void XtcReaderActivity::renderPage() {
     // - Pixel value = (bit1 << 1) | bit2
     // - Grayscale: 0=White, 1=Dark Grey, 2=Light Grey, 3=Black
 
-    const size_t planeSize = (static_cast<size_t>(pageWidth) * pageHeight + 7) / 8;
-    const uint8_t* plane1 = pageBuffer;              // Bit1 plane
-    const uint8_t* plane2 = pageBuffer + planeSize;  // Bit2 plane
-    const size_t colBytes = (pageHeight + 7) / 8;    // Bytes per column (100 for 800 height)
+    const size_t planeSize =
+        (static_cast<size_t>(pageWidth) * pageHeight + 7) / 8;
+    const uint8_t *plane1 = pageBuffer;             // Bit1 plane
+    const uint8_t *plane2 = pageBuffer + planeSize; // Bit2 plane
+    const size_t colBytes =
+        (pageHeight + 7) / 8; // Bytes per column (100 for 800 height)
 
     // Lambda to get pixel value at (x, y)
     auto getPixelValue = [&](uint16_t x, uint16_t y) -> uint8_t {
@@ -243,8 +259,9 @@ void XtcReaderActivity::renderPage() {
       return (bit1 << 1) | bit2;
     };
 
-    // Optimized grayscale rendering without storeBwBuffer (saves 48KB peak memory)
-    // Flow: BW display → LSB/MSB passes → grayscale display → re-render BW for next frame
+    // Optimized grayscale rendering without storeBwBuffer (saves 48KB peak
+    // memory) Flow: BW display → LSB/MSB passes → grayscale display → re-render
+    // BW for next frame
 
     // Count pixel distribution for debugging
     uint32_t pixelCounts[4] = {0, 0, 0, 0};
@@ -253,13 +270,23 @@ void XtcReaderActivity::renderPage() {
         pixelCounts[getPixelValue(x, y)]++;
       }
     }
-    Serial.printf("[%lu] [XTR] Pixel distribution: White=%lu, DarkGrey=%lu, LightGrey=%lu, Black=%lu\n", millis(),
-                  pixelCounts[0], pixelCounts[1], pixelCounts[2], pixelCounts[3]);
+    Serial.printf("[%lu] [XTR] Pixel distribution: White=%lu, DarkGrey=%lu, "
+                  "LightGrey=%lu, Black=%lu\n",
+                  millis(), pixelCounts[0], pixelCounts[1], pixelCounts[2],
+                  pixelCounts[3]);
 
-    // Pass 1: BW buffer - draw all non-white pixels as black
+    // Pass 1: BW buffer - draw ink pixels
     for (uint16_t y = 0; y < pageHeight; y++) {
       for (uint16_t x = 0; x < pageWidth; x++) {
-        if (getPixelValue(x, y) >= 1) {
+        uint8_t pv = getPixelValue(x, y);
+        bool shouldDraw = false;
+        if (SETTINGS.isDarkMode()) {
+          if (pv == 3)
+            shouldDraw = true; // Only core ink pixels become white
+        } else if (pv >= 1) {
+          shouldDraw = true; // All non-background pixels are black
+        }
+        if (shouldDraw) {
           renderer.drawPixel(x, y, true);
         }
       }
@@ -276,10 +303,11 @@ void XtcReaderActivity::renderPage() {
 
     // Pass 2: LSB buffer - mark DARK gray only (XTH value 1)
     // In LUT: 0 bit = apply gray effect, 1 bit = untouched
-    renderer.clearScreen(0x00);
+    // Clear to raw 0x00 (black) for mask generation
+    memset(renderer.getFrameBuffer(), 0x00, GfxRenderer::getBufferSize());
     for (uint16_t y = 0; y < pageHeight; y++) {
       for (uint16_t x = 0; x < pageWidth; x++) {
-        if (getPixelValue(x, y) == 1) {  // Dark grey only
+        if (getPixelValue(x, y) == 1) { // Dark grey only
           renderer.drawPixel(x, y, false);
         }
       }
@@ -288,11 +316,11 @@ void XtcReaderActivity::renderPage() {
 
     // Pass 3: MSB buffer - mark LIGHT AND DARK gray (XTH value 1 or 2)
     // In LUT: 0 bit = apply gray effect, 1 bit = untouched
-    renderer.clearScreen(0x00);
+    memset(renderer.getFrameBuffer(), 0x00, GfxRenderer::getBufferSize());
     for (uint16_t y = 0; y < pageHeight; y++) {
       for (uint16_t x = 0; x < pageWidth; x++) {
         const uint8_t pv = getPixelValue(x, y);
-        if (pv == 1 || pv == 2) {  // Dark grey or Light grey
+        if (pv == 1 || pv == 2) { // Dark grey or Light grey
           renderer.drawPixel(x, y, false);
         }
       }
@@ -302,11 +330,19 @@ void XtcReaderActivity::renderPage() {
     // Display grayscale overlay
     renderer.displayGrayBuffer();
 
-    // Pass 4: Re-render BW to framebuffer (restore for next frame, instead of restoreBwBuffer)
+    // Pass 4: Re-render BW to framebuffer (restore for next frame)
     renderer.clearScreen();
     for (uint16_t y = 0; y < pageHeight; y++) {
       for (uint16_t x = 0; x < pageWidth; x++) {
-        if (getPixelValue(x, y) >= 1) {
+        uint8_t pv = getPixelValue(x, y);
+        bool shouldDraw = false;
+        if (SETTINGS.isDarkMode()) {
+          if (pv == 3)
+            shouldDraw = true;
+        } else if (pv >= 1) {
+          shouldDraw = true;
+        }
+        if (shouldDraw) {
           renderer.drawPixel(x, y, true);
         }
       }
@@ -317,12 +353,12 @@ void XtcReaderActivity::renderPage() {
 
     free(pageBuffer);
 
-    Serial.printf("[%lu] [XTR] Rendered page %lu/%lu (2-bit grayscale)\n", millis(), currentPage + 1,
-                  xtc->getPageCount());
+    Serial.printf("[%lu] [XTR] Rendered page %lu/%lu (2-bit grayscale)\n",
+                  millis(), currentPage + 1, xtc->getPageCount());
     return;
   } else {
     // 1-bit mode: 8 pixels per byte, MSB first
-    const size_t srcRowBytes = (pageWidth + 7) / 8;  // 60 bytes for 480 width
+    const size_t srcRowBytes = (pageWidth + 7) / 8; // 60 bytes for 480 width
 
     for (uint16_t srcY = 0; srcY < maxSrcY; srcY++) {
       const size_t srcRowStart = srcY * srcRowBytes;
@@ -331,7 +367,8 @@ void XtcReaderActivity::renderPage() {
         // Read source pixel (MSB first, bit 7 = leftmost pixel)
         const size_t srcByte = srcRowStart + srcX / 8;
         const size_t srcBit = 7 - (srcX % 8);
-        const bool isBlack = !((pageBuffer[srcByte] >> srcBit) & 1);  // XTC: 0 = black, 1 = white
+        const bool isBlack =
+            !((pageBuffer[srcByte] >> srcBit) & 1); // XTC: 0 = black, 1 = white
 
         if (isBlack) {
           renderer.drawPixel(srcX, srcY, true);
@@ -354,8 +391,8 @@ void XtcReaderActivity::renderPage() {
     pagesUntilFullRefresh--;
   }
 
-  Serial.printf("[%lu] [XTR] Rendered page %lu/%lu (%u-bit)\n", millis(), currentPage + 1, xtc->getPageCount(),
-                bitDepth);
+  Serial.printf("[%lu] [XTR] Rendered page %lu/%lu (%u-bit)\n", millis(),
+                currentPage + 1, xtc->getPageCount(), bitDepth);
 }
 
 void XtcReaderActivity::saveProgress() const {
@@ -376,8 +413,10 @@ void XtcReaderActivity::loadProgress() {
   if (SdMan.openFileForRead("XTR", xtc->getCachePath() + "/progress.bin", f)) {
     uint8_t data[4];
     if (f.read(data, 4) == 4) {
-      currentPage = data[0] | (data[1] << 8) | (data[2] << 16) | (data[3] << 24);
-      Serial.printf("[%lu] [XTR] Loaded progress: page %lu\n", millis(), currentPage);
+      currentPage =
+          data[0] | (data[1] << 8) | (data[2] << 16) | (data[3] << 24);
+      Serial.printf("[%lu] [XTR] Loaded progress: page %lu\n", millis(),
+                    currentPage);
 
       // Validate page number
       if (currentPage >= xtc->getPageCount()) {

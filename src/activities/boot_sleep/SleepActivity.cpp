@@ -1,4 +1,5 @@
 #include "SleepActivity.h"
+#include <cstring>
 
 #include <Epub.h>
 #include <GfxRenderer.h>
@@ -184,8 +185,11 @@ void SleepActivity::renderDefaultSleepScreen() const {
                             true, EpdFontFamily::BOLD);
   renderer.drawCenteredText(SMALL_FONT_ID, pageHeight / 2 + 95, TR(SLEEPING));
 
-  // Make sleep screen dark unless light is selected in settings
-  if (SETTINGS.sleepScreen != CrossPointSettings::SLEEP_SCREEN_MODE::LIGHT) {
+  // Ensure sleep screen matches its dedicated setting regardless of global dark
+  // mode
+  bool desiredDark =
+      (SETTINGS.sleepScreen == CrossPointSettings::SLEEP_SCREEN_MODE::DARK);
+  if (desiredDark != renderer.isDarkMode()) {
     renderer.invertScreen();
   }
 
@@ -253,13 +257,13 @@ void SleepActivity::renderBitmapSleepScreen(const Bitmap &bitmap) const {
 
   if (bitmap.hasGreyscale()) {
     bitmap.rewindToData();
-    renderer.clearScreen(0x00);
+    memset(renderer.getFrameBuffer(), 0x00, GfxRenderer::getBufferSize());
     renderer.setRenderMode(GfxRenderer::GRAYSCALE_LSB);
     renderer.drawBitmap(bitmap, x, y, pageWidth, pageHeight, cropX, cropY);
     renderer.copyGrayscaleLsbBuffers();
 
     bitmap.rewindToData();
-    renderer.clearScreen(0x00);
+    memset(renderer.getFrameBuffer(), 0x00, GfxRenderer::getBufferSize());
     renderer.setRenderMode(GfxRenderer::GRAYSCALE_MSB);
     renderer.drawBitmap(bitmap, x, y, pageWidth, pageHeight, cropX, cropY);
     renderer.copyGrayscaleMsbBuffers();
@@ -348,13 +352,21 @@ void SleepActivity::renderXtgSleepScreen(FsFile &file) const {
 
     for (uint16_t y = 0; y < h; y++) {
       for (uint16_t x = 0; x < w; x++) {
-        if (getPixel(x, y) >= 1)
+        uint8_t pv = getPixel(x, y);
+        bool shouldDraw = false;
+        if (renderer.isDarkMode()) {
+          if (pv == 3)
+            shouldDraw = true; // Only core ink pixels become white
+        } else if (pv >= 1) {
+          shouldDraw = true; // All non-background pixels are black
+        }
+        if (shouldDraw)
           renderer.drawPixel(x + offsetX, y + offsetY, true);
       }
     }
     renderer.displayBuffer(EInkDisplay::HALF_REFRESH);
 
-    renderer.clearScreen(0x00);
+    memset(renderer.getFrameBuffer(), 0x00, GfxRenderer::getBufferSize());
     for (uint16_t y = 0; y < h; y++) {
       for (uint16_t x = 0; x < w; x++) {
         if (getPixel(x, y) == 1)
@@ -363,7 +375,7 @@ void SleepActivity::renderXtgSleepScreen(FsFile &file) const {
     }
     renderer.copyGrayscaleLsbBuffers();
 
-    renderer.clearScreen(0x00);
+    memset(renderer.getFrameBuffer(), 0x00, GfxRenderer::getBufferSize());
     for (uint16_t y = 0; y < h; y++) {
       for (uint16_t x = 0; x < w; x++) {
         const uint8_t pv = getPixel(x, y);

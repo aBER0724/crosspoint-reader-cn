@@ -52,7 +52,7 @@ const char *const I18n::STRINGS_EN[] = {
     "Extra Paragraph Spacing", "Text Anti-Aliasing", "Short Power Button Click",
     "Reading Orientation", "Front Button Layout", "Side Button Layout (reader)",
     "Long-press Chapter Skip", "Reader Font Family", "External Chinese Font",
-    "External UI Font", "Reader Font Size", "Reader Line Spacing",
+    "External UI Font", "Reader Font Size", "Reader Line Spacing", "Color Mode",
     "Reader Screen Margin", "Reader Paragraph Alignment", "Time to Sleep",
     "Refresh Frequency", "Calibre Settings", "Check for updates", "Language",
     "Select Wallpaper",
@@ -192,6 +192,7 @@ const char *const I18n::STRINGS_ZH[] = {
     "UI\xE5\xAD\x97\xE4\xBD\x93",                                   // UI字体
     "\xE5\xAD\x97\xE4\xBD\x93\xE5\xA4\xA7\xE5\xB0\x8F",             // 字体大小
     "\xE8\xA1\x8C\xE9\x97\xB4\xE8\xB7\x9D",                         // 行间距
+    "\xE9\xA2\x9C\xE8\x89\xB2\xE6\xA8\xA1\xE5\xBC\x8F",             // 颜色模式
     "\xE9\xA1\xB5\xE9\x9D\xA2\xE8\xBE\xB9\xE8\xB7\x9D",             // 页面边距
     "\xE6\xAE\xB5\xE8\x90\xBD\xE5\xAF\xB9\xE9\xBD\x90",             // 段落对齐
     "\xE4\xBC\x91\xE7\x9C\xA0\xE6\x97\xB6\xE9\x97\xB4",             // 休眠时间
@@ -479,6 +480,8 @@ const char *const I18n::STRINGS_JA[] = {
     "\x82"
     "\xA4\xE3\x82\xB9",                                 // フォントサイズ
     "\xE8\xA1\x8C\xE9\x96\x93\xE9\x9A\x94",             // 行間隔
+    "\xE3\x82\xAB\xE3\x83\xA9\xE3\x83\xBC\xE3\x83\xA2\xE3\x83\xBC\xE3\x83"
+    "\x89",                                             // カラーモード
     "\xE7\x94\xBB\xE9\x9D\xA2\xE4\xBD\x99\xE7\x99\xBD", // 画面余白
     "\xE6\xAE\xB5\xE8\x90\xBD\xE9\x85\x8D\xE7\xBD\xAE", // 段落配置
     "\xE3\x82\xB9\xE3\x83\xAA\xE3\x83\xBC\xE3\x83\x97\xE3\x81\xBE\xE3"

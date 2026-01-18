@@ -12,7 +12,7 @@
 CrossPointSettings CrossPointSettings::instance;
 
 namespace {
-constexpr uint8_t SETTINGS_FILE_VERSION = 2;
+constexpr uint8_t SETTINGS_FILE_VERSION = 3;  // Bumped for colorMode addition
 // Number of POD settings items (excluding strings)
 constexpr uint8_t SETTINGS_POD_COUNT = 18;
 constexpr char SETTINGS_FILE[] = "/.crosspoint/settings.bin";
@@ -55,7 +55,7 @@ bool CrossPointSettings::saveToFile() const {
   serialization::writePod(outputFile, fontFamily);
   serialization::writePod(outputFile, fontSize);
   serialization::writePod(outputFile, lineSpacing);
-  serialization::writePod(outputFile, paragraphAlignment);
+  serialization::writePod(outputFile, colorMode);
   serialization::writePod(outputFile, sleepTimeout);
   serialization::writePod(outputFile, refreshFrequency);
   serialization::writePod(outputFile, screenMargin);
@@ -123,7 +123,7 @@ bool CrossPointSettings::loadFromFile() {
     serialization::readPod(inputFile, lineSpacing);
     if (++read >= fileSettingsCount)
       break;
-    serialization::readPod(inputFile, paragraphAlignment);
+    serialization::readPod(inputFile, colorMode);
     if (++read >= fileSettingsCount)
       break;
     serialization::readPod(inputFile, sleepTimeout);
@@ -174,12 +174,12 @@ bool CrossPointSettings::loadFromFile() {
 float CrossPointSettings::getReaderLineCompression() const {
   switch (lineSpacing) {
   case TIGHT:
-    return 0.85f;
+    return 0.75f;  // Reduced from 0.85f for tighter CJK text spacing
   case WIDE:
     return 1.2f;
   case NORMAL:
   default:
-    return 1.0f;
+    return 0.95f;  // Slightly reduced from 1.0f for better CJK text density
   }
 }
 
@@ -225,4 +225,8 @@ int CrossPointSettings::getReaderFontId() const {
   default:
     return NOTOSANS_14_FONT_ID;
   }
+}
+
+bool CrossPointSettings::isDarkMode() const {
+  return colorMode == DARK_MODE;
 }
