@@ -35,32 +35,11 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           name: CrossPoint Reader CJK ${{ github.ref_name }}
+          generate_release_notes: true
           body: |
             ## CrossPoint Reader CJK ${{ github.ref_name }}
 
             基于 [CrossPoint Reader](https://github.com/daveallie/crosspoint-reader) 的 CJK 适配版本。
-
-            ### ✨ 主要功能
-
-            - **深色模式支持**: 系统级深色模式，E-ink 无闪烁切换
-              - 所有 UI 元素自动像素反转
-              - 优化刷新时序，防止白屏闪烁
-              - 章节切换流畅无感
-
-            - **CJK 字体支持**: 增强的中日韩文本渲染
-              - 外置字体管理系统
-              - UI 文本国际化
-              - 多语言界面支持 (中文/英文/日语)
-
-            ### 🔧 技术改进
-
-            - Fork 并集成 community-sdk，便于维护
-            - 修复灰度还原时序，消除视觉伪影
-            - 自动化 GitHub release 创建流程
-
-            ### 📦 SDK 版本
-
-            - community-sdk: v0.1.0-cjk (基于上游 fe766f1)
 
             ### 📥 安装方式
 
@@ -75,6 +54,9 @@ jobs:
 
             - [README](https://github.com/${{ github.repository }})
             - [完整变更日志](https://github.com/${{ github.repository }}/commits/${{ github.ref_name }})
+
+            ---
+
           files: |
             .pio/build/gh_release/firmware.bin
             .pio/build/gh_release/bootloader.bin
