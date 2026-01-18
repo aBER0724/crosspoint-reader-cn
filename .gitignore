@@ -8,4 +8,5 @@ lib/EpdFont/fontsrc
 # AI
 .claude/
 .spec-workflow/
+.serena/
 docs/plans/
