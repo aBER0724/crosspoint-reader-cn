@@ -5,7 +5,7 @@
 #include <Update.h>
 
 namespace {
-constexpr char latestReleaseUrl[] = "https://api.github.com/repos/crosspoint-reader/crosspoint-reader/releases/latest";
+constexpr char latestReleaseUrl[] = "https://api.github.com/repos/aBER0724/crosspoint-reader-cjk/releases/latest";
 }
 
 OtaUpdater::OtaUpdaterError OtaUpdater::checkForUpdate() {
