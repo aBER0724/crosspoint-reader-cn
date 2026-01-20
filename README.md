@@ -96,6 +96,12 @@ pio run --target upload
 Font filename format: `FontName_size_WxH.bin`
 Example: `SourceHanSansCN-Medium_20_20x20.bin`
 
+#### Font Conversion Tool
+
+For iOS users, you can use [点墨 - 阅读器助手](https://apps.apple.com/jp/app/%E7%82%B9%E5%A2%A8-%E9%98%85%E8%AF%BB%E5%99%A8%E5%8A%A9%E6%89%8B/id6754073002) to convert fonts to `.bin` format.
+
+**Important Note**: If Chinese characters appear as question marks, check if the character spacing and line spacing in the converted `.bin` font are set too large. It is recommended that both should not exceed 48px.
+
 ## 📚 Technical Details
 
 ### Data Caching

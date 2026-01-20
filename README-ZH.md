@@ -96,6 +96,12 @@ pio run --target upload
 字体文件命名格式：`FontName_size_WxH.bin`
 例如：`SourceHanSansCN-Medium_20_20x20.bin`
 
+#### 字体转换工具
+
+iOS 用户可以使用 [点墨 - 阅读器助手](https://apps.apple.com/jp/app/%E7%82%B9%E5%A2%A8-%E9%98%85%E8%AF%BB%E5%99%A8%E5%8A%A9%E6%89%8B/id6754073002) 来转换字体为 `.bin` 格式。
+
+**重要提示**：若出现汉字全部显示为问号，请检查转换的 `.bin` 字体文件的字间距和行间距是否设置过大，建议都不要超过 48px。
+
 ## 📚 技术细节
 
 ### 数据缓存
