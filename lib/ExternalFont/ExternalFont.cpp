@@ -236,7 +236,13 @@ const uint8_t *ExternalFont::getGlyph(uint32_t codepoint) {
   // Update cache entry
   _cache[slot].codepoint = codepoint;
   _cache[slot].lastUsed = ++_accessCounter;
-  _cache[slot].notFound = !readSuccess || (isEmpty && codepoint > 0x7F);
+
+  // Check if this is a whitespace character (U+2000-U+200F: various spaces)
+  bool isWhitespace = (codepoint >= 0x2000 && codepoint <= 0x200F);
+
+  // Mark as notFound only if read failed or (empty AND not whitespace AND non-ASCII)
+  // Whitespace characters are expected to be empty but should still be rendered
+  _cache[slot].notFound = !readSuccess || (isEmpty && !isWhitespace && codepoint > 0x7F);
 
   // Store metrics
   if (!isEmpty) {
@@ -245,8 +251,28 @@ const uint8_t *ExternalFont::getGlyph(uint32_t codepoint) {
     _cache[slot].advanceX = (maxX - minX + 1) + 2;
   } else {
     _cache[slot].minX = 0;
-    // Fallback for space or empty glyph
-    _cache[slot].advanceX = _charWidth / 3;
+    // Special handling for whitespace characters
+    if (isWhitespace) {
+      // em-space (U+2003) and similar should be full-width (same as CJK char)
+      // en-space (U+2002) should be half-width
+      // Other spaces use appropriate widths
+      if (codepoint == 0x2003) {
+        // em-space: full CJK character width
+        _cache[slot].advanceX = _charWidth;
+      } else if (codepoint == 0x2002) {
+        // en-space: half CJK character width
+        _cache[slot].advanceX = _charWidth / 2;
+      } else if (codepoint == 0x3000) {
+        // Ideographic space (CJK full-width space): full width
+        _cache[slot].advanceX = _charWidth;
+      } else {
+        // Other spaces: use standard space width
+        _cache[slot].advanceX = _charWidth / 3;
+      }
+    } else {
+      // Fallback for other empty glyphs
+      _cache[slot].advanceX = _charWidth / 3;
+    }
   }
 
   // Add to hash table

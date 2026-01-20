@@ -16,7 +16,7 @@
 
 void SleepActivity::onEnter() {
   Activity::onEnter();
-  renderPopup("Entering Sleep...");
+  renderPopup(TR(ENTERING_SLEEP));
 
   if (SETTINGS.sleepScreen == CrossPointSettings::SLEEP_SCREEN_MODE::BLANK) {
     return renderBlankSleepScreen();

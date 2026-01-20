@@ -30,6 +30,65 @@ constexpr int NUM_SKIP_TAGS = sizeof(SKIP_TAGS) / sizeof(SKIP_TAGS[0]);
 
 bool isWhitespace(const char c) { return c == ' ' || c == '\r' || c == '\n' || c == '\t'; }
 
+constexpr uint32_t CP_CHAPTER_PREFIX = 0x7B2C;
+constexpr uint32_t CP_CHAPTER_MARK = 0x7AE0;
+
+bool isAsciiDigitChar(const char c) { return c >= '0' && c <= '9'; }
+
+bool isAsciiAlphaChar(const char c) {
+  return (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z');
+}
+
+bool isAsciiWordStart(const char c) {
+  return isAsciiDigitChar(c) || isAsciiAlphaChar(c);
+}
+
+bool isChineseNumeral(const uint32_t cp) {
+  switch (cp) {
+  case 0x4E00:
+  case 0x4E8C:
+  case 0x4E09:
+  case 0x56DB:
+  case 0x4E94:
+  case 0x516D:
+  case 0x4E03:
+  case 0x516B:
+  case 0x4E5D:
+  case 0x5341:
+  case 0x767E:
+  case 0x5343:
+  case 0x96F6:
+  case 0x3007:
+  case 0x4E24:
+    return true;
+  default:
+    break;
+  }
+
+  if (cp >= 0xFF10 && cp <= 0xFF19) {
+    return true;
+  }
+
+  return false;
+}
+
+bool isChapterPunctuation(const uint32_t cp) {
+  if (cp >= 0x3000 && cp <= 0x303F) {
+    return true;
+  }
+  if (cp >= 0xFF00 && cp <= 0xFFEF) {
+    return true;
+  }
+  if (cp >= 0x2000 && cp <= 0x206F) {
+    return true;
+  }
+  return false;
+}
+
+uint32_t decode3ByteUtf8(const unsigned char b0, const unsigned char b1, const unsigned char b2) {
+  return ((b0 & 0x0F) << 12) | ((b1 & 0x3F) << 6) | (b2 & 0x3F);
+}
+
 // given the start and end of a tag, check to see if it matches a known tag
 bool matches(const char* tag_name, const char* possible_tags[], const int possible_tag_count) {
   for (int i = 0; i < possible_tag_count; i++) {
@@ -46,12 +105,24 @@ void ChapterHtmlSlimParser::startNewTextBlock(const TextBlock::Style style) {
     // already have a text block running and it is empty - just reuse it
     if (currentTextBlock->isEmpty()) {
       currentTextBlock->setStyle(style);
+      chapterMarkerState = 0;
+      pendingChapterSpace = false;
+      pendingExplicitSpace = false;
+      pendingExplicitSpaceAfterCjk = false;
+      lastCharWasCjk = false;
+      lastCharWasWhitespace = false;
       return;
     }
 
     makePages();
   }
   currentTextBlock.reset(new ParsedText(style, extraParagraphSpacing));
+  chapterMarkerState = 0;
+  pendingChapterSpace = false;
+  pendingExplicitSpace = false;
+  pendingExplicitSpaceAfterCjk = false;
+  lastCharWasCjk = false;
+  lastCharWasWhitespace = false;
 }
 
 void XMLCALL ChapterHtmlSlimParser::startElement(void* userData, const XML_Char* name, const XML_Char** atts) {
@@ -167,9 +238,21 @@ void XMLCALL ChapterHtmlSlimParser::characterData(void* userData, const XML_Char
         self->currentTextBlock->addWord(self->partWordBuffer, fontStyle);
         self->partWordBufferIndex = 0;
       }
+      if (s[i] == ' ' && !self->lastCharWasWhitespace) {
+        self->pendingExplicitSpace = true;
+        self->pendingExplicitSpaceAfterCjk = self->lastCharWasCjk;
+      } else {
+        self->pendingExplicitSpace = false;
+        self->pendingExplicitSpaceAfterCjk = false;
+      }
+      self->chapterMarkerState = 0;
+      self->pendingChapterSpace = false;
+      self->lastCharWasWhitespace = true;
       // Skip the whitespace char
       continue;
     }
+
+    self->lastCharWasWhitespace = false;
 
     // Skip soft-hyphen with UTF-8 representation (U+00AD) = 0xC2 0xAD
     const XML_Char SHY_BYTE_1 = static_cast<XML_Char>(0xC2);
@@ -213,6 +296,20 @@ void XMLCALL ChapterHtmlSlimParser::characterData(void* userData, const XML_Char
         self->partWordBufferIndex = 0;
       }
 
+      const uint32_t cp = decode3ByteUtf8(byte, static_cast<unsigned char>(s[i + 1]),
+                                          static_cast<unsigned char>(s[i + 2]));
+      if (self->pendingExplicitSpaceAfterCjk || self->pendingExplicitSpace) {
+        self->currentTextBlock->addWord(" ", fontStyle);
+        self->pendingExplicitSpace = false;
+        self->pendingExplicitSpaceAfterCjk = false;
+      }
+      if (self->pendingChapterSpace) {
+        if (!isChapterPunctuation(cp)) {
+          self->currentTextBlock->addWord(" ", fontStyle);
+        }
+        self->pendingChapterSpace = false;
+      }
+
       // Add this CJK character as a separate word
       char cjkChar[4];
       cjkChar[0] = s[i];
@@ -220,6 +317,22 @@ void XMLCALL ChapterHtmlSlimParser::characterData(void* userData, const XML_Char
       cjkChar[2] = s[i + 2];
       cjkChar[3] = '\0';
       self->currentTextBlock->addWord(cjkChar, fontStyle);
+
+      if (cp == CP_CHAPTER_PREFIX) {
+        self->chapterMarkerState = 1;
+      } else if (cp == CP_CHAPTER_MARK) {
+        if (self->chapterMarkerState == 2) {
+          self->pendingChapterSpace = true;
+        }
+        self->chapterMarkerState = 0;
+      } else if (self->chapterMarkerState > 0) {
+        if (isChineseNumeral(cp)) {
+          self->chapterMarkerState = 2;
+        } else {
+          self->chapterMarkerState = 0;
+        }
+      }
+      self->lastCharWasCjk = true;
 
       // Skip the next 2 bytes (already processed)
       i += 2;
@@ -241,6 +354,20 @@ void XMLCALL ChapterHtmlSlimParser::characterData(void* userData, const XML_Char
           self->partWordBufferIndex = 0;
         }
 
+        const uint32_t cp = decode3ByteUtf8(byte, static_cast<unsigned char>(s[i + 1]),
+                                            static_cast<unsigned char>(s[i + 2]));
+        if (self->pendingExplicitSpaceAfterCjk || self->pendingExplicitSpace) {
+          self->currentTextBlock->addWord(" ", fontStyle);
+          self->pendingExplicitSpace = false;
+          self->pendingExplicitSpaceAfterCjk = false;
+        }
+        if (self->pendingChapterSpace) {
+          if (!isChapterPunctuation(cp)) {
+            self->currentTextBlock->addWord(" ", fontStyle);
+          }
+          self->pendingChapterSpace = false;
+        }
+
         // Add as separate word
         char cjkChar[4];
         cjkChar[0] = s[i];
@@ -248,6 +375,22 @@ void XMLCALL ChapterHtmlSlimParser::characterData(void* userData, const XML_Char
         cjkChar[2] = s[i + 2];
         cjkChar[3] = '\0';
         self->currentTextBlock->addWord(cjkChar, fontStyle);
+
+        if (cp == CP_CHAPTER_PREFIX) {
+          self->chapterMarkerState = 1;
+        } else if (cp == CP_CHAPTER_MARK) {
+          if (self->chapterMarkerState == 2) {
+            self->pendingChapterSpace = true;
+          }
+          self->chapterMarkerState = 0;
+        } else if (self->chapterMarkerState > 0) {
+          if (isChineseNumeral(cp)) {
+            self->chapterMarkerState = 2;
+          } else {
+            self->chapterMarkerState = 0;
+          }
+        }
+        self->lastCharWasCjk = true;
 
         i += 2;
         continue;
@@ -261,7 +404,31 @@ void XMLCALL ChapterHtmlSlimParser::characterData(void* userData, const XML_Char
       self->partWordBufferIndex = 0;
     }
 
+    if (self->partWordBufferIndex == 0 && self->pendingChapterSpace) {
+      if (isAsciiWordStart(s[i])) {
+        self->currentTextBlock->addWord(" ", fontStyle);
+      }
+      self->pendingChapterSpace = false;
+    }
+
+    if (self->pendingExplicitSpace) {
+      if (self->pendingExplicitSpaceAfterCjk) {
+        self->currentTextBlock->addWord(" ", fontStyle);
+      }
+      self->pendingExplicitSpace = false;
+      self->pendingExplicitSpaceAfterCjk = false;
+    }
+
+    if (self->chapterMarkerState > 0) {
+      if (isAsciiDigitChar(s[i])) {
+        self->chapterMarkerState = 2;
+      } else {
+        self->chapterMarkerState = 0;
+      }
+    }
+
     self->partWordBuffer[self->partWordBufferIndex++] = s[i];
+    self->lastCharWasCjk = false;
   }
 
   // If we have > 750 words buffered up, perform the layout and consume out all but the last line

@@ -1,9 +1,11 @@
 #include "XtcReaderChapterSelectionActivity.h"
 
 #include <GfxRenderer.h>
+#include <I18n.h>
 
 #include "MappedInputManager.h"
 #include "fontIds.h"
+#include "util/OrientationUtils.h"
 
 namespace {
 constexpr int SKIP_PAGE_MS = 700;
@@ -17,7 +19,7 @@ inline int getRowHeight(const GfxRenderer& renderer) {
 }  // namespace
 
 int XtcReaderChapterSelectionActivity::getPageItems() const {
-  constexpr int startY = 60;
+  const int startY = getUiTopInset(renderer) + 60;
   const int lineHeight = getRowHeight(renderer);
 
   const int screenHeight = renderer.getScreenHeight();
@@ -138,31 +140,47 @@ void XtcReaderChapterSelectionActivity::renderScreen() {
   renderer.clearScreen();
 
   const auto pageWidth = renderer.getScreenWidth();
+  const int leftInset = getUiLeftInset(renderer);
+  const int rightInset = getUiRightInset(renderer);
+  const int contentWidth = pageWidth - leftInset - rightInset;
+  const int topInset = getUiTopInset(renderer);
   const int pageItems = getPageItems();
   const int rowHeight = getRowHeight(renderer);
-  renderer.drawCenteredText(UI_12_FONT_ID, 15, "Select Chapter", true, EpdFontFamily::BOLD);
+  const char* title = TR(SELECT_CHAPTER);
+  const int titleWidth =
+      renderer.getTextWidth(UI_12_FONT_ID, title, EpdFontFamily::BOLD);
+  const int titleX = leftInset + (contentWidth - titleWidth) / 2;
+  renderer.drawText(UI_12_FONT_ID, titleX, topInset + 15, title, true,
+                    EpdFontFamily::BOLD);
 
   const auto& chapters = xtc->getChapters();
   if (chapters.empty()) {
-    renderer.drawCenteredText(UI_10_FONT_ID, 120, "No chapters");
+    const char* emptyText = TR(NO_CHAPTERS);
+    const int emptyWidth = renderer.getTextWidth(UI_10_FONT_ID, emptyText);
+    const int emptyX = leftInset + (contentWidth - emptyWidth) / 2;
+    renderer.drawText(UI_10_FONT_ID, emptyX, topInset + 120, emptyText);
     renderer.displayBuffer();
     return;
   }
 
   const auto pageStartIndex = selectorIndex / pageItems * pageItems;
-  renderer.fillRect(0, 60 + (selectorIndex % pageItems) * rowHeight - 2, pageWidth - 1, rowHeight);
+  const int listStartY = topInset + 60;
+  renderer.fillRect(leftInset, listStartY + (selectorIndex % pageItems) * rowHeight - 2,
+                    contentWidth - 1, rowHeight);
   for (int i = pageStartIndex; i < static_cast<int>(chapters.size()) && i < pageStartIndex + pageItems; i++) {
     const auto& chapter = chapters[i];
-    const char* title = chapter.name.empty() ? "Unnamed" : chapter.name.c_str();
-    const int yPos = 60 + (i % pageItems) * rowHeight;
+    const char* title = chapter.name.empty() ? TR(UNNAMED) : chapter.name.c_str();
+    const int yPos = listStartY + (i % pageItems) * rowHeight;
     // Calculate max width for title to prevent overlap
-    const int maxWidth = pageWidth - 30;
+    const int maxWidth = contentWidth - 30;
     // Truncate title if too long to prevent overlap with screen edge
     const std::string truncatedTitle = renderer.truncatedText(UI_10_FONT_ID, title, maxWidth);
-    renderer.drawText(UI_10_FONT_ID, 20, yPos, truncatedTitle.c_str(), i != selectorIndex);
+    renderer.drawText(UI_10_FONT_ID, leftInset + 20, yPos,
+                      truncatedTitle.c_str(), i != selectorIndex);
   }
 
-  const auto labels = mappedInput.mapLabels("« Back", "Select", "Up", "Down");
+  const auto labels =
+      mappedInput.mapLabels(TR(BACK), TR(SELECT), TR(DIR_UP), TR(DIR_DOWN));
   renderer.drawButtonHints(UI_10_FONT_ID, labels.btn1, labels.btn2, labels.btn3, labels.btn4);
 
   renderer.displayBuffer();

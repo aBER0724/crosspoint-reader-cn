@@ -10,6 +10,7 @@
 
 #include <FsHelpers.h>
 #include <GfxRenderer.h>
+#include <I18n.h>
 #include <SDCardManager.h>
 
 #include "CrossPointSettings.h"
@@ -17,6 +18,7 @@
 #include "MappedInputManager.h"
 #include "XtcReaderChapterSelectionActivity.h"
 #include "fontIds.h"
+#include "util/RefreshUtils.h"
 
 namespace {
 constexpr unsigned long skipPageMs = 700;
@@ -34,6 +36,8 @@ void XtcReaderActivity::onEnter() {
   if (!xtc) {
     return;
   }
+
+  mappedInput.setReadingOrientationActive(true);
 
   renderingMutex = xSemaphoreCreateMutex();
 
@@ -59,6 +63,8 @@ void XtcReaderActivity::onEnter() {
 
 void XtcReaderActivity::onExit() {
   ActivityWithSubactivity::onExit();
+
+  mappedInput.setReadingOrientationActive(false);
 
   // Wait until not rendering to delete task
   xSemaphoreTake(renderingMutex, portMAX_DELAY);
@@ -173,7 +179,7 @@ void XtcReaderActivity::renderScreen() {
   if (currentPage >= xtc->getPageCount()) {
     // Show end of book screen
     renderer.clearScreen();
-    renderer.drawCenteredText(UI_12_FONT_ID, 300, "End of book", true,
+    renderer.drawCenteredText(UI_12_FONT_ID, 300, TR(END_OF_BOOK), true,
                               EpdFontFamily::BOLD);
     renderer.displayBuffer();
     return;
@@ -206,7 +212,7 @@ void XtcReaderActivity::renderPage() {
     Serial.printf("[%lu] [XTR] Failed to allocate page buffer (%lu bytes)\n",
                   millis(), pageBufferSize);
     renderer.clearScreen();
-    renderer.drawCenteredText(UI_12_FONT_ID, 300, "Memory error", true,
+    renderer.drawCenteredText(UI_12_FONT_ID, 300, TR(MEMORY_ERROR), true,
                               EpdFontFamily::BOLD);
     renderer.displayBuffer();
     return;
@@ -219,7 +225,7 @@ void XtcReaderActivity::renderPage() {
                   currentPage);
     free(pageBuffer);
     renderer.clearScreen();
-    renderer.drawCenteredText(UI_12_FONT_ID, 300, "Page load error", true,
+    renderer.drawCenteredText(UI_12_FONT_ID, 300, TR(PAGE_LOAD_ERROR), true,
                               EpdFontFamily::BOLD);
     renderer.displayBuffer();
     return;
@@ -293,12 +299,11 @@ void XtcReaderActivity::renderPage() {
     }
 
     // Display BW with conditional refresh based on pagesUntilFullRefresh
-    if (pagesUntilFullRefresh <= 1) {
+    if (refresh_utils::shouldUseHalfRefresh(pagesUntilFullRefresh,
+                                            SETTINGS.getRefreshFrequency())) {
       renderer.displayBuffer(EInkDisplay::HALF_REFRESH);
-      pagesUntilFullRefresh = SETTINGS.getRefreshFrequency();
     } else {
       renderer.displayBuffer();
-      pagesUntilFullRefresh--;
     }
 
     // Pass 2: LSB buffer - mark DARK gray only (XTH value 1)
@@ -328,7 +333,7 @@ void XtcReaderActivity::renderPage() {
     renderer.copyGrayscaleMsbBuffers();
 
     // Display grayscale overlay
-    renderer.displayGrayBuffer();
+    renderer.displayGrayBuffer(false, renderer.isDarkMode());
 
     // Pass 4: Re-render BW to framebuffer (restore for next frame)
     renderer.clearScreen();
@@ -383,12 +388,11 @@ void XtcReaderActivity::renderPage() {
   // XTC pages already have status bar pre-rendered, no need to add our own
 
   // Display with appropriate refresh
-  if (pagesUntilFullRefresh <= 1) {
+  if (refresh_utils::shouldUseHalfRefresh(pagesUntilFullRefresh,
+                                          SETTINGS.getRefreshFrequency())) {
     renderer.displayBuffer(EInkDisplay::HALF_REFRESH);
-    pagesUntilFullRefresh = SETTINGS.getRefreshFrequency();
   } else {
     renderer.displayBuffer();
-    pagesUntilFullRefresh--;
   }
 
   Serial.printf("[%lu] [XTR] Rendered page %lu/%lu (%u-bit)\n", millis(),

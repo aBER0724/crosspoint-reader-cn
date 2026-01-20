@@ -1,5 +1,7 @@
 # CrossPoint User Guide
 
+**[English](./USER_GUIDE.md)** | [中文](./USER_GUIDE-ZH.md) | [日本語](./USER_GUIDE-JA.md)
+
 Welcome to the **CrossPoint** firmware. This guide outlines the hardware controls, navigation, and reading features of the device.
 
 ## 1. Hardware Overview
@@ -63,6 +65,13 @@ See the [webserver docs](./docs/webserver.md) for more information on how to con
 ### 3.5 Settings
 
 The Settings screen allows you to configure the device's behavior. There are a few settings you can adjust:
+- **Language**: Choose the interface language:
+  - "English" - English interface
+  - "中文" - Chinese interface
+  - "日本語" - Japanese interface
+- **Color Mode**: Set the display color mode:
+  - "Light" (default) - Standard light mode with black text on white background
+  - "Dark" - Dark mode with white text on black background, with flash-free transitions
 - **Sleep Screen**: Which sleep screen to display when the device sleeps:
   - "Dark" (default) - The default dark Crosspoint logo sleep screen
   - "Light" - The same default sleep screen, on a white background
@@ -99,11 +108,11 @@ The Settings screen allows you to configure the device's behavior. There are a f
 - **Long-press Chapter Skip**: Set whether long-pressing page turn buttons skip to the next/previous chapter.
   - "Chapter Skip" (default) - Long-pressing skips to next/previous chapter
   - "Page Scroll" - Long-pressing scrolls a page up/down
-- Swap the order of the up and down volume buttons from Previous/Next to Next/Previous. This change is only in effect when reading.
 - **Reader Font Family**: Choose the font used for reading:
   - "Bookerly" (default) - Amazon's reading font
   - "Noto Sans" - Google's sans-serif font
   - "Open Dyslexic" - Font designed for readers with dyslexia
+  - "External Font" - Load custom CJK fonts from SD card `/fonts/` directory (see [External Fonts](#37-external-fonts) below)
 - **Reader Font Size**: Adjust the text size for reading; options are "Small", "Medium", "Large", or "X Large".
 - **Reader Line Spacing**: Adjust the spacing between lines; options are "Tight", "Normal", or "Wide".
 - **Reader Screen Margin**: Controls the screen margins in reader mode between 5 and 40 pixels in 5 pixel increments.
@@ -127,6 +136,35 @@ You can customize the sleep screen by placing custom images in specific location
 > For best results:
 > - Use uncompressed BMP files with 24-bit color depth
 > - Use a resolution of 480x800 pixels to match the device's screen resolution.
+
+### 3.7 External Fonts
+
+You can load custom CJK (Chinese, Japanese, Korean) fonts from the SD card to enhance your reading experience with non-Latin scripts.
+
+**Setup Instructions:**
+
+1. Create a `/fonts/` directory in the root of your SD card
+2. Place `.bin` format font files in this directory
+3. Go to **Settings** → **Reader Font Family** and select **"External Font"**
+
+**Font File Format:**
+
+Font files must follow the naming convention: `FontName_size_letterSpacing×lineHeight.bin`
+
+Where:
+- `size`: Font size in pixels
+- `letterSpacing`: Character spacing in pixels
+- `lineHeight`: Line height in pixels
+
+Examples:
+- `SourceHanSansCN-Medium_20_20x20.bin` (Source Han Sans, 20px size, 20px letter spacing, 20px line height)
+- `KingHwaOldSong_38_33x39.bin` (KingHwa Old Song, 38px size, 33px letter spacing, 39px line height)
+
+> [!NOTE]
+> External fonts use the Xteink standard `.bin` format. The firmware includes LRU cache optimization for improved CJK rendering performance.
+
+> [!TIP]
+> Sample fonts are available in the project repository for testing.
 
 ---
 

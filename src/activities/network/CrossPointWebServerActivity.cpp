@@ -14,6 +14,7 @@
 #include "NetworkModeSelectionActivity.h"
 #include "WifiSelectionActivity.h"
 #include "fontIds.h"
+#include "util/OrientationUtils.h"
 
 namespace {
 // AP Mode configuration
@@ -440,13 +441,14 @@ void drawQRCode(const GfxRenderer &renderer, const int x, const int y,
 void CrossPointWebServerActivity::renderServerRunning() const {
   // Use consistent line spacing
   constexpr int LINE_SPACING = 28; // Space between lines
+  const int topInset = getUiTopInset(renderer);
 
-  renderer.drawCenteredText(UI_12_FONT_ID, 15, TR(FILE_TRANSFER), true,
+  renderer.drawCenteredText(UI_12_FONT_ID, topInset + 15, TR(FILE_TRANSFER), true,
                             EpdFontFamily::BOLD);
 
   if (isApMode) {
     // AP mode display - center the content block
-    int startY = 55;
+    int startY = topInset + 55;
 
     renderer.drawCenteredText(UI_10_FONT_ID, startY, TR(HOTSPOT_MODE), true,
                               EpdFontFamily::BOLD);
@@ -473,7 +475,7 @@ void CrossPointWebServerActivity::renderServerRunning() const {
                               hostnameUrl.c_str(), true, EpdFontFamily::BOLD);
 
     // Show IP address as fallback
-    std::string ipUrl = std::string("or http://") + connectedIP + "/";
+    std::string ipUrl = std::string(TR(OR_HTTP_PREFIX)) + connectedIP + "/";
     renderer.drawCenteredText(SMALL_FONT_ID, startY + LINE_SPACING * 4,
                               ipUrl.c_str());
     renderer.drawCenteredText(SMALL_FONT_ID, startY + LINE_SPACING * 5,
@@ -486,9 +488,9 @@ void CrossPointWebServerActivity::renderServerRunning() const {
                hostnameUrl);
   } else {
     // STA mode display (original behavior)
-    const int startY = 65;
+    const int startY = topInset + 65;
 
-    std::string ssidInfo = "Network: " + connectedSSID;
+    std::string ssidInfo = std::string(TR(NETWORK_PREFIX)) + connectedSSID;
     if (ssidInfo.length() > 28) {
       ssidInfo.replace(25, ssidInfo.length() - 25, "...");
     }
@@ -505,7 +507,7 @@ void CrossPointWebServerActivity::renderServerRunning() const {
 
     // Also show hostname URL
     std::string hostnameUrl =
-        std::string("or http://") + AP_HOSTNAME + ".local/";
+        std::string(TR(OR_HTTP_PREFIX)) + AP_HOSTNAME + ".local/";
     renderer.drawCenteredText(SMALL_FONT_ID, startY + LINE_SPACING * 3,
                               hostnameUrl.c_str());
 

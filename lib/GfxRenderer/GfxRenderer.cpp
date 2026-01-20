@@ -1,5 +1,8 @@
 #include "GfxRenderer.h"
+#include <EInkDisplay.h>
+#include <EpdFontFamily.h>
 
+#include <algorithm>
 #include <FontManager.h>
 #include <Utf8.h>
 
@@ -58,6 +61,16 @@ bool isCjkCodepoint(const uint32_t cp) {
   if (cp >= 0x2000 && cp <= 0x206F)
     return true;
   return false;
+}
+
+bool isAsciiDigit(const uint32_t cp) { return cp >= '0' && cp <= '9'; }
+
+bool isAsciiLetter(const uint32_t cp) {
+  return (cp >= 'A' && cp <= 'Z') || (cp >= 'a' && cp <= 'z');
+}
+
+int clampExternalAdvance(const int baseWidth, const int spacing) {
+  return std::max(1, baseWidth + spacing);
 }
 } // namespace
 
@@ -154,6 +167,12 @@ int GfxRenderer::getTextWidth(const int fontId, const char *text,
       ExternalFont *extFont = fm.getActiveFont();
       if (extFont) {
         const int extCharWidth = extFont->getCharWidth();
+        const int letterAdvance =
+            clampExternalAdvance(extCharWidth, asciiLetterSpacing);
+        const int digitAdvance =
+            clampExternalAdvance(extCharWidth, asciiDigitSpacing);
+        const int cjkAdvance =
+            clampExternalAdvance(extCharWidth, cjkSpacing);
 
         // FAST PATH: Single CJK character (3-byte UTF-8, most common after CJK
         // splitting) Check: first byte is 0xE0-0xEF (3-byte UTF-8 lead),
@@ -173,8 +192,8 @@ int GfxRenderer::getTextWidth(const int fontId, const char *text,
           }
         }
 
-        // Mixed width calculation: use external font width ONLY for CJK
-        // characters ASCII/Latin characters still use built-in font width
+        // Mixed width calculation: use external font width for CJK + ASCII
+        // letters/digits, built-in width for the rest
         int width = 0;
         const char *ptr = text;
         const EpdFontFamily &fontFamily = fontMap.at(fontId);
@@ -183,7 +202,11 @@ int GfxRenderer::getTextWidth(const int fontId, const char *text,
             cp = utf8NextCodepoint(reinterpret_cast<const uint8_t **>(&ptr)))) {
           if (isCjkCodepoint(cp)) {
             // CJK character: use external font width
-            width += extCharWidth;
+            width += cjkAdvance;
+          } else if (isAsciiDigit(cp)) {
+            width += digitAdvance;
+          } else if (isAsciiLetter(cp)) {
+            width += letterAdvance;
           } else {
             // Non-CJK character: use built-in font width
             const EpdGlyph *glyph = fontFamily.getGlyph(cp, style);
@@ -679,6 +702,10 @@ void GfxRenderer::invertScreen() const {
 
 void GfxRenderer::displayBuffer(
     const EInkDisplay::RefreshMode refreshMode) const {
+  if (darkMode && refreshMode == EInkDisplay::FAST_REFRESH) {
+    // Ensure differential refresh keeps black background solid in dark mode.
+    einkDisplay.forceRedRamInverted();
+  }
   einkDisplay.displayBuffer(refreshMode);
 }
 
@@ -779,34 +806,61 @@ int GfxRenderer::getLineHeight(const int fontId) const {
 void GfxRenderer::drawButtonHints(const int fontId, const char *btn1,
                                   const char *btn2, const char *btn3,
                                   const char *btn4) {
-  const Orientation orig_orientation = getOrientation();
-  setOrientation(Orientation::Portrait);
-
+  const Orientation orientation = getOrientation();
   const int pageHeight = getScreenHeight();
-  constexpr int buttonWidth = 106;
-  constexpr int buttonHeight = 40;
-  constexpr int buttonY = 40;    // Distance from bottom
-  constexpr int textYOffset = 7; // Distance from top of button to text baseline
+  const int pageWidth = getScreenWidth();
+  constexpr int buttonWidth = BUTTON_HINT_WIDTH;
+  constexpr int buttonHeight = BUTTON_HINT_HEIGHT;
+  constexpr int buttonY = BUTTON_HINT_BOTTOM_INSET; // Distance from bottom
+  constexpr int textYOffset = BUTTON_HINT_TEXT_OFFSET;
   constexpr int buttonPositions[] = {25, 130, 245, 350};
   const char *labels[] = {btn1, btn2, btn3, btn4};
+  const bool isLandscape = orientation == Orientation::LandscapeClockwise ||
+                           orientation == Orientation::LandscapeCounterClockwise;
+  const bool placeAtTop = orientation == Orientation::PortraitInverted;
+  const int buttonTop = placeAtTop ? 0 : pageHeight - buttonY;
+
+  if (isLandscape) {
+    const bool placeLeft = orientation == Orientation::LandscapeClockwise;
+    const int buttonLeft = placeLeft ? 0 : pageWidth - buttonWidth;
+    if (orientation == Orientation::LandscapeCounterClockwise) {
+      const char *tmp = labels[0];
+      labels[0] = labels[3];
+      labels[3] = tmp;
+      tmp = labels[1];
+      labels[1] = labels[2];
+      labels[2] = tmp;
+    }
+    for (int i = 0; i < 4; i++) {
+      if (labels[i] != nullptr && labels[i][0] != '\0') {
+        const int y = buttonPositions[i];
+        fillRect(buttonLeft, y, buttonWidth, buttonHeight, false);
+        drawRect(buttonLeft, y, buttonWidth, buttonHeight);
+        const int textWidth = getTextWidth(fontId, labels[i]);
+        const int textX = buttonLeft + (buttonWidth - 1 - textWidth) / 2;
+        drawText(fontId, textX, y + textYOffset, labels[i]);
+      }
+    }
+    return;
+  }
 
   for (int i = 0; i < 4; i++) {
     // Only draw if the label is non-empty
     if (labels[i] != nullptr && labels[i][0] != '\0') {
       const int x = buttonPositions[i];
-      fillRect(x, pageHeight - buttonY, buttonWidth, buttonHeight, false);
-      drawRect(x, pageHeight - buttonY, buttonWidth, buttonHeight);
+      fillRect(x, buttonTop, buttonWidth, buttonHeight, false);
+      drawRect(x, buttonTop, buttonWidth, buttonHeight);
       const int textWidth = getTextWidth(fontId, labels[i]);
       const int textX = x + (buttonWidth - 1 - textWidth) / 2;
-      drawText(fontId, textX, pageHeight - buttonY + textYOffset, labels[i]);
+      drawText(fontId, textX, buttonTop + textYOffset, labels[i]);
     }
   }
 
-  setOrientation(orig_orientation);
 }
 
 void GfxRenderer::drawSideButtonHints(const int fontId, const char *topBtn,
                                       const char *bottomBtn) const {
+  const Orientation orientation = getOrientation();
   const int screenWidth = getScreenWidth();
   constexpr int buttonWidth = 40;  // Width on screen (height when rotated)
   constexpr int buttonHeight = 80; // Height on screen (width when rotated)
@@ -817,48 +871,74 @@ void GfxRenderer::drawSideButtonHints(const int fontId, const char *topBtn,
   const char *labels[] = {topBtn, bottomBtn};
 
   // Draw the shared border for both buttons as one unit
-  const int x = screenWidth - buttonX - buttonWidth;
+  const bool placeLeft = orientation == Orientation::PortraitInverted;
+  const int x = placeLeft ? buttonX : screenWidth - buttonX - buttonWidth;
+  const int y = topButtonY;
 
   // Draw top button outline (3 sides, bottom open)
   if (topBtn != nullptr && topBtn[0] != '\0') {
-    drawLine(x, topButtonY, x + buttonWidth - 1, topButtonY);  // Top
-    drawLine(x, topButtonY, x, topButtonY + buttonHeight - 1); // Left
-    drawLine(x + buttonWidth - 1, topButtonY, x + buttonWidth - 1,
-             topButtonY + buttonHeight - 1); // Right
+    drawLine(x, y, x + buttonWidth - 1, y);  // Top
+    drawLine(x, y, x, y + buttonHeight - 1); // Left
+    drawLine(x + buttonWidth - 1, y, x + buttonWidth - 1,
+             y + buttonHeight - 1); // Right
   }
 
   // Draw shared middle border
   if ((topBtn != nullptr && topBtn[0] != '\0') ||
       (bottomBtn != nullptr && bottomBtn[0] != '\0')) {
-    drawLine(x, topButtonY + buttonHeight, x + buttonWidth - 1,
-             topButtonY + buttonHeight); // Shared border
+    drawLine(x, y + buttonHeight, x + buttonWidth - 1,
+             y + buttonHeight); // Shared border
   }
 
   // Draw bottom button outline (3 sides, top is shared)
   if (bottomBtn != nullptr && bottomBtn[0] != '\0') {
-    drawLine(x, topButtonY + buttonHeight, x,
-             topButtonY + 2 * buttonHeight - 1); // Left
-    drawLine(x + buttonWidth - 1, topButtonY + buttonHeight,
+    drawLine(x, y + buttonHeight, x,
+             y + 2 * buttonHeight - 1); // Left
+    drawLine(x + buttonWidth - 1, y + buttonHeight,
              x + buttonWidth - 1,
-             topButtonY + 2 * buttonHeight - 1); // Right
-    drawLine(x, topButtonY + 2 * buttonHeight - 1, x + buttonWidth - 1,
-             topButtonY + 2 * buttonHeight - 1); // Bottom
+             y + 2 * buttonHeight - 1); // Right
+    drawLine(x, y + 2 * buttonHeight - 1, x + buttonWidth - 1,
+             y + 2 * buttonHeight - 1); // Bottom
   }
 
   // Draw text for each button
   for (int i = 0; i < 2; i++) {
     if (labels[i] != nullptr && labels[i][0] != '\0') {
-      const int y = topButtonY + i * buttonHeight;
+      const int yPos = y + i * buttonHeight;
+      const char *label = labels[i];
 
       // Draw rotated text centered in the button
-      const int textWidth = getTextWidth(fontId, labels[i]);
-      const int textHeight = getTextHeight(fontId);
+      const int textWidth = getTextWidth(fontId, label);
+      int textHeight = getTextHeight(fontId);
+      bool hasCjk = false;
+      const char *scan = label;
+      uint32_t cp;
+      while ((cp = utf8NextCodepoint(reinterpret_cast<const uint8_t **>(&scan)))) {
+        if (isCjkCodepoint(cp)) {
+          hasCjk = true;
+          break;
+        }
+      }
+      if (hasCjk) {
+        switch (uiFontSize) {
+        case 0:
+          textHeight = CjkUiFont20::CJK_UI_FONT_HEIGHT;
+          break;
+        case 1:
+          textHeight = CjkUiFont22::CJK_UI_FONT_HEIGHT;
+          break;
+        case 2:
+        default:
+          textHeight = CjkUiFont24::CJK_UI_FONT_HEIGHT;
+          break;
+        }
+      }
 
       // Center the rotated text in the button
       const int textX = x + (buttonWidth - textHeight) / 2;
-      const int textY = y + (buttonHeight + textWidth) / 2;
+      const int textY = yPos + (buttonHeight + textWidth) / 2;
 
-      drawTextRotated90CW(fontId, textX, textY, labels[i]);
+      drawTextRotated90CW(fontId, textX, textY, label);
     }
   }
 }
@@ -899,6 +979,79 @@ void GfxRenderer::drawTextRotated90CW(const int fontId, const int x,
 
   uint32_t cp;
   while ((cp = utf8NextCodepoint(reinterpret_cast<const uint8_t **>(&text)))) {
+    if (!isReaderFont(fontId)) {
+      const uint8_t *bitmap = nullptr;
+      uint8_t fontWidth = 0;
+      uint8_t fontHeight = 0;
+      uint8_t bytesPerRow = 0;
+      uint8_t bytesPerChar = 0;
+      uint8_t advance = 0;
+
+      switch (uiFontSize) {
+      case 0: // SMALL - 20x20
+        if (CjkUiFont20::hasCjkUiGlyph(cp)) {
+          bitmap = CjkUiFont20::getCjkUiGlyph(cp);
+          fontWidth = CjkUiFont20::CJK_UI_FONT_WIDTH;
+          fontHeight = CjkUiFont20::CJK_UI_FONT_HEIGHT;
+          bytesPerRow = CjkUiFont20::CJK_UI_FONT_BYTES_PER_ROW;
+          bytesPerChar = CjkUiFont20::CJK_UI_FONT_BYTES_PER_CHAR;
+          advance = CjkUiFont20::getCjkUiGlyphWidth(cp);
+        }
+        break;
+      case 1: // MEDIUM - 22x22
+        if (CjkUiFont22::hasCjkUiGlyph(cp)) {
+          bitmap = CjkUiFont22::getCjkUiGlyph(cp);
+          fontWidth = CjkUiFont22::CJK_UI_FONT_WIDTH;
+          fontHeight = CjkUiFont22::CJK_UI_FONT_HEIGHT;
+          bytesPerRow = CjkUiFont22::CJK_UI_FONT_BYTES_PER_ROW;
+          bytesPerChar = CjkUiFont22::CJK_UI_FONT_BYTES_PER_CHAR;
+          advance = CjkUiFont22::getCjkUiGlyphWidth(cp);
+        }
+        break;
+      case 2: // LARGE - 24x24
+      default:
+        if (CjkUiFont24::hasCjkUiGlyph(cp)) {
+          bitmap = CjkUiFont24::getCjkUiGlyph(cp);
+          fontWidth = CjkUiFont24::CJK_UI_FONT_WIDTH;
+          fontHeight = CjkUiFont24::CJK_UI_FONT_HEIGHT;
+          bytesPerRow = CjkUiFont24::CJK_UI_FONT_BYTES_PER_ROW;
+          bytesPerChar = CjkUiFont24::CJK_UI_FONT_BYTES_PER_CHAR;
+          advance = CjkUiFont24::getCjkUiGlyphWidth(cp);
+        }
+        break;
+      }
+
+      if (bitmap && advance > 0) {
+        bool hasContent = false;
+        for (int i = 0; i < bytesPerChar; i++) {
+          if (pgm_read_byte(&bitmap[i]) != 0) {
+            hasContent = true;
+            break;
+          }
+        }
+
+        if (hasContent) {
+          const int startX = x;
+
+          for (int glyphY = 0; glyphY < fontHeight; glyphY++) {
+            const int screenX = startX + glyphY;
+            for (int glyphX = 0; glyphX < fontWidth; glyphX++) {
+              const int byteIndex = glyphY * bytesPerRow + (glyphX / 8);
+              const int bitIndex = 7 - (glyphX % 8);
+              const uint8_t byte = pgm_read_byte(&bitmap[byteIndex]);
+              if ((byte >> bitIndex) & 1) {
+                const int screenY = yPos - glyphX;
+                drawPixel(screenX, screenY, black);
+              }
+            }
+          }
+        }
+
+        yPos -= std::max(1, static_cast<int>(advance));
+        continue;
+      }
+    }
+
     const EpdGlyph *glyph = font.getGlyph(cp, style);
     if (!glyph) {
       glyph = font.getGlyph('?', style);
@@ -974,7 +1127,10 @@ void GfxRenderer::copyGrayscaleMsbBuffers() const {
   einkDisplay.copyGrayscaleMsbBuffers(einkDisplay.getFrameBuffer());
 }
 
-void GfxRenderer::displayGrayBuffer() const { einkDisplay.displayGrayBuffer(); }
+void GfxRenderer::displayGrayBuffer(const bool turnOffScreen,
+                                    const bool darkMode) const {
+  einkDisplay.displayGrayBuffer(turnOffScreen, darkMode);
+}
 
 void GfxRenderer::freeBwBufferChunks() {
   for (auto &bwBufferChunk : bwBufferChunks) {
@@ -1106,20 +1262,32 @@ void GfxRenderer::renderChar(const int fontId, const EpdFontFamily &fontFamily,
                              const EpdFontFamily::Style style) const {
   FontManager &fm = FontManager::getInstance();
 
-  // Try external font for CJK characters
+  // Try external font for CJK + ASCII letters/digits
   // Reader fonts: use reader external font
   // UI fonts: use UI external font (with fallback to reader font)
   if (isReaderFont(fontId)) {
-    // Reader font - use reader external font
+    // Reader font - use reader external font for CJK + ASCII letters/digits.
     if (fm.isExternalFontEnabled()) {
       ExternalFont *extFont = fm.getActiveFont();
       if (extFont) {
-        const uint8_t *bitmap = extFont->getGlyph(cp);
-        if (bitmap) {
-          renderExternalGlyph(bitmap, extFont, x, *y, pixelState);
-          return;
+        const bool useExternal =
+            isCjkCodepoint(cp) || isAsciiLetter(cp) || isAsciiDigit(cp);
+        if (useExternal) {
+          const uint8_t *bitmap = extFont->getGlyph(cp);
+          if (bitmap) {
+            int advance = extFont->getCharWidth();
+            if (isCjkCodepoint(cp)) {
+              advance = clampExternalAdvance(advance, cjkSpacing);
+            } else if (isAsciiDigit(cp)) {
+              advance = clampExternalAdvance(advance, asciiDigitSpacing);
+            } else if (isAsciiLetter(cp)) {
+              advance = clampExternalAdvance(advance, asciiLetterSpacing);
+            }
+            renderExternalGlyph(bitmap, extFont, x, *y, pixelState, advance);
+            return;
+          }
+          // Glyph not found in external font, fall through to built-in font
         }
-        // Glyph not found in external font, fall through to built-in font
       }
     }
   } else {
@@ -1213,15 +1381,37 @@ void GfxRenderer::renderChar(const int fontId, const EpdFontFamily &fontFamily,
             if (shouldDraw) {
               drawPixel(screenX, screenY, pixelState);
             }
-          } else if (renderMode == GRAYSCALE_MSB &&
-                     (bmpVal == 1 || bmpVal == 2)) {
-            // Light gray (also mark the MSB if it's going to be a dark gray
-            // too) We have to flag pixels in reverse for the gray buffers, as 0
-            // leave alone, 1 update
-            drawPixel(screenX, screenY, false);
-          } else if (renderMode == GRAYSCALE_LSB && bmpVal == 1) {
-            // Dark gray
-            drawPixel(screenX, screenY, false);
+          } else if (renderMode == GRAYSCALE_MSB ||
+                     renderMode == GRAYSCALE_LSB) {
+            // Processing for grayscale buffers (LSB/MSB)
+            // Map pixel values:
+            // Light Mode: 0=Black(00), 1=DarkGray(01), 2=LightGray(10),
+            // 3=White(11) Dark Mode:  Invert brightness -> 0=White(11),
+            // 1=LightGray(10), 2=DarkGray(01), 3=Black(00)
+
+            // Only draw ink pixels (val < 3). Assume background (val 3) is
+            // already cleared correctly.
+            if (bmpVal < 3) {
+              uint8_t val = bmpVal;
+              if (darkMode) {
+                // Invert brightness for dark mode
+                val = 3 - val;
+              }
+
+              // Extract bit for current plane
+              bool bit =
+                  (renderMode == GRAYSCALE_LSB) ? (val & 1) : ((val >> 1) & 1);
+
+              // drawPixel(true) -> Clear bit (0), drawPixel(false) -> Set bit
+              // (1)
+              drawPixel(screenX, screenY, !bit);
+            } else if (darkMode && bmpVal == 3) {
+              // For Dark Mode Background (bmpVal=3, White in source), we want
+              // it to be mapped to 11 (Group 3) The new LUT will treat Group 3
+              // as "Drive Black". Existing buffer clear color for Dark Mode is
+              // 0xFF (11). So we don't need to do anything - the background is
+              // already 11.
+            }
           }
         } else {
           const uint8_t byte = bitmap[pixelPosition / 8];
@@ -1270,7 +1460,8 @@ void GfxRenderer::getOrientedViewableTRBL(int *outTop, int *outRight,
 
 void GfxRenderer::renderExternalGlyph(const uint8_t *bitmap, ExternalFont *font,
                                       int *x, const int y,
-                                      const bool pixelState) const {
+                                      const bool pixelState,
+                                      const int advanceOverride) const {
   const uint8_t width = font->getCharWidth();
   const uint8_t height = font->getCharHeight();
   const uint8_t bytesPerRow = font->getBytesPerRow();
@@ -1291,7 +1482,8 @@ void GfxRenderer::renderExternalGlyph(const uint8_t *bitmap, ExternalFont *font,
   }
 
   // Advance cursor
-  *x += width;
+  const int advance = (advanceOverride >= 0) ? advanceOverride : width;
+  *x += std::max(1, advance);
 }
 
 void GfxRenderer::renderBuiltinCjkGlyph(const uint32_t cp, int *x, const int y,

@@ -14,6 +14,8 @@
 #include "MappedInputManager.h"
 #include "ScreenComponents.h"
 #include "fontIds.h"
+#include "util/OrientationUtils.h"
+#include "util/RefreshUtils.h"
 
 namespace {
 // pagesPerRefresh now comes from SETTINGS.getRefreshFrequency()
@@ -33,6 +35,8 @@ void EpubReaderActivity::onEnter() {
   if (!epub) {
     return;
   }
+
+  mappedInput.setReadingOrientationActive(true);
 
   // Configure screen orientation based on settings
   switch (SETTINGS.orientation) {
@@ -98,8 +102,10 @@ void EpubReaderActivity::onEnter() {
 void EpubReaderActivity::onExit() {
   ActivityWithSubactivity::onExit();
 
+  mappedInput.setReadingOrientationActive(false);
+
   // Reset orientation back to portrait for the rest of the UI
-  renderer.setOrientation(GfxRenderer::Orientation::Portrait);
+  applyUiOrientation(renderer);
 
   // Wait until not rendering to delete task to avoid killing mid-instruction to
   // EPD
@@ -312,7 +318,7 @@ void EpubReaderActivity::renderScreen() {
 
       // Always show "Indexing..." text first
       {
-        renderer.clearScreen();  // Clear to correct background color first
+        renderer.clearScreen(); // Clear to correct background color first
         renderer.fillRect(boxXNoBar, boxY, boxWidthNoBar, boxHeightNoBar,
                           false);
         renderer.drawText(UI_12_FONT_ID, boxXNoBar + boxMargin,
@@ -327,7 +333,7 @@ void EpubReaderActivity::renderScreen() {
       // progress bar
       auto progressSetup = [this, boxXWithBar, boxWidthWithBar,
                             boxHeightWithBar, barX, barY] {
-        renderer.clearScreen();  // Clear to correct background color first
+        renderer.clearScreen(); // Clear to correct background color first
         renderer.fillRect(boxXWithBar, boxY, boxWidthWithBar, boxHeightWithBar,
                           false);
         renderer.drawText(UI_12_FONT_ID, boxXWithBar + boxMargin,
@@ -428,12 +434,11 @@ void EpubReaderActivity::renderContents(std::unique_ptr<Page> page,
                orientedMarginTop);
   renderStatusBar(orientedMarginRight, orientedMarginBottom,
                   orientedMarginLeft);
-  if (pagesUntilFullRefresh <= 1) {
+  if (refresh_utils::shouldUseHalfRefresh(pagesUntilFullRefresh,
+                                          SETTINGS.getRefreshFrequency())) {
     renderer.displayBuffer(EInkDisplay::HALF_REFRESH);
-    pagesUntilFullRefresh = SETTINGS.getRefreshFrequency();
   } else {
     renderer.displayBuffer();
-    pagesUntilFullRefresh--;
   }
 
   // Save bw buffer to reset buffer state after grayscale data sync
@@ -446,22 +451,24 @@ void EpubReaderActivity::renderContents(std::unique_ptr<Page> page,
   const bool useExternalFont =
       FontManager::getInstance().isExternalFontEnabled();
   if (SETTINGS.textAntiAliasing && !useExternalFont) {
-    // Clear to raw 0x00 (black) for mask generation
-    memset(renderer.getFrameBuffer(), 0x00, GfxRenderer::getBufferSize());
+    // Clear to correct background color (White for Light mode, Black for Dark
+    // mode)
+    uint8_t clearColor = renderer.isDarkMode() ? 0x00 : 0xFF;
+    memset(renderer.getFrameBuffer(), clearColor, GfxRenderer::getBufferSize());
     renderer.setRenderMode(GfxRenderer::GRAYSCALE_LSB);
     page->render(renderer, SETTINGS.getReaderFontId(), orientedMarginLeft,
                  orientedMarginTop);
     renderer.copyGrayscaleLsbBuffers();
 
     // Render and copy to MSB buffer
-    memset(renderer.getFrameBuffer(), 0x00, GfxRenderer::getBufferSize());
+    memset(renderer.getFrameBuffer(), clearColor, GfxRenderer::getBufferSize());
     renderer.setRenderMode(GfxRenderer::GRAYSCALE_MSB);
     page->render(renderer, SETTINGS.getReaderFontId(), orientedMarginLeft,
                  orientedMarginTop);
     renderer.copyGrayscaleMsbBuffers();
 
     // display grayscale part
-    renderer.displayGrayBuffer();
+    renderer.displayGrayBuffer(false, renderer.isDarkMode());
     renderer.setRenderMode(GfxRenderer::BW);
   }
 

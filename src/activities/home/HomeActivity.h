@@ -17,6 +17,9 @@ class HomeActivity final : public Activity {
   bool hasCoverImage = false;
   bool coverRendered = false;      // Track if cover has been rendered once
   bool coverBufferStored = false;  // Track if cover buffer is stored
+  bool firstRender = true;         // Track if this is the first render (for HALF_REFRESH)
+  bool lastDarkMode = false;       // Track last dark mode state to detect color mode changes
+  int lastTopInset = -1;           // Track UI top inset to invalidate cached cover
   uint8_t* coverBuffer = nullptr;  // HomeActivity's own buffer for cover image
   std::string lastBookTitle;
   std::string lastBookAuthor;

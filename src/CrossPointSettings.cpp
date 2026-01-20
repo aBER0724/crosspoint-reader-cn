@@ -12,10 +12,21 @@
 CrossPointSettings CrossPointSettings::instance;
 
 namespace {
-constexpr uint8_t SETTINGS_FILE_VERSION = 3;  // Bumped for colorMode addition
+constexpr uint8_t SETTINGS_FILE_VERSION = 3;  // Appended ASCII spacing fields
 // Number of POD settings items (excluding strings)
-constexpr uint8_t SETTINGS_POD_COUNT = 18;
+constexpr uint8_t SETTINGS_POD_COUNT = 21;
 constexpr char SETTINGS_FILE[] = "/.crosspoint/settings.bin";
+
+uint8_t clampSpacingStorage(const uint8_t value, const uint8_t minValue,
+                            const uint8_t maxValue) {
+  if (value < minValue) {
+    return minValue;
+  }
+  if (value > maxValue) {
+    return maxValue;
+  }
+  return value;
+}
 
 // Helper to read strings safely
 void readStringSafe(FsFile &file, std::string &s) {
@@ -63,6 +74,9 @@ bool CrossPointSettings::saveToFile() const {
   serialization::writePod(outputFile, textAntiAliasing);
   serialization::writePod(outputFile, hideBatteryPercentage);
   serialization::writePod(outputFile, longPressChapterSkip);
+  serialization::writePod(outputFile, asciiLetterSpacing);
+  serialization::writePod(outputFile, asciiDigitSpacing);
+  serialization::writePod(outputFile, cjkSpacing);
 
   // 3. String fields (at the end)
   serialization::writeString(outputFile, std::string(opdsServerUrl));
@@ -147,6 +161,15 @@ bool CrossPointSettings::loadFromFile() {
     serialization::readPod(inputFile, longPressChapterSkip);
     if (++read >= fileSettingsCount)
       break;
+    serialization::readPod(inputFile, asciiLetterSpacing);
+    if (++read >= fileSettingsCount)
+      break;
+    serialization::readPod(inputFile, asciiDigitSpacing);
+    if (++read >= fileSettingsCount)
+      break;
+    serialization::readPod(inputFile, cjkSpacing);
+    if (++read >= fileSettingsCount)
+      break;
   } while (false);
 
   // Skip remaining pods if any
@@ -229,4 +252,25 @@ int CrossPointSettings::getReaderFontId() const {
 
 bool CrossPointSettings::isDarkMode() const {
   return colorMode == DARK_MODE;
+}
+
+int CrossPointSettings::getAsciiLetterSpacing() const {
+  const uint8_t raw =
+      clampSpacingStorage(asciiLetterSpacing, ASCII_SPACING_STORAGE_MIN,
+                          ASCII_SPACING_STORAGE_MAX);
+  return static_cast<int>(raw) - ASCII_SPACING_OFFSET;
+}
+
+int CrossPointSettings::getAsciiDigitSpacing() const {
+  const uint8_t raw =
+      clampSpacingStorage(asciiDigitSpacing, ASCII_SPACING_STORAGE_MIN,
+                          ASCII_SPACING_STORAGE_MAX);
+  return static_cast<int>(raw) - ASCII_SPACING_OFFSET;
+}
+
+int CrossPointSettings::getCjkSpacing() const {
+  const uint8_t raw =
+      clampSpacingStorage(cjkSpacing, CJK_SPACING_STORAGE_MIN,
+                          CJK_SPACING_STORAGE_MAX);
+  return static_cast<int>(raw) - CJK_SPACING_OFFSET;
 }

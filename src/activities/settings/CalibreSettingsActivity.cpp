@@ -1,6 +1,7 @@
 #include "CalibreSettingsActivity.h"
 
 #include <GfxRenderer.h>
+#include <I18n.h>
 #include <WiFi.h>
 
 #include <cstring>
@@ -11,10 +12,10 @@
 #include "activities/network/WifiSelectionActivity.h"
 #include "activities/util/KeyboardEntryActivity.h"
 #include "fontIds.h"
+#include "util/OrientationUtils.h"
 
 namespace {
 constexpr int MENU_ITEMS = 2;
-const char* menuNames[MENU_ITEMS] = {"Calibre Web URL", "Connect as Wireless Device"};
 }  // namespace
 
 void CalibreSettingsActivity::taskTrampoline(void* param) {
@@ -83,7 +84,7 @@ void CalibreSettingsActivity::handleSelection() {
     // Calibre Web URL
     exitActivity();
     enterNewActivity(new KeyboardEntryActivity(
-        renderer, mappedInput, "Calibre Web URL", SETTINGS.opdsServerUrl, 10,
+        renderer, mappedInput, TR(CALIBRE_WEB_URL), SETTINGS.opdsServerUrl, 10,
         127,    // maxLength
         false,  // not password
         [this](const std::string& url) {
@@ -143,7 +144,10 @@ void CalibreSettingsActivity::render() {
   const int rowHeight = 20 + renderer.getUiFontSize() * 2 + 10;  // 30px/32px/34px for small/medium/large
 
   // Draw header
-  renderer.drawCenteredText(UI_12_FONT_ID, 15, "Calibre", true, EpdFontFamily::BOLD);
+  const int topInset = getUiTopInset(renderer);
+  renderer.drawCenteredText(UI_12_FONT_ID, topInset + 15, TR(CALIBRE_SETTINGS), true, EpdFontFamily::BOLD);
+
+  const char* menuNames[MENU_ITEMS] = {TR(CALIBRE_WEB_URL), TR(CONNECT_WIRELESS)};
 
   // Draw selection highlight
   renderer.fillRect(0, 60 + selectedIndex * rowHeight - 2, pageWidth - 1, rowHeight);
@@ -157,14 +161,16 @@ void CalibreSettingsActivity::render() {
 
     // Draw status for URL setting
     if (i == 0) {
-      const char* status = (strlen(SETTINGS.opdsServerUrl) > 0) ? "[Set]" : "[Not Set]";
-      const auto width = renderer.getTextWidth(UI_10_FONT_ID, status);
-      renderer.drawText(UI_10_FONT_ID, pageWidth - 20 - width, settingY, status, !isSelected);
+      const std::string status =
+          (strlen(SETTINGS.opdsServerUrl) > 0) ? std::string("[") + TR(SET) + "]"
+                                               : std::string("[") + TR(NOT_SET) + "]";
+      const auto width = renderer.getTextWidth(UI_10_FONT_ID, status.c_str());
+      renderer.drawText(UI_10_FONT_ID, pageWidth - 20 - width, settingY, status.c_str(), !isSelected);
     }
   }
 
   // Draw button hints
-  const auto labels = mappedInput.mapLabels("« Back", "Select", "", "");
+  const auto labels = mappedInput.mapLabels(TR(BACK), TR(SELECT), "", "");
   renderer.drawButtonHints(UI_10_FONT_ID, labels.btn1, labels.btn2, labels.btn3, labels.btn4);
 
   renderer.displayBuffer();

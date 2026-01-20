@@ -14,6 +14,8 @@
 #include "MappedInputManager.h"
 #include "ScreenComponents.h"
 #include "fontIds.h"
+#include "util/OrientationUtils.h"
+#include "util/RefreshUtils.h"
 
 namespace {
 constexpr unsigned long goHomeMs = 1000;
@@ -37,6 +39,8 @@ void TxtReaderActivity::onEnter() {
   if (!txt) {
     return;
   }
+
+  mappedInput.setReadingOrientationActive(true);
 
   // Configure screen orientation based on settings
   switch (SETTINGS.orientation) {
@@ -79,8 +83,10 @@ void TxtReaderActivity::onEnter() {
 void TxtReaderActivity::onExit() {
   ActivityWithSubactivity::onExit();
 
+  mappedInput.setReadingOrientationActive(false);
+
   // Reset orientation back to portrait for the rest of the UI
-  renderer.setOrientation(GfxRenderer::Orientation::Portrait);
+  applyUiOrientation(renderer);
 
   // Wait until not rendering to delete task
   xSemaphoreTake(renderingMutex, portMAX_DELAY);
@@ -221,7 +227,7 @@ void TxtReaderActivity::buildPageIndex() {
   const int barY = boxY + renderer.getLineHeight(UI_12_FONT_ID) + boxMargin * 2;
 
   // Draw initial progress box
-  renderer.clearScreen();  // Clear to correct background color first
+  renderer.clearScreen(); // Clear to correct background color first
   renderer.fillRect(boxX, boxY, boxWidth, boxHeight, false);
   renderer.drawText(UI_12_FONT_ID, boxX + boxMargin, boxY + boxMargin,
                     TR(INDEXING));
@@ -474,12 +480,11 @@ void TxtReaderActivity::renderPage() {
   renderStatusBar(orientedMarginRight, orientedMarginBottom,
                   orientedMarginLeft);
 
-  if (pagesUntilFullRefresh <= 1) {
+  if (refresh_utils::shouldUseHalfRefresh(pagesUntilFullRefresh,
+                                          SETTINGS.getRefreshFrequency())) {
     renderer.displayBuffer(EInkDisplay::HALF_REFRESH);
-    pagesUntilFullRefresh = SETTINGS.getRefreshFrequency();
   } else {
     renderer.displayBuffer();
-    pagesUntilFullRefresh--;
   }
 
   // Grayscale rendering pass (for anti-aliased fonts)
@@ -494,20 +499,23 @@ void TxtReaderActivity::renderPage() {
 
     // Clear to raw 0x00 (black) for mask generation
     // Use memset to explicitly clear buffer without dark mode inversion
-    memset(renderer.getFrameBuffer(), 0x00, GfxRenderer::getBufferSize());
+    // Clear to correct background color (White for Light mode, Black for Dark
+    // mode)
+    uint8_t clearColor = renderer.isDarkMode() ? 0x00 : 0xFF;
+    memset(renderer.getFrameBuffer(), clearColor, GfxRenderer::getBufferSize());
     renderer.setRenderMode(GfxRenderer::GRAYSCALE_LSB);
     renderLines();
     renderer.copyGrayscaleLsbBuffers();
 
-    memset(renderer.getFrameBuffer(), 0x00, GfxRenderer::getBufferSize());
+    memset(renderer.getFrameBuffer(), clearColor, GfxRenderer::getBufferSize());
     renderer.setRenderMode(GfxRenderer::GRAYSCALE_MSB);
     renderLines();
     renderer.copyGrayscaleMsbBuffers();
 
-    renderer.displayGrayBuffer();
+    renderer.displayGrayBuffer(false, renderer.isDarkMode());
     renderer.setRenderMode(GfxRenderer::BW);
 
-    // Restore BW buffer
+    // Restore BW buffer to prevent grayscale residue accumulation
     renderer.restoreBwBuffer();
   }
 }

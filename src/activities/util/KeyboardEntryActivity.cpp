@@ -2,6 +2,7 @@
 
 #include "MappedInputManager.h"
 #include "fontIds.h"
+#include <I18n.h>
 
 // Keyboard layouts - lowercase
 const char* const KeyboardEntryActivity::keyboard[NUM_ROWS] = {
@@ -295,7 +296,9 @@ void KeyboardEntryActivity::render() const {
 
       // CAPS key (logical col 0, spans 2 key widths)
       const bool capsSelected = (selectedRow == 4 && selectedCol >= SHIFT_COL && selectedCol < SPACE_COL);
-      renderItemWithSelector(currentX + 2, rowY, shiftActive ? "CAPS" : "caps", capsSelected);
+      renderItemWithSelector(currentX + 2, rowY,
+                             shiftActive ? TR(CAPS_ON) : TR(CAPS_OFF),
+                             capsSelected);
       currentX += 2 * (keyWidth + keySpacing);
 
       // Space bar (logical cols 2-6, spans 5 key widths)
@@ -313,7 +316,7 @@ void KeyboardEntryActivity::render() const {
 
       // OK button (logical col 9, spans 2 key widths)
       const bool okSelected = (selectedRow == 4 && selectedCol >= DONE_COL);
-      renderItemWithSelector(currentX + 2, rowY, "OK", okSelected);
+      renderItemWithSelector(currentX + 2, rowY, TR(OK_BUTTON), okSelected);
     } else {
       // Regular rows: render each key individually
       for (int col = 0; col < getRowLength(row); col++) {
@@ -330,11 +333,12 @@ void KeyboardEntryActivity::render() const {
   }
 
   // Draw help text
-  const auto labels = mappedInput.mapLabels("« Back", "Select", "Left", "Right");
+  const auto labels =
+      mappedInput.mapLabels(TR(BACK), TR(SELECT), TR(DIR_LEFT), TR(DIR_RIGHT));
   renderer.drawButtonHints(UI_10_FONT_ID, labels.btn1, labels.btn2, labels.btn3, labels.btn4);
 
   // Draw side button hints for Up/Down navigation
-  renderer.drawSideButtonHints(UI_10_FONT_ID, "Up", "Down");
+  renderer.drawSideButtonHints(UI_10_FONT_ID, TR(DIR_UP), TR(DIR_DOWN));
 
   renderer.displayBuffer();
 }

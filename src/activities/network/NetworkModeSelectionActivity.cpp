@@ -5,6 +5,7 @@
 
 #include "MappedInputManager.h"
 #include "fontIds.h"
+#include "util/OrientationUtils.h"
 
 namespace {
 constexpr int MENU_ITEM_COUNT = 2;
@@ -96,13 +97,14 @@ void NetworkModeSelectionActivity::render() const {
 
   const auto pageWidth = renderer.getScreenWidth();
   const auto pageHeight = renderer.getScreenHeight();
+  const int topInset = getUiTopInset(renderer);
 
   // Draw header
-  renderer.drawCenteredText(UI_12_FONT_ID, 15, TR(FILE_TRANSFER), true,
+  renderer.drawCenteredText(UI_12_FONT_ID, topInset + 15, TR(FILE_TRANSFER), true,
                             EpdFontFamily::BOLD);
 
   // Draw subtitle
-  renderer.drawCenteredText(UI_10_FONT_ID, 50, TR(HOW_CONNECT));
+  renderer.drawCenteredText(UI_10_FONT_ID, topInset + 50, TR(HOW_CONNECT));
 
   // Draw menu items centered on screen
   constexpr int itemHeight =

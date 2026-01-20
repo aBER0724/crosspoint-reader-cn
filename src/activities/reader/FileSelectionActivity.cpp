@@ -6,6 +6,7 @@
 
 #include "MappedInputManager.h"
 #include "fontIds.h"
+#include "util/OrientationUtils.h"
 #include "util/StringUtils.h"
 
 namespace {
@@ -22,7 +23,8 @@ inline int getRowHeight(const GfxRenderer &renderer) {
 } // namespace
 
 int FileSelectionActivity::getPageItems() const {
-  constexpr int startY = 60;
+  const int topInset = getUiTopInset(renderer);
+  const int startY = topInset + 60;
   const int lineHeight = getRowHeight(renderer);
 
   const int screenHeight = renderer.getScreenHeight();
@@ -231,9 +233,10 @@ void FileSelectionActivity::render() const {
   renderer.clearScreen();
 
   const auto pageWidth = renderer.getScreenWidth();
+  const int topInset = getUiTopInset(renderer);
   const int pageItems = getPageItems();
   const int rowHeight = getRowHeight(renderer);
-  renderer.drawCenteredText(UI_12_FONT_ID, 15, TR(BOOKS), true,
+  renderer.drawCenteredText(UI_12_FONT_ID, topInset + 15, TR(BOOKS), true,
                             EpdFontFamily::BOLD);
 
   // Help text
@@ -242,19 +245,20 @@ void FileSelectionActivity::render() const {
                            labels.btn4);
 
   if (files.empty()) {
-    renderer.drawText(UI_10_FONT_ID, 20, 60, TR(NO_BOOKS_FOUND));
+    renderer.drawText(UI_10_FONT_ID, 20, topInset + 60, TR(NO_BOOKS_FOUND));
     renderer.displayBuffer();
     return;
   }
 
   const auto pageStartIndex = selectorIndex / pageItems * pageItems;
-  renderer.fillRect(0, 60 + (selectorIndex % pageItems) * rowHeight - 2,
+  const int listStartY = topInset + 60;
+  renderer.fillRect(0, listStartY + (selectorIndex % pageItems) * rowHeight - 2,
                     pageWidth - 1, rowHeight);
   for (size_t i = pageStartIndex;
        i < files.size() && i < pageStartIndex + pageItems; i++) {
     auto item = renderer.truncatedText(UI_10_FONT_ID, files[i].c_str(),
                                        renderer.getScreenWidth() - 40);
-    renderer.drawText(UI_10_FONT_ID, 20, 60 + (i % pageItems) * rowHeight,
+    renderer.drawText(UI_10_FONT_ID, 20, listStartY + (i % pageItems) * rowHeight,
                       item.c_str(), i != selectorIndex);
   }
 

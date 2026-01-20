@@ -38,7 +38,7 @@ Inherits all features from the original CrossPoint Reader:
 - [x] TXT plain text reader support
 - [x] Reading progress saved
 - [x] File browser (supports nested folders)
-- [x] Custom sleep screen (supports cover display)
+- [ ] Custom sleep screen (supports cover display)
 - [x] WiFi file upload
 - [x] WiFi OTA firmware updates
 - [x] Configurable font, layout, and display options
@@ -46,7 +46,7 @@ Inherits all features from the original CrossPoint Reader:
 - [x] Calibre wireless connection and web library integration
 - [x] Cover image display
 
-See the [User Guide](./USER_GUIDE.md) for detailed instructions.
+See the [User Guide](./docs/USER_GUIDE.md) for detailed instructions.
 
 ## 📥 Installation
 

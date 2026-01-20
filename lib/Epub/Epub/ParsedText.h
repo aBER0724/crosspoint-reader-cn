@@ -18,11 +18,13 @@ class ParsedText {
   TextBlock::Style style;
   bool extraParagraphSpacing;
 
-  std::vector<size_t> computeLineBreaks(int pageWidth, int spaceWidth, const std::vector<uint16_t>& wordWidths) const;
+  std::vector<size_t> computeLineBreaks(int pageWidth, int spaceWidth, const std::vector<uint16_t>& wordWidths,
+                                        const std::vector<uint8_t>& wordIsCjk) const;
   void extractLine(size_t breakIndex, int pageWidth, int spaceWidth, const std::vector<uint16_t>& wordWidths,
-                   const std::vector<size_t>& lineBreakIndices,
-                   const std::function<void(std::shared_ptr<TextBlock>)>& processLine);
-  std::vector<uint16_t> calculateWordWidths(const GfxRenderer& renderer, int fontId);
+                   const std::vector<uint8_t>& wordIsCjk, const std::vector<size_t>& lineBreakIndices,
+                   const std::function<void(std::shared_ptr<TextBlock>)>& processLine, bool cjkParagraph);
+  std::vector<uint16_t> calculateWordWidths(const GfxRenderer& renderer, int fontId,
+                                            std::vector<uint8_t>* wordIsCjk);
 
  public:
   explicit ParsedText(const TextBlock::Style style, const bool extraParagraphSpacing)

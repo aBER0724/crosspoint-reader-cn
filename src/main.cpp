@@ -24,6 +24,7 @@
 #include "activities/settings/SettingsActivity.h"
 #include "activities/util/FullScreenMessageActivity.h"
 #include "fontIds.h"
+#include "util/OrientationUtils.h"
 
 #define SPI_FQ 40000000
 // Display SPI pins (custom pins for XteinkX4, not hardware SPI defaults)
@@ -335,7 +336,7 @@ void setup() {
     setupDisplayAndFonts();
     exitActivity();
     enterNewActivity(new FullScreenMessageActivity(
-        renderer, mappedInputManager, "SD card error", EpdFontFamily::BOLD));
+        renderer, mappedInputManager, TR(SD_CARD_ERROR), EpdFontFamily::BOLD));
     return;
   }
 
@@ -369,6 +370,14 @@ void setup() {
   renderer.setDarkMode(SETTINGS.isDarkMode());
   Serial.printf("[%lu] [   ] Color mode set to %s\n", millis(),
                 SETTINGS.isDarkMode() ? "Dark" : "Light");
+  renderer.setAsciiLetterSpacing(SETTINGS.getAsciiLetterSpacing());
+  renderer.setAsciiDigitSpacing(SETTINGS.getAsciiDigitSpacing());
+  renderer.setCjkSpacing(SETTINGS.getCjkSpacing());
+  Serial.printf(
+      "[%lu] [   ] ASCII spacing set to letters=%d, digits=%d, cjk=%d\n",
+      millis(), SETTINGS.getAsciiLetterSpacing(),
+      SETTINGS.getAsciiDigitSpacing(), SETTINGS.getCjkSpacing());
+  applyUiOrientation(renderer);
 
   exitActivity();
   enterNewActivity(new BootActivity(renderer, mappedInputManager));

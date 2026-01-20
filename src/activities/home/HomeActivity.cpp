@@ -16,6 +16,7 @@
 #include "MappedInputManager.h"
 #include "ScreenComponents.h"
 #include "fontIds.h"
+#include "util/OrientationUtils.h"
 #include "util/StringUtils.h"
 
 void HomeActivity::taskTrampoline(void* param) {
@@ -32,6 +33,9 @@ int HomeActivity::getMenuItemCount() const {
 
 void HomeActivity::onEnter() {
   Activity::onEnter();
+
+  // Reset first render flag to use HALF_REFRESH on entry
+  firstRender = true;
 
   renderingMutex = xSemaphoreCreateMutex();
 
@@ -208,23 +212,35 @@ void HomeActivity::displayTaskLoop() {
 }
 
 void HomeActivity::render() {
+  const auto pageWidth = renderer.getScreenWidth();
+  const auto pageHeight = renderer.getScreenHeight();
+  const int topInset = getUiTopInset(renderer);
+  const bool darkModeChanged = (renderer.isDarkMode() != lastDarkMode);
+  if (lastTopInset != topInset) {
+    freeCoverBuffer();
+    coverRendered = false;
+    lastTopInset = topInset;
+  }
+  if (darkModeChanged) {
+    freeCoverBuffer();
+    coverRendered = false;
+  }
+
   // If we have a stored cover buffer, restore it instead of clearing
   const bool bufferRestored = coverBufferStored && restoreCoverBuffer();
   if (!bufferRestored) {
     renderer.clearScreen();
   }
 
-  const auto pageWidth = renderer.getScreenWidth();
-  const auto pageHeight = renderer.getScreenHeight();
-
   constexpr int margin = 20;
   constexpr int bottomMargin = 60;
 
   // --- Top "book" card for the current title (selectorIndex == 0) ---
+  const int availableHeight = pageHeight - topInset;
   const int bookWidth = pageWidth / 2;
-  const int bookHeight = pageHeight / 2;
+  const int bookHeight = availableHeight / 2;
   const int bookX = (pageWidth - bookWidth) / 2;
-  constexpr int bookY = 30;
+  const int bookY = topInset + 30;
   const bool bookSelected = hasContinueReading && selectorIndex == 0;
 
   // Bookmark dimensions (used in multiple places)
@@ -243,27 +259,27 @@ void HomeActivity::render() {
       if (SdMan.openFileForRead("HOME", coverBmpPath, file)) {
         Bitmap bitmap(file);
         if (bitmap.parseHeaders() == BmpReaderError::Ok) {
-          // Calculate position to center image within the book card
-          int coverX, coverY;
-
-          if (bitmap.getWidth() > bookWidth || bitmap.getHeight() > bookHeight) {
-            const float imgRatio = static_cast<float>(bitmap.getWidth()) / static_cast<float>(bitmap.getHeight());
-            const float boxRatio = static_cast<float>(bookWidth) / static_cast<float>(bookHeight);
-
-            if (imgRatio > boxRatio) {
-              coverX = bookX;
-              coverY = bookY + (bookHeight - static_cast<int>(bookWidth / imgRatio)) / 2;
-            } else {
-              coverX = bookX + (bookWidth - static_cast<int>(bookHeight * imgRatio)) / 2;
-              coverY = bookY;
+          // Calculate a scaled size that fits within the book card, then center it.
+          int coverDrawWidth = bookWidth;
+          int coverDrawHeight = bookHeight;
+          if (bitmap.getWidth() > 0 && bitmap.getHeight() > 0) {
+            const float widthScale =
+                static_cast<float>(bookWidth) / static_cast<float>(bitmap.getWidth());
+            const float heightScale =
+                static_cast<float>(bookHeight) / static_cast<float>(bitmap.getHeight());
+            float scale = widthScale < heightScale ? widthScale : heightScale;
+            if (scale > 1.0f) {
+              scale = 1.0f;
             }
-          } else {
-            coverX = bookX + (bookWidth - bitmap.getWidth()) / 2;
-            coverY = bookY + (bookHeight - bitmap.getHeight()) / 2;
+            coverDrawWidth = static_cast<int>(bitmap.getWidth() * scale);
+            coverDrawHeight = static_cast<int>(bitmap.getHeight() * scale);
           }
 
+          const int coverX = bookX + (bookWidth - coverDrawWidth) / 2;
+          const int coverY = bookY + (bookHeight - coverDrawHeight) / 2;
+
           // Draw the cover image centered within the book card
-          renderer.drawBitmap(bitmap, coverX, coverY, bookWidth, bookHeight);
+          renderer.drawBitmap(bitmap, coverX, coverY, coverDrawWidth, coverDrawHeight);
 
           // Draw border around the card
           renderer.drawRect(bookX, bookY, bookWidth, bookHeight);
@@ -547,7 +563,15 @@ void HomeActivity::render() {
   const uint16_t percentage = battery.readPercentage();
   const auto percentageText = showBatteryPercentage ? std::to_string(percentage) + "%" : "";
   const auto batteryX = pageWidth - 25 - renderer.getTextWidth(SMALL_FONT_ID, percentageText.c_str());
-  ScreenComponents::drawBattery(renderer, batteryX, 10, showBatteryPercentage);
+  ScreenComponents::drawBattery(renderer, batteryX, topInset + 10,
+                                showBatteryPercentage);
 
-  renderer.displayBuffer();
+  // Detect color mode change - FAST_REFRESH cannot fully cover white background in dark mode
+  lastDarkMode = renderer.isDarkMode();
+
+  // Use HALF_REFRESH on first render or when color mode changes.
+  const auto refreshMode =
+      (firstRender || darkModeChanged) ? EInkDisplay::HALF_REFRESH : EInkDisplay::FAST_REFRESH;
+  renderer.displayBuffer(refreshMode);
+  firstRender = false;
 }

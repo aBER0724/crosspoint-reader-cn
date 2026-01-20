@@ -55,6 +55,21 @@ public:
   // Font size options (UI and Reader)
   enum FONT_SIZE { SMALL = 0, MEDIUM = 1, LARGE = 2 };
   enum LINE_COMPRESSION { TIGHT = 0, NORMAL = 1, WIDE = 2 };
+  // ASCII letter/digit spacing (stored as unsigned with offset)
+  static constexpr int8_t ASCII_SPACING_MIN = -16;
+  static constexpr int8_t ASCII_SPACING_MAX = 16;
+  static constexpr uint8_t ASCII_SPACING_OFFSET =
+      static_cast<uint8_t>(-ASCII_SPACING_MIN);
+  static constexpr uint8_t ASCII_SPACING_STORAGE_MIN = 0;
+  static constexpr uint8_t ASCII_SPACING_STORAGE_MAX =
+      ASCII_SPACING_OFFSET + ASCII_SPACING_MAX;
+  static constexpr int8_t CJK_SPACING_MIN = ASCII_SPACING_MIN;
+  static constexpr int8_t CJK_SPACING_MAX = ASCII_SPACING_MAX;
+  static constexpr uint8_t CJK_SPACING_OFFSET = ASCII_SPACING_OFFSET;
+  static constexpr uint8_t CJK_SPACING_STORAGE_MIN =
+      ASCII_SPACING_STORAGE_MIN;
+  static constexpr uint8_t CJK_SPACING_STORAGE_MAX =
+      ASCII_SPACING_STORAGE_MAX;
 
   // Auto-sleep timeout options (in minutes)
   enum SLEEP_TIMEOUT {
@@ -112,6 +127,9 @@ public:
   uint8_t fontFamily = NOTOSANS;
   uint8_t fontSize = MEDIUM;
   uint8_t lineSpacing = NORMAL;
+  uint8_t asciiLetterSpacing = ASCII_SPACING_OFFSET;
+  uint8_t asciiDigitSpacing = ASCII_SPACING_OFFSET;
+  uint8_t cjkSpacing = CJK_SPACING_OFFSET;
   uint8_t colorMode = LIGHT_MODE;
   // Auto-sleep timeout setting (default 10 minutes)
   uint8_t sleepTimeout = SLEEP_10_MIN;
@@ -138,6 +156,9 @@ public:
   }
   int getReaderFontId() const;
   bool isDarkMode() const;
+  int getAsciiLetterSpacing() const;
+  int getAsciiDigitSpacing() const;
+  int getCjkSpacing() const;
 
   bool saveToFile() const;
   bool loadFromFile();

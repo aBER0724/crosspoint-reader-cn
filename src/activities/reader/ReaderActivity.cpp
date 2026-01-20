@@ -8,6 +8,7 @@
 #include "Xtc.h"
 #include "XtcReaderActivity.h"
 #include "activities/util/FullScreenMessageActivity.h"
+#include <I18n.h>
 #include "util/StringUtils.h"
 
 std::string ReaderActivity::extractFolderPath(const std::string &filePath) {
@@ -84,7 +85,7 @@ void ReaderActivity::onSelectBookFile(const std::string &path) {
   currentBookPath = path; // Track current book path
   exitActivity();
   enterNewActivity(
-      new FullScreenMessageActivity(renderer, mappedInput, "Loading..."));
+      new FullScreenMessageActivity(renderer, mappedInput, TR(LOADING)));
 
   if (isXtcFile(path)) {
     // Load XTC file
@@ -94,7 +95,7 @@ void ReaderActivity::onSelectBookFile(const std::string &path) {
     } else {
       exitActivity();
       enterNewActivity(new FullScreenMessageActivity(
-          renderer, mappedInput, "Failed to load XTC", EpdFontFamily::REGULAR,
+          renderer, mappedInput, TR(LOAD_XTC_FAILED), EpdFontFamily::REGULAR,
           EInkDisplay::HALF_REFRESH));
       delay(2000);
       onGoToFileSelection();
@@ -107,7 +108,7 @@ void ReaderActivity::onSelectBookFile(const std::string &path) {
     } else {
       exitActivity();
       enterNewActivity(new FullScreenMessageActivity(
-          renderer, mappedInput, "Failed to load TXT", EpdFontFamily::REGULAR,
+          renderer, mappedInput, TR(LOAD_TXT_FAILED), EpdFontFamily::REGULAR,
           EInkDisplay::HALF_REFRESH));
       delay(2000);
       onGoToFileSelection();
@@ -120,7 +121,7 @@ void ReaderActivity::onSelectBookFile(const std::string &path) {
     } else {
       exitActivity();
       enterNewActivity(new FullScreenMessageActivity(
-          renderer, mappedInput, "Failed to load epub", EpdFontFamily::REGULAR,
+          renderer, mappedInput, TR(LOAD_EPUB_FAILED), EpdFontFamily::REGULAR,
           EInkDisplay::HALF_REFRESH));
       delay(2000);
       onGoToFileSelection();

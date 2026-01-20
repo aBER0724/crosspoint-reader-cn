@@ -16,10 +16,10 @@ public:
 
   // Logical screen orientation from the perspective of callers
   enum Orientation {
-    Portrait,           // 480x800 logical coordinates (current default)
-    LandscapeClockwise, // 800x480 logical coordinates, rotated 180° (swap
-                        // top/bottom)
-    PortraitInverted,   // 480x800 logical coordinates, inverted
+    Portrait,                 // 480x800 logical coordinates (current default)
+    LandscapeClockwise,       // 800x480 logical coordinates, rotated 180° (swap
+                              // top/bottom)
+    PortraitInverted,         // 480x800 logical coordinates, inverted
     LandscapeCounterClockwise // 800x480 logical coordinates, native panel
                               // orientation
   };
@@ -42,13 +42,19 @@ private:
   uint8_t uiFontSize = 0;
   // Dark mode: true = black background, false = white background
   bool darkMode = false;
+  // Extra spacing (in pixels) for ASCII letters/digits when using external reader font.
+  int8_t asciiLetterSpacing = 0;
+  int8_t asciiDigitSpacing = 0;
+  // Extra spacing (in pixels) for CJK characters when using external reader font.
+  int8_t cjkSpacing = 0;
   // Skip dark mode inversion for images (cover art should not be inverted)
   mutable bool skipDarkModeForImages = false;
   void renderChar(int fontId, const EpdFontFamily &fontFamily, uint32_t cp,
                   int *x, const int *y, bool pixelState,
                   EpdFontFamily::Style style) const;
   void renderExternalGlyph(const uint8_t *bitmap, ExternalFont *font, int *x,
-                           int y, bool pixelState) const;
+                           int y, bool pixelState,
+                           int advanceOverride = -1) const;
   // Render CJK character using built-in UI font (from PROGMEM)
   void renderBuiltinCjkGlyph(uint32_t cp, int *x, int y, bool pixelState) const;
   // Check if fontId is a reader font (should use external Chinese font)
@@ -65,6 +71,10 @@ public:
   static constexpr int VIEWABLE_MARGIN_RIGHT = 3;
   static constexpr int VIEWABLE_MARGIN_BOTTOM = 3;
   static constexpr int VIEWABLE_MARGIN_LEFT = 3;
+  static constexpr int BUTTON_HINT_WIDTH = 106;
+  static constexpr int BUTTON_HINT_HEIGHT = 40;
+  static constexpr int BUTTON_HINT_BOTTOM_INSET = 40;
+  static constexpr int BUTTON_HINT_TEXT_OFFSET = 7;
 
   // Setup
   void insertFont(int fontId, EpdFontFamily font);
@@ -81,6 +91,12 @@ public:
   // Dark mode control
   void setDarkMode(bool darkMode) { this->darkMode = darkMode; }
   bool isDarkMode() const { return darkMode; }
+  void setAsciiLetterSpacing(int8_t spacing) { asciiLetterSpacing = spacing; }
+  void setAsciiDigitSpacing(int8_t spacing) { asciiDigitSpacing = spacing; }
+  void setCjkSpacing(int8_t spacing) { cjkSpacing = spacing; }
+  int8_t getAsciiLetterSpacing() const { return asciiLetterSpacing; }
+  int8_t getAsciiDigitSpacing() const { return asciiDigitSpacing; }
+  int8_t getCjkSpacing() const { return cjkSpacing; }
 
   // Screen ops
   int getScreenWidth() const;
@@ -139,7 +155,8 @@ public:
   void setRenderMode(const RenderMode mode) { this->renderMode = mode; }
   void copyGrayscaleLsbBuffers() const;
   void copyGrayscaleMsbBuffers() const;
-  void displayGrayBuffer() const;
+  void displayGrayBuffer(bool turnOffScreen = false,
+                         bool darkMode = false) const;
   bool storeBwBuffer();   // Returns true if buffer was stored successfully
   void restoreBwBuffer(); // Restore and free the stored buffer
   void cleanupGrayscaleWithFrameBuffer() const;

@@ -2,13 +2,21 @@
 
 #include <GfxRenderer.h>
 #include <I18n.h>
+#include <Utf8.h>
+
+#include <vector>
 
 #include "MappedInputManager.h"
 #include "fontIds.h"
+#include "util/OrientationUtils.h"
 
 namespace {
 // Time threshold for treating a long press as a page-up/page-down
 constexpr int SKIP_PAGE_MS = 700;
+constexpr uint32_t CP_CHAPTER_PREFIX = 0x7B2C;
+constexpr uint32_t CP_CHAPTER_MARK = 0x7AE0;
+constexpr uint32_t CP_SPACE = 0x20;
+constexpr uint32_t CP_IDEOGRAPHIC_SPACE = 0x3000;
 
 // Calculate row height based on current UI font size
 // Font sizes: SMALL=20px, MEDIUM=22px, LARGE=24px
@@ -16,11 +24,70 @@ constexpr int SKIP_PAGE_MS = 700;
 inline int getRowHeight(const GfxRenderer& renderer) {
   return 20 + renderer.getUiFontSize() * 2 + 10;  // 30px/32px/34px for small/medium/large
 }
+
+void appendUtf8(std::string& out, const uint32_t cp) {
+  if (cp <= 0x7F) {
+    out.push_back(static_cast<char>(cp));
+  } else if (cp <= 0x7FF) {
+    out.push_back(static_cast<char>(0xC0 | (cp >> 6)));
+    out.push_back(static_cast<char>(0x80 | (cp & 0x3F)));
+  } else if (cp <= 0xFFFF) {
+    out.push_back(static_cast<char>(0xE0 | (cp >> 12)));
+    out.push_back(static_cast<char>(0x80 | ((cp >> 6) & 0x3F)));
+    out.push_back(static_cast<char>(0x80 | (cp & 0x3F)));
+  } else if (cp <= 0x10FFFF) {
+    out.push_back(static_cast<char>(0xF0 | (cp >> 18)));
+    out.push_back(static_cast<char>(0x80 | ((cp >> 12) & 0x3F)));
+    out.push_back(static_cast<char>(0x80 | ((cp >> 6) & 0x3F)));
+    out.push_back(static_cast<char>(0x80 | (cp & 0x3F)));
+  }
+}
+
+std::string addSpaceAfterChapterMarker(const std::string& title) {
+  const unsigned char* ptr = reinterpret_cast<const unsigned char*>(title.c_str());
+  std::vector<uint32_t> codepoints;
+  uint32_t cp;
+
+  while ((cp = utf8NextCodepoint(&ptr))) {
+    codepoints.push_back(cp);
+  }
+
+  if (codepoints.size() < 3 || codepoints[0] != CP_CHAPTER_PREFIX) {
+    return title;
+  }
+
+  size_t chapterIndex = codepoints.size();
+  for (size_t i = 1; i < codepoints.size(); ++i) {
+    if (codepoints[i] == CP_CHAPTER_MARK) {
+      chapterIndex = i;
+      break;
+    }
+  }
+
+  if (chapterIndex == codepoints.size() || chapterIndex + 1 >= codepoints.size()) {
+    return title;
+  }
+
+  const uint32_t nextCp = codepoints[chapterIndex + 1];
+  if (nextCp == CP_SPACE || nextCp == CP_IDEOGRAPHIC_SPACE) {
+    return title;
+  }
+
+  std::string result;
+  result.reserve(title.size() + 1);
+  for (size_t i = 0; i < codepoints.size(); ++i) {
+    appendUtf8(result, codepoints[i]);
+    if (i == chapterIndex) {
+      result.push_back(' ');
+    }
+  }
+  return result;
+}
 }  // namespace
 
 int EpubReaderChapterSelectionActivity::getPageItems() const {
   // Layout constants used in renderScreen
-  constexpr int startY = 60;
+  const int startY = getUiTopInset(renderer) + 60;
   const int lineHeight = getRowHeight(renderer);
 
   const int screenHeight = renderer.getScreenHeight();
@@ -129,24 +196,35 @@ void EpubReaderChapterSelectionActivity::renderScreen() {
   renderer.clearScreen();
 
   const auto pageWidth = renderer.getScreenWidth();
+  const int leftInset = getUiLeftInset(renderer);
+  const int rightInset = getUiRightInset(renderer);
+  const int contentWidth = pageWidth - leftInset - rightInset;
+  const int topInset = getUiTopInset(renderer);
   const int pageItems = getPageItems();
   const int rowHeight = getRowHeight(renderer);
 
   const std::string title =
-      renderer.truncatedText(UI_12_FONT_ID, epub->getTitle().c_str(), pageWidth - 40, EpdFontFamily::BOLD);
-  renderer.drawCenteredText(UI_12_FONT_ID, 15, title.c_str(), true, EpdFontFamily::BOLD);
+      renderer.truncatedText(UI_12_FONT_ID, epub->getTitle().c_str(), contentWidth - 40, EpdFontFamily::BOLD);
+  const int titleWidth =
+      renderer.getTextWidth(UI_12_FONT_ID, title.c_str(), EpdFontFamily::BOLD);
+  const int titleX = leftInset + (contentWidth - titleWidth) / 2;
+  renderer.drawText(UI_12_FONT_ID, titleX, topInset + 15, title.c_str(), true,
+                    EpdFontFamily::BOLD);
 
   const auto pageStartIndex = selectorIndex / pageItems * pageItems;
-  renderer.fillRect(0, 60 + (selectorIndex % pageItems) * rowHeight - 2, pageWidth - 1, rowHeight);
+  const int listStartY = topInset + 60;
+  renderer.fillRect(leftInset, listStartY + (selectorIndex % pageItems) * rowHeight - 2,
+                    contentWidth - 1, rowHeight);
   for (int tocIndex = pageStartIndex; tocIndex < epub->getTocItemsCount() && tocIndex < pageStartIndex + pageItems;
        tocIndex++) {
     auto item = epub->getTocItem(tocIndex);
-    const int xPos = 20 + (item.level - 1) * 15;
-    const int yPos = 60 + (tocIndex % pageItems) * rowHeight;
+    const int xPos = leftInset + 20 + (item.level - 1) * 15;
+    const int yPos = listStartY + (tocIndex % pageItems) * rowHeight;
     // Calculate max width for title to prevent overlap
-    const int maxWidth = pageWidth - xPos - 10;
+    const int maxWidth = contentWidth - (xPos - leftInset) - 10;
     // Truncate title if too long to prevent overlap with screen edge
-    const std::string truncatedTitle = renderer.truncatedText(UI_10_FONT_ID, item.title.c_str(), maxWidth);
+    const std::string spacedTitle = addSpaceAfterChapterMarker(item.title);
+    const std::string truncatedTitle = renderer.truncatedText(UI_10_FONT_ID, spacedTitle.c_str(), maxWidth);
     renderer.drawText(UI_10_FONT_ID, xPos, yPos, truncatedTitle.c_str(),
                       tocIndex != selectorIndex);
   }

@@ -4,19 +4,22 @@
 #include <GfxRenderer.h>
 #include <HardwareSerial.h>
 #include <I18n.h>
+#include <SDCardManager.h>
 
 #include <cstring>
 
 #include "CalibreSettingsActivity.h"
 #include "CrossPointSettings.h"
+#include "CrossPointState.h"
 #include "FontSelectActivity.h"
 #include "MappedInputManager.h"
 #include "OtaUpdateActivity.h"
 #include "fontIds.h"
+#include "util/OrientationUtils.h"
 
 // Define the static settings list
 namespace {
-constexpr int settingsCount = 23;
+constexpr int settingsCount = 27;
 const SettingInfo settingsList[settingsCount] = {
     // Should match with SLEEP_SCREEN_MODE
     SettingInfo::Enum("Sleep Screen", &CrossPointSettings::sleepScreen,
@@ -54,6 +57,17 @@ const SettingInfo settingsList[settingsCount] = {
                       {"Small", "Medium", "Large"}),
     SettingInfo::Enum("Reader Line Spacing", &CrossPointSettings::lineSpacing,
                       {"Tight", "Normal", "Wide"}),
+    SettingInfo::Value("ASCII Letter Spacing",
+                       &CrossPointSettings::asciiLetterSpacing,
+                       {CrossPointSettings::ASCII_SPACING_STORAGE_MIN,
+                        CrossPointSettings::ASCII_SPACING_STORAGE_MAX, 1}),
+    SettingInfo::Value("ASCII Digit Spacing",
+                       &CrossPointSettings::asciiDigitSpacing,
+                       {CrossPointSettings::ASCII_SPACING_STORAGE_MIN,
+                        CrossPointSettings::ASCII_SPACING_STORAGE_MAX, 1}),
+    SettingInfo::Value("CJK Spacing", &CrossPointSettings::cjkSpacing,
+                       {CrossPointSettings::CJK_SPACING_STORAGE_MIN,
+                        CrossPointSettings::CJK_SPACING_STORAGE_MAX, 1}),
     SettingInfo::Enum("Color Mode", &CrossPointSettings::colorMode,
                       {"Light", "Dark"}),
     SettingInfo::Value("Reader Screen Margin",
@@ -66,7 +80,88 @@ const SettingInfo settingsList[settingsCount] = {
     SettingInfo::Action("Language"),
     SettingInfo::Action("Select Wallpaper"),
     SettingInfo::Action("Calibre Settings"),
-    SettingInfo::Action("Check for updates")};
+    SettingInfo::Action("Check for updates"),
+    SettingInfo::Action("Clear Reading Cache")};
+
+constexpr const char *CACHE_ROOT = "/.crosspoint";
+
+int getSettingsPerPage(const GfxRenderer &renderer) {
+  const int startY = getUiTopInset(renderer) + 60;
+  const int rowHeight = 20 + renderer.getUiFontSize() * 2 + 10;
+  const int screenHeight = renderer.getScreenHeight();
+  const int endY = screenHeight - rowHeight;
+  const int availableHeight = endY - startY;
+  int items = availableHeight / rowHeight;
+  if (items < 1) {
+    items = 1;
+  }
+  return items;
+}
+
+bool isLandscapeOrientation(const GfxRenderer::Orientation orientation) {
+  return orientation == GfxRenderer::Orientation::LandscapeClockwise ||
+         orientation == GfxRenderer::Orientation::LandscapeCounterClockwise;
+}
+
+void getButtonHintSlotTopLeft(const GfxRenderer &renderer, const int slotIndex,
+                              int *x, int *y) {
+  static constexpr int positions[] = {25, 130, 245, 350};
+  const auto orientation = renderer.getOrientation();
+  const int pageWidth = renderer.getScreenWidth();
+  const int pageHeight = renderer.getScreenHeight();
+  const bool isLandscape = isLandscapeOrientation(orientation);
+  const bool placeLeft =
+      orientation == GfxRenderer::Orientation::LandscapeClockwise;
+  if (isLandscape) {
+    *x = placeLeft ? 0 : pageWidth - GfxRenderer::BUTTON_HINT_WIDTH;
+    *y = positions[slotIndex];
+    return;
+  }
+  const bool placeAtTop =
+      orientation == GfxRenderer::Orientation::PortraitInverted;
+  *x = positions[slotIndex];
+  *y = placeAtTop ? 0 : pageHeight - GfxRenderer::BUTTON_HINT_BOTTOM_INSET;
+}
+
+bool isReadingCacheDir(const char *name) {
+  return strncmp(name, "epub_", 5) == 0 || strncmp(name, "txt_", 4) == 0 ||
+         strncmp(name, "xtc_", 4) == 0;
+}
+
+bool clearReadingCachesOnSd() {
+  auto root = SdMan.open(CACHE_ROOT);
+  if (!root || !root.isDirectory()) {
+    if (root) {
+      root.close();
+    }
+    Serial.printf("[%lu] [SET] Cache root not available: %s\n", millis(),
+                  CACHE_ROOT);
+    return false;
+  }
+
+  bool success = true;
+  root.rewindDirectory();
+
+  char name[128];
+  for (auto entry = root.openNextFile(); entry; entry = root.openNextFile()) {
+    entry.getName(name, sizeof(name));
+    if (!entry.isDirectory() || !isReadingCacheDir(name)) {
+      entry.close();
+      continue;
+    }
+
+    const std::string path = std::string(CACHE_ROOT) + "/" + name;
+    if (!SdMan.removeDir(path.c_str())) {
+      Serial.printf("[%lu] [SET] Failed to remove cache dir: %s\n", millis(),
+                    path.c_str());
+      success = false;
+    }
+    entry.close();
+  }
+
+  root.close();
+  return success;
+}
 
 // Translate setting name to localized string
 const char *translateSettingName(const char *name) {
@@ -100,6 +195,12 @@ const char *translateSettingName(const char *name) {
     return TR(FONT_SIZE);
   if (strcmp(name, "Reader Line Spacing") == 0)
     return TR(LINE_SPACING);
+  if (strcmp(name, "ASCII Letter Spacing") == 0)
+    return TR(ASCII_LETTER_SPACING);
+  if (strcmp(name, "ASCII Digit Spacing") == 0)
+    return TR(ASCII_DIGIT_SPACING);
+  if (strcmp(name, "CJK Spacing") == 0)
+    return TR(CJK_SPACING);
   if (strcmp(name, "Color Mode") == 0)
     return TR(COLOR_MODE);
   if (strcmp(name, "Reader Screen Margin") == 0)
@@ -116,6 +217,8 @@ const char *translateSettingName(const char *name) {
     return TR(CHECK_UPDATES);
   if (strcmp(name, "Select Wallpaper") == 0)
     return TR(SELECT_WALLPAPER);
+  if (strcmp(name, "Clear Reading Cache") == 0)
+    return TR(CLEAR_READING_CACHE);
   return name; // Fallback to original
 }
 
@@ -166,6 +269,12 @@ const char *translateSettingValue(const char *value) {
   if (strcmp(value, "Landscape CCW") == 0)
     return TR(LANDSCAPE_CCW);
   // Button Layout
+  if (strcmp(value, "Bck, Cnfrm, Lft, Rght") == 0)
+    return TR(FRONT_LAYOUT_BCLR);
+  if (strcmp(value, "Lft, Rght, Bck, Cnfrm") == 0)
+    return TR(FRONT_LAYOUT_LRBC);
+  if (strcmp(value, "Lft, Bck, Cnfrm, Rght") == 0)
+    return TR(FRONT_LAYOUT_LBCR);
   if (strcmp(value, "Prev, Next") == 0)
     return TR(PREV_NEXT);
   if (strcmp(value, "Next, Prev") == 0)
@@ -265,6 +374,26 @@ void SettingsActivity::loop() {
     return;
   }
 
+  if (confirmClearReadingCache) {
+    if (mappedInput.wasPressed(MappedInputManager::Button::Confirm)) {
+      const bool cleared = clearReadingCachesOnSd();
+      APP_STATE.openEpubPath.clear();
+      APP_STATE.wasInReader = false;
+      APP_STATE.saveToFile();
+      Serial.printf("[%lu] [SET] Reading cache cleared: %s\n", millis(),
+                    cleared ? "ok" : "partial");
+      confirmClearReadingCache = false;
+      updateRequired = true;
+      return;
+    }
+    if (mappedInput.wasPressed(MappedInputManager::Button::Back)) {
+      confirmClearReadingCache = false;
+      updateRequired = true;
+      return;
+    }
+    return;
+  }
+
   // Handle actions with early return
   if (mappedInput.wasPressed(MappedInputManager::Button::Confirm)) {
     toggleCurrentSetting();
@@ -319,6 +448,9 @@ void SettingsActivity::toggleCurrentSetting() {
       Serial.printf("[%lu] [SET] UI font size updated to %d (%dpx)\n", millis(),
                     SETTINGS.fontSize, 20 + SETTINGS.fontSize * 2);
     }
+    if (setting.valuePtr == &CrossPointSettings::orientation) {
+      applyUiOrientation(renderer);
+    }
     // Hot update: Apply color mode change immediately
     if (setting.valuePtr == &CrossPointSettings::colorMode) {
       renderer.setDarkMode(SETTINGS.isDarkMode());
@@ -335,6 +467,15 @@ void SettingsActivity::toggleCurrentSetting() {
       SETTINGS.*(setting.valuePtr) = setting.valueRange.min;
     } else {
       SETTINGS.*(setting.valuePtr) = currentValue + setting.valueRange.step;
+    }
+    if (setting.valuePtr == &CrossPointSettings::asciiLetterSpacing) {
+      renderer.setAsciiLetterSpacing(SETTINGS.getAsciiLetterSpacing());
+    }
+    if (setting.valuePtr == &CrossPointSettings::asciiDigitSpacing) {
+      renderer.setAsciiDigitSpacing(SETTINGS.getAsciiDigitSpacing());
+    }
+    if (setting.valuePtr == &CrossPointSettings::cjkSpacing) {
+      renderer.setCjkSpacing(SETTINGS.getCjkSpacing());
     }
   } else if (setting.type == SettingType::ACTION) {
     if (strcmp(setting.name, "Calibre Settings") == 0) {
@@ -411,6 +552,8 @@ void SettingsActivity::toggleCurrentSetting() {
             updateRequired = true;
           }));
       xSemaphoreGive(renderingMutex);
+    } else if (strcmp(setting.name, "Clear Reading Cache") == 0) {
+      confirmClearReadingCache = true;
     }
   } else {
     // Only toggle if it's a toggle type and has a value pointer
@@ -438,6 +581,7 @@ void SettingsActivity::render() const {
 
   const auto pageWidth = renderer.getScreenWidth();
   const auto pageHeight = renderer.getScreenHeight();
+  const int topInset = getUiTopInset(renderer);
 
   // Calculate row height based on current UI font size
   // Font sizes: SMALL=18px, MEDIUM=20px, LARGE=22px
@@ -446,17 +590,26 @@ void SettingsActivity::render() const {
                         10; // 30px/32px/34px for small/medium/large
 
   // Draw header
-  renderer.drawCenteredText(UI_12_FONT_ID, 15, TR(SETTINGS_TITLE), true,
+  renderer.drawCenteredText(UI_12_FONT_ID, topInset + 15, TR(SETTINGS_TITLE),
+                            true,
                             EpdFontFamily::BOLD);
 
-  // Draw selection
-  renderer.fillRect(0, 60 + selectedSettingIndex * rowHeight - 2, pageWidth - 1,
-                    rowHeight);
+  const int itemsPerPage = getSettingsPerPage(renderer);
+  const int pageStartIndex =
+      (selectedSettingIndex / itemsPerPage) * itemsPerPage;
+  const int pageEndIndex =
+      std::min(settingsCount, pageStartIndex + itemsPerPage);
+  const int selectedRowIndex = selectedSettingIndex - pageStartIndex;
 
-  // Draw all settings
-  for (int i = 0; i < settingsCount; i++) {
+  // Draw selection
+  const int listStartY = topInset + 60;
+  renderer.fillRect(0, listStartY + selectedRowIndex * rowHeight - 2,
+                    pageWidth - 1, rowHeight);
+
+  // Draw visible settings
+  for (int i = pageStartIndex; i < pageEndIndex; i++) {
     const int settingY =
-        60 + i * rowHeight; // Dynamic row height based on font size
+        listStartY + (i - pageStartIndex) * rowHeight; // Dynamic row height based on font size
 
     // Draw setting name (translated)
     renderer.drawText(UI_10_FONT_ID, 20, settingY,
@@ -478,8 +631,24 @@ void SettingsActivity::render() const {
                settingsList[i].valuePtr != nullptr) {
       // Value type shows raw number - no translation needed
       static char valueBuf[16];
-      snprintf(valueBuf, sizeof(valueBuf), "%d",
-               static_cast<int>(SETTINGS.*(settingsList[i].valuePtr)));
+      if (settingsList[i].valuePtr == &CrossPointSettings::asciiLetterSpacing) {
+        const int value = SETTINGS.getAsciiLetterSpacing();
+        snprintf(valueBuf, sizeof(valueBuf), "%s%d", value > 0 ? "+" : "",
+                 value);
+      } else if (settingsList[i].valuePtr ==
+                 &CrossPointSettings::asciiDigitSpacing) {
+        const int value = SETTINGS.getAsciiDigitSpacing();
+        snprintf(valueBuf, sizeof(valueBuf), "%s%d", value > 0 ? "+" : "",
+                 value);
+      } else if (settingsList[i].valuePtr ==
+                 &CrossPointSettings::cjkSpacing) {
+        const int value = SETTINGS.getCjkSpacing();
+        snprintf(valueBuf, sizeof(valueBuf), "%s%d", value > 0 ? "+" : "",
+                 value);
+      } else {
+        snprintf(valueBuf, sizeof(valueBuf), "%d",
+                 static_cast<int>(SETTINGS.*(settingsList[i].valuePtr)));
+      }
       valueText = valueBuf;
     } else if (settingsList[i].type == SettingType::ACTION &&
                strcmp(settingsList[i].name, "Language") == 0) {
@@ -511,16 +680,38 @@ void SettingsActivity::render() const {
                       valueText, i != selectedSettingIndex);
   }
 
-  // Draw version text above button hints
-  renderer.drawText(
-      SMALL_FONT_ID,
-      pageWidth - 20 - renderer.getTextWidth(SMALL_FONT_ID, CROSSPOINT_VERSION),
-      pageHeight - 60, CROSSPOINT_VERSION);
+  if (confirmClearReadingCache) {
+    char prompt[64];
+    snprintf(prompt, sizeof(prompt), "%s?", TR(CLEAR_READING_CACHE));
+    renderer.drawCenteredText(UI_10_FONT_ID, pageHeight - 90, prompt);
+  }
 
   // Draw help text
-  const auto labels = mappedInput.mapLabels(TR(SAVE), TR(TOGGLE), "", "");
+  const auto labels = mappedInput.mapLabels(
+      confirmClearReadingCache ? TR(CANCEL) : TR(SAVE),
+      confirmClearReadingCache ? TR(CONFIRM) : TR(TOGGLE), "", "");
   renderer.drawButtonHints(UI_10_FONT_ID, labels.btn1, labels.btn2, labels.btn3,
                            labels.btn4);
+
+  const char *hintSlots[] = {labels.btn1, labels.btn2, labels.btn3,
+                             labels.btn4};
+  int versionSlot = -1;
+  for (int i = 3; i >= 0; --i) {
+    if (hintSlots[i] == nullptr || hintSlots[i][0] == '\0') {
+      versionSlot = i;
+      break;
+    }
+  }
+  if (versionSlot >= 0) {
+    int slotX = 0;
+    int slotY = 0;
+    getButtonHintSlotTopLeft(renderer, versionSlot, &slotX, &slotY);
+    const int textWidth =
+        renderer.getTextWidth(SMALL_FONT_ID, CROSSPOINT_VERSION);
+    const int textX = slotX + (GfxRenderer::BUTTON_HINT_WIDTH - 1 - textWidth) / 2;
+    const int textY = slotY + GfxRenderer::BUTTON_HINT_TEXT_OFFSET;
+    renderer.drawText(SMALL_FONT_ID, textX, textY, CROSSPOINT_VERSION);
+  }
 
   // Always use standard refresh for settings screen
   renderer.displayBuffer();

@@ -1,5 +1,6 @@
 #pragma once
 #include <GfxRenderer.h>
+#include <I18n.h>
 #include <freertos/FreeRTOS.h>
 #include <freertos/semphr.h>
 #include <freertos/task.h>
@@ -40,11 +41,11 @@ class KeyboardEntryActivity : public Activity {
    * @param onCancel Callback invoked when input is cancelled
    */
   explicit KeyboardEntryActivity(GfxRenderer& renderer, MappedInputManager& mappedInput,
-                                 std::string title = "Enter Text", std::string initialText = "", const int startY = 10,
+                                 std::string title = "", std::string initialText = "", const int startY = 10,
                                  const size_t maxLength = 0, const bool isPassword = false,
                                  OnCompleteCallback onComplete = nullptr, OnCancelCallback onCancel = nullptr)
       : Activity("KeyboardEntry", renderer, mappedInput),
-        title(std::move(title)),
+        title(title.empty() ? TR(ENTER_TEXT) : std::move(title)),
         text(std::move(initialText)),
         startY(startY),
         maxLength(maxLength),

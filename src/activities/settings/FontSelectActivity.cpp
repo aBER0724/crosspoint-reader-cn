@@ -2,9 +2,11 @@
 
 #include <FontManager.h>
 #include <GfxRenderer.h>
+#include <I18n.h>
 
 #include "MappedInputManager.h"
 #include "fontIds.h"
+#include "util/OrientationUtils.h"
 
 void FontSelectActivity::taskTrampoline(void *param) {
   auto *self = static_cast<FontSelectActivity *>(param);
@@ -115,14 +117,15 @@ void FontSelectActivity::render() {
   renderer.clearScreen();
 
   const auto pageWidth = renderer.getScreenWidth();
+  const int topInset = getUiTopInset(renderer);
   // Calculate row height based on current UI font size
   const int rowHeight = 20 + renderer.getUiFontSize() * 2 +
                         10; // 30px/32px/34px for small/medium/large
 
   // Title
-  const char *title = (mode == SelectMode::Reader) ? "Reader External Font"
-                                                   : "UI External Font";
-  renderer.drawCenteredText(UI_12_FONT_ID, 15, title, true,
+  const char *title = (mode == SelectMode::Reader) ? TR(EXT_CHINESE_FONT)
+                                                   : TR(EXT_UI_FONT);
+  renderer.drawCenteredText(UI_12_FONT_ID, topInset + 15, title, true,
                             EpdFontFamily::BOLD);
 
   // Current selected font marker
@@ -131,7 +134,7 @@ void FontSelectActivity::render() {
 
   // Draw options
   for (int i = 0; i < totalItems && i < 20; i++) { // Max 20 items
-    const int itemY = 60 + i * rowHeight;
+    const int itemY = topInset + 60 + i * rowHeight;
     const bool isSelected = (i == selectedIndex);
     const bool isCurrent =
         (i == 0 && currentFont < 0) || (i > 0 && i - 1 == currentFont);
@@ -144,7 +147,7 @@ void FontSelectActivity::render() {
     // Draw text
     if (i == 0) {
       // Built-in option
-      renderer.drawText(UI_10_FONT_ID, 20, itemY, "Built-in (Disabled)",
+      renderer.drawText(UI_10_FONT_ID, 20, itemY, TR(BUILTIN_DISABLED),
                         !isSelected);
     } else {
       // External font
@@ -158,14 +161,15 @@ void FontSelectActivity::render() {
 
     // Draw current selection marker
     if (isCurrent) {
-      const auto width = renderer.getTextWidth(UI_10_FONT_ID, "[ON]");
-      renderer.drawText(UI_10_FONT_ID, pageWidth - 20 - width, itemY, "[ON]",
-                        !isSelected);
+      const std::string marker = std::string("[") + TR(ON) + "]";
+      const auto width = renderer.getTextWidth(UI_10_FONT_ID, marker.c_str());
+      renderer.drawText(UI_10_FONT_ID, pageWidth - 20 - width, itemY,
+                        marker.c_str(), !isSelected);
     }
   }
 
   // Button hints
-  const auto labels = mappedInput.mapLabels("< Back", "Select", "", "");
+  const auto labels = mappedInput.mapLabels(TR(BACK), TR(SELECT), "", "");
   renderer.drawButtonHints(UI_10_FONT_ID, labels.btn1, labels.btn2, labels.btn3,
                            labels.btn4);
 
