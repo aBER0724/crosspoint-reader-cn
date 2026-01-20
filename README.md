@@ -7,6 +7,7 @@
 This project extends the original CrossPoint Reader with Chinese/Japanese localization support and CJK font rendering capabilities.
 
 ![](./docs/images/cover.jpg)
+![](./docs/images/custom-font.jpg)
 
 ## ✨ New Features in CJK Edition
 

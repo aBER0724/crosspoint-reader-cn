@@ -7,6 +7,7 @@
 本项目在原版 CrossPoint Reader 的基础上进行了中文化适配，支持中文界面和中文字体渲染。
 
 ![](./docs/images/cover.jpg)
+![](./docs/images/custom-font.jpg)
 
 ## ✨ CJK版新增功能
 

@@ -7,6 +7,7 @@
 本プロジェクトは、オリジナルのCrossPoint Readerに中国語/日本語のローカライズサポートとCJKフォントレンダリング機能を追加しています。
 
 ![](./docs/images/cover.jpg)
+![](./docs/images/custom-font.jpg)
 
 ## ✨ CJK版の新機能
 
