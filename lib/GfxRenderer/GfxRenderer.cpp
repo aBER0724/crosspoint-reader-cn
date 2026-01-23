@@ -6,16 +6,14 @@
 #include <FontManager.h>
 #include <Utf8.h>
 
-// Built-in CJK UI fonts (embedded in flash) - multiple sizes
-#include "cjk_ui_font.h"    // 16x16 (legacy, not used)
-#include "cjk_ui_font_20.h" // 20x20 (SMALL)
-#include "cjk_ui_font_22.h" // 22x22 (MEDIUM)
-#include "cjk_ui_font_24.h" // 24x24 (LARGE)
+// Built-in CJK UI font (embedded in flash) - 20px only
+#include "cjk_ui_font_20.h"
 
 // Reader font IDs (from fontIds.h) - used to determine when to use external
 // Chinese font UI fonts should NOT use external font
 namespace {
 // UI font IDs that should NOT use external reader font
+// Values must match src/fontIds.h
 constexpr int UI_FONT_IDS[] = {
     -1246724383, // UI_10_FONT_ID
     -359249323,  // UI_12_FONT_ID
@@ -23,19 +21,20 @@ constexpr int UI_FONT_IDS[] = {
 };
 constexpr int UI_FONT_COUNT = sizeof(UI_FONT_IDS) / sizeof(UI_FONT_IDS[0]);
 
+// Reader font IDs - values must match src/fontIds.h
 constexpr int READER_FONT_IDS[] = {
-    -142329172,  // BOOKERLY_12_FONT_ID
-    104246423,   // BOOKERLY_14_FONT_ID
-    1909382491,  // BOOKERLY_16_FONT_ID
-    2056549737,  // BOOKERLY_18_FONT_ID
-    -1646794343, // NOTOSANS_12_FONT_ID
-    -890242897,  // NOTOSANS_14_FONT_ID
-    241925189,   // NOTOSANS_16_FONT_ID
-    1503221336,  // NOTOSANS_18_FONT_ID
-    875216341,   // OPENDYSLEXIC_8_FONT_ID
-    -1234231183, // OPENDYSLEXIC_10_FONT_ID
-    1682200414,  // OPENDYSLEXIC_12_FONT_ID
-    -1851285286  // OPENDYSLEXIC_14_FONT_ID
+    -1905494168, // BOOKERLY_12_FONT_ID
+    1233852315,  // BOOKERLY_14_FONT_ID
+    1588566790,  // BOOKERLY_16_FONT_ID
+    681638548,   // BOOKERLY_18_FONT_ID
+    -1559651934, // NOTOSANS_12_FONT_ID
+    -1014561631, // NOTOSANS_14_FONT_ID
+    -1422711852, // NOTOSANS_16_FONT_ID
+    1237754772,  // NOTOSANS_18_FONT_ID
+    1331369208,  // OPENDYSLEXIC_8_FONT_ID
+    -1374689004, // OPENDYSLEXIC_10_FONT_ID
+    -795539541,  // OPENDYSLEXIC_12_FONT_ID
+    -1676627620  // OPENDYSLEXIC_14_FONT_ID
 };
 constexpr int READER_FONT_COUNT =
     sizeof(READER_FONT_IDS) / sizeof(READER_FONT_IDS[0]);
@@ -81,7 +80,7 @@ int clampExternalAdvance(const int baseWidth, const int spacing) {
   return std::max(1, baseWidth + spacing);
 }
 
-bool hasUiGlyphForText(const char *text, const uint8_t uiFontSize) {
+bool hasUiGlyphForText(const char *text) {
   if (text == nullptr || *text == '\0') {
     return false;
   }
@@ -89,23 +88,8 @@ bool hasUiGlyphForText(const char *text, const uint8_t uiFontSize) {
   const char *ptr = text;
   uint32_t cp;
   while ((cp = utf8NextCodepoint(reinterpret_cast<const uint8_t **>(&ptr)))) {
-    switch (uiFontSize) {
-    case 0:
-      if (CjkUiFont20::hasCjkUiGlyph(cp)) {
-        return true;
-      }
-      break;
-    case 1:
-      if (CjkUiFont22::hasCjkUiGlyph(cp)) {
-        return true;
-      }
-      break;
-    case 2:
-    default:
-      if (CjkUiFont24::hasCjkUiGlyph(cp)) {
-        return true;
-      }
-      break;
+    if (CjkUiFont20::hasCjkUiGlyph(cp)) {
+      return true;
     }
   }
   return false;
@@ -200,8 +184,9 @@ void GfxRenderer::drawPixel(const int x, const int y, const bool state) const {
 
 int GfxRenderer::getTextWidth(const int fontId, const char *text,
                               const EpdFontFamily::Style style) const {
-  if (fontMap.count(fontId) == 0) {
-    Serial.printf("[%lu] [GFX] Font %d not found\n", millis(), fontId);
+  const int effectiveFontId = getEffectiveFontId(fontId);
+  if (fontMap.count(effectiveFontId) == 0) {
+    Serial.printf("[%lu] [GFX] Font %d not found\n", millis(), effectiveFontId);
     return 0;
   }
 
@@ -242,7 +227,7 @@ int GfxRenderer::getTextWidth(const int fontId, const char *text,
         // letters/digits, built-in width for the rest
         int width = 0;
         const char *ptr = text;
-        const EpdFontFamily &fontFamily = fontMap.at(fontId);
+        const EpdFontFamily &fontFamily = fontMap.at(effectiveFontId);
         uint32_t cp;
         while ((
             cp = utf8NextCodepoint(reinterpret_cast<const uint8_t **>(&ptr)))) {
@@ -274,19 +259,7 @@ int GfxRenderer::getTextWidth(const int fontId, const char *text,
     uint32_t testCp;
     while ((testCp = utf8NextCodepoint(
                 reinterpret_cast<const uint8_t **>(&checkPtr)))) {
-      bool inFont = false;
-      switch (uiFontSize) {
-      case 0:
-        inFont = CjkUiFont20::hasCjkUiGlyph(testCp);
-        break;
-      case 1:
-        inFont = CjkUiFont22::hasCjkUiGlyph(testCp);
-        break;
-      case 2:
-        inFont = CjkUiFont24::hasCjkUiGlyph(testCp);
-        break;
-      }
-      if (inFont) {
+      if (CjkUiFont20::hasCjkUiGlyph(testCp)) {
         hasUiFontChar = true;
       }
       if (isCjkCodepoint(testCp)) {
@@ -305,18 +278,7 @@ int GfxRenderer::getTextWidth(const int fontId, const char *text,
       while (
           (cp = utf8NextCodepoint(reinterpret_cast<const uint8_t **>(&ptr)))) {
         // Check if character is in our UI font (includes CJK and English)
-        uint8_t actualWidth = 0;
-        switch (uiFontSize) {
-        case 0:
-          actualWidth = CjkUiFont20::getCjkUiGlyphWidth(cp);
-          break;
-        case 1:
-          actualWidth = CjkUiFont22::getCjkUiGlyphWidth(cp);
-          break;
-        case 2:
-          actualWidth = CjkUiFont24::getCjkUiGlyphWidth(cp);
-          break;
-        }
+        uint8_t actualWidth = CjkUiFont20::getCjkUiGlyphWidth(cp);
 
         if (actualWidth > 0) {
           // Character is in UI font: use actual proportional width
@@ -401,17 +363,25 @@ void GfxRenderer::drawText(const int fontId, const int x, const int y,
             advance = clampExternalAdvance(advance, asciiLetterSpacing);
           }
           renderExternalGlyph(bitmap, extFont, &xpos, yPos, black, advance);
+        } else {
+          // Glyph not found in external font - advance cursor anyway to prevent overlap
+          // Use the font's character width as the advance
+          xpos += extFont->getCharWidth();
         }
       }
       return;
     }
+    // External font not available - fall through to use default reader font
   }
 
-  if (fontMap.count(fontId) == 0) {
-    Serial.printf("[%lu] [GFX] Font %d not found\n", millis(), fontId);
+  // For external reader font IDs (negative, but NOT UI fonts), use a default built-in font as fallback
+  const int effectiveFontId = getEffectiveFontId(fontId);
+
+  if (fontMap.count(effectiveFontId) == 0) {
+    Serial.printf("[%lu] [GFX] Font %d not found\n", millis(), effectiveFontId);
     return;
   }
-  const auto font = fontMap.at(fontId);
+  const auto font = fontMap.at(effectiveFontId);
 
   // no printable characters
   if (!font.hasPrintableChars(text, style)) {
@@ -420,7 +390,7 @@ void GfxRenderer::drawText(const int fontId, const int x, const int y,
         return;
       }
     } else {
-      const bool hasUiGlyph = hasUiGlyphForText(text, uiFontSize);
+      const bool hasUiGlyph = hasUiGlyphForText(text);
       if (!hasUiGlyph && !fm.isUiFontEnabled() && !fm.isExternalFontEnabled()) {
         return;
       }
@@ -429,7 +399,7 @@ void GfxRenderer::drawText(const int fontId, const int x, const int y,
 
   uint32_t cp;
   while ((cp = utf8NextCodepoint(reinterpret_cast<const uint8_t **>(&text)))) {
-    renderChar(fontId, font, cp, &xpos, &yPos, black, style);
+    renderChar(effectiveFontId, font, cp, &xpos, &yPos, black, style);
   }
 }
 
@@ -840,12 +810,13 @@ int GfxRenderer::getScreenHeight() const {
 
 int GfxRenderer::getSpaceWidth(const int fontId) const {
   // Space width should ALWAYS use built-in font (space is never CJK)
-  if (fontMap.count(fontId) == 0) {
-    Serial.printf("[%lu] [GFX] Font %d not found\n", millis(), fontId);
+  const int effectiveFontId = getEffectiveFontId(fontId);
+  if (fontMap.count(effectiveFontId) == 0) {
+    Serial.printf("[%lu] [GFX] Font %d not found\n", millis(), effectiveFontId);
     return 0;
   }
 
-  return fontMap.at(fontId).getGlyph(' ', EpdFontFamily::REGULAR)->advanceX;
+  return fontMap.at(effectiveFontId).getGlyph(' ', EpdFontFamily::REGULAR)->advanceX;
 }
 
 int GfxRenderer::getFontAscenderSize(const int fontId) const {
@@ -861,12 +832,13 @@ int GfxRenderer::getFontAscenderSize(const int fontId) const {
     }
   }
 
-  if (fontMap.count(fontId) == 0) {
-    Serial.printf("[%lu] [GFX] Font %d not found\n", millis(), fontId);
+  const int effectiveFontId = getEffectiveFontId(fontId);
+  if (fontMap.count(effectiveFontId) == 0) {
+    Serial.printf("[%lu] [GFX] Font %d not found\n", millis(), effectiveFontId);
     return 0;
   }
 
-  return fontMap.at(fontId).getData(EpdFontFamily::REGULAR)->ascender;
+  return fontMap.at(effectiveFontId).getData(EpdFontFamily::REGULAR)->ascender;
 }
 
 int GfxRenderer::getLineHeight(const int fontId) const {
@@ -882,12 +854,13 @@ int GfxRenderer::getLineHeight(const int fontId) const {
     }
   }
 
-  if (fontMap.count(fontId) == 0) {
-    Serial.printf("[%lu] [GFX] Font %d not found\n", millis(), fontId);
+  const int effectiveFontId = getEffectiveFontId(fontId);
+  if (fontMap.count(effectiveFontId) == 0) {
+    Serial.printf("[%lu] [GFX] Font %d not found\n", millis(), effectiveFontId);
     return 0;
   }
 
-  return fontMap.at(fontId).getData(EpdFontFamily::REGULAR)->advanceY;
+  return fontMap.at(effectiveFontId).getData(EpdFontFamily::REGULAR)->advanceY;
 }
 
 void GfxRenderer::drawButtonHints(const int fontId, const char *btn1,
@@ -1007,18 +980,7 @@ void GfxRenderer::drawSideButtonHints(const int fontId, const char *topBtn,
         }
       }
       if (hasCjk) {
-        switch (uiFontSize) {
-        case 0:
-          textHeight = CjkUiFont20::CJK_UI_FONT_HEIGHT;
-          break;
-        case 1:
-          textHeight = CjkUiFont22::CJK_UI_FONT_HEIGHT;
-          break;
-        case 2:
-        default:
-          textHeight = CjkUiFont24::CJK_UI_FONT_HEIGHT;
-          break;
-        }
+        textHeight = CjkUiFont20::CJK_UI_FONT_HEIGHT;
       }
 
       // Center the rotated text in the button
@@ -1031,11 +993,12 @@ void GfxRenderer::drawSideButtonHints(const int fontId, const char *topBtn,
 }
 
 int GfxRenderer::getTextHeight(const int fontId) const {
-  if (fontMap.count(fontId) == 0) {
-    Serial.printf("[%lu] [GFX] Font %d not found\n", millis(), fontId);
+  const int effectiveFontId = getEffectiveFontId(fontId);
+  if (fontMap.count(effectiveFontId) == 0) {
+    Serial.printf("[%lu] [GFX] Font %d not found\n", millis(), effectiveFontId);
     return 0;
   }
-  return fontMap.at(fontId).getData(EpdFontFamily::REGULAR)->ascender;
+  return fontMap.at(effectiveFontId).getData(EpdFontFamily::REGULAR)->ascender;
 }
 
 void GfxRenderer::drawTextRotated90CW(const int fontId, const int x,
@@ -1047,18 +1010,19 @@ void GfxRenderer::drawTextRotated90CW(const int fontId, const int x,
     return;
   }
 
-  if (fontMap.count(fontId) == 0) {
-    Serial.printf("[%lu] [GFX] Font %d not found\n", millis(), fontId);
+  const int effectiveFontId = getEffectiveFontId(fontId);
+  if (fontMap.count(effectiveFontId) == 0) {
+    Serial.printf("[%lu] [GFX] Font %d not found\n", millis(), effectiveFontId);
     return;
   }
-  const auto font = fontMap.at(fontId);
+  const auto font = fontMap.at(effectiveFontId);
 
   // No printable characters
   if (!font.hasPrintableChars(text, style)) {
     if (isReaderFont(fontId)) {
       return;
     }
-    if (!hasUiGlyphForText(text, uiFontSize)) {
+    if (!hasUiGlyphForText(text)) {
       return;
     }
   }
@@ -1083,38 +1047,13 @@ void GfxRenderer::drawTextRotated90CW(const int fontId, const int x,
       uint8_t bytesPerChar = 0;
       uint8_t advance = 0;
 
-      switch (uiFontSize) {
-      case 0: // SMALL - 20x20
-        if (CjkUiFont20::hasCjkUiGlyph(cp)) {
-          bitmap = CjkUiFont20::getCjkUiGlyph(cp);
-          fontWidth = CjkUiFont20::CJK_UI_FONT_WIDTH;
-          fontHeight = CjkUiFont20::CJK_UI_FONT_HEIGHT;
-          bytesPerRow = CjkUiFont20::CJK_UI_FONT_BYTES_PER_ROW;
-          bytesPerChar = CjkUiFont20::CJK_UI_FONT_BYTES_PER_CHAR;
-          advance = CjkUiFont20::getCjkUiGlyphWidth(cp);
-        }
-        break;
-      case 1: // MEDIUM - 22x22
-        if (CjkUiFont22::hasCjkUiGlyph(cp)) {
-          bitmap = CjkUiFont22::getCjkUiGlyph(cp);
-          fontWidth = CjkUiFont22::CJK_UI_FONT_WIDTH;
-          fontHeight = CjkUiFont22::CJK_UI_FONT_HEIGHT;
-          bytesPerRow = CjkUiFont22::CJK_UI_FONT_BYTES_PER_ROW;
-          bytesPerChar = CjkUiFont22::CJK_UI_FONT_BYTES_PER_CHAR;
-          advance = CjkUiFont22::getCjkUiGlyphWidth(cp);
-        }
-        break;
-      case 2: // LARGE - 24x24
-      default:
-        if (CjkUiFont24::hasCjkUiGlyph(cp)) {
-          bitmap = CjkUiFont24::getCjkUiGlyph(cp);
-          fontWidth = CjkUiFont24::CJK_UI_FONT_WIDTH;
-          fontHeight = CjkUiFont24::CJK_UI_FONT_HEIGHT;
-          bytesPerRow = CjkUiFont24::CJK_UI_FONT_BYTES_PER_ROW;
-          bytesPerChar = CjkUiFont24::CJK_UI_FONT_BYTES_PER_CHAR;
-          advance = CjkUiFont24::getCjkUiGlyphWidth(cp);
-        }
-        break;
+      if (CjkUiFont20::hasCjkUiGlyph(cp)) {
+        bitmap = CjkUiFont20::getCjkUiGlyph(cp);
+        fontWidth = CjkUiFont20::CJK_UI_FONT_WIDTH;
+        fontHeight = CjkUiFont20::CJK_UI_FONT_HEIGHT;
+        bytesPerRow = CjkUiFont20::CJK_UI_FONT_BYTES_PER_ROW;
+        bytesPerChar = CjkUiFont20::CJK_UI_FONT_BYTES_PER_CHAR;
+        advance = CjkUiFont20::getCjkUiGlyphWidth(cp);
       }
 
       if (bitmap && advance > 0) {
@@ -1364,6 +1303,18 @@ bool GfxRenderer::isReaderFont(const int fontId) {
   return false;
 }
 
+// Get effective font ID, handling fallback for external reader font IDs
+// When external font is selected (negative ID) but not available, fall back to built-in font
+int GfxRenderer::getEffectiveFontId(int fontId) const {
+  // Only negative IDs that are reader fonts need fallback
+  // UI fonts have negative IDs too but should not be redirected
+  if (fontId < 0 && isReaderFont(fontId)) {
+    // This is an external reader font ID, use the first built-in reader font as fallback
+    return READER_FONT_IDS[0];
+  }
+  return fontId;
+}
+
 void GfxRenderer::renderChar(const int fontId, const EpdFontFamily &fontFamily,
                              const uint32_t cp, int *x, const int *y,
                              const bool pixelState,
@@ -1428,21 +1379,7 @@ void GfxRenderer::renderChar(const int fontId, const EpdFontFamily &fontFamily,
       }
 
       // Then check built-in CJK UI font (when UI font is disabled or glyph not found)
-      bool hasGlyph = false;
-      switch (uiFontSize) {
-      case 0: // SMALL - 20x20
-        hasGlyph = CjkUiFont20::hasCjkUiGlyph(cp);
-        break;
-      case 1: // MEDIUM - 22x22
-        hasGlyph = CjkUiFont22::hasCjkUiGlyph(cp);
-        break;
-      case 2: // LARGE - 24x24
-      default:
-        hasGlyph = CjkUiFont24::hasCjkUiGlyph(cp);
-        break;
-      }
-
-      if (hasGlyph) {
+      if (CjkUiFont20::hasCjkUiGlyph(cp)) {
         renderBuiltinCjkGlyph(cp, x, *y, pixelState);
         return;
       }
@@ -1643,41 +1580,13 @@ void GfxRenderer::renderExternalGlyph(const uint8_t *bitmap, ExternalFont *font,
 
 void GfxRenderer::renderBuiltinCjkGlyph(const uint32_t cp, int *x, const int y,
                                         const bool pixelState) const {
-  // Select font based on uiFontSize setting
-  const uint8_t *bitmap = nullptr;
-  uint8_t fontWidth = 0;
-  uint8_t fontHeight = 0;
-  uint8_t bytesPerRow = 0;
-  uint8_t bytesPerChar = 0;
-  uint8_t actualWidth = 0; // Actual advance width for proportional spacing
-
-  switch (uiFontSize) {
-  case 0: // SMALL - 20x20
-    bitmap = CjkUiFont20::getCjkUiGlyph(cp);
-    fontWidth = CjkUiFont20::CJK_UI_FONT_WIDTH;
-    fontHeight = CjkUiFont20::CJK_UI_FONT_HEIGHT;
-    bytesPerRow = CjkUiFont20::CJK_UI_FONT_BYTES_PER_ROW;
-    bytesPerChar = CjkUiFont20::CJK_UI_FONT_BYTES_PER_CHAR;
-    actualWidth = CjkUiFont20::getCjkUiGlyphWidth(cp);
-    break;
-  case 1: // MEDIUM - 22x22
-    bitmap = CjkUiFont22::getCjkUiGlyph(cp);
-    fontWidth = CjkUiFont22::CJK_UI_FONT_WIDTH;
-    fontHeight = CjkUiFont22::CJK_UI_FONT_HEIGHT;
-    bytesPerRow = CjkUiFont22::CJK_UI_FONT_BYTES_PER_ROW;
-    bytesPerChar = CjkUiFont22::CJK_UI_FONT_BYTES_PER_CHAR;
-    actualWidth = CjkUiFont22::getCjkUiGlyphWidth(cp);
-    break;
-  case 2: // LARGE - 24x24
-  default:
-    bitmap = CjkUiFont24::getCjkUiGlyph(cp);
-    fontWidth = CjkUiFont24::CJK_UI_FONT_WIDTH;
-    fontHeight = CjkUiFont24::CJK_UI_FONT_HEIGHT;
-    bytesPerRow = CjkUiFont24::CJK_UI_FONT_BYTES_PER_ROW;
-    bytesPerChar = CjkUiFont24::CJK_UI_FONT_BYTES_PER_CHAR;
-    actualWidth = CjkUiFont24::getCjkUiGlyphWidth(cp);
-    break;
-  }
+  // Use built-in 20px CJK UI font
+  const uint8_t *bitmap = CjkUiFont20::getCjkUiGlyph(cp);
+  const uint8_t fontWidth = CjkUiFont20::CJK_UI_FONT_WIDTH;
+  const uint8_t fontHeight = CjkUiFont20::CJK_UI_FONT_HEIGHT;
+  const uint8_t bytesPerRow = CjkUiFont20::CJK_UI_FONT_BYTES_PER_ROW;
+  const uint8_t bytesPerChar = CjkUiFont20::CJK_UI_FONT_BYTES_PER_CHAR;
+  const uint8_t actualWidth = CjkUiFont20::getCjkUiGlyphWidth(cp);
 
   if (!bitmap || actualWidth == 0) {
     return;

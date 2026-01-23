@@ -30,6 +30,61 @@ constexpr int NUM_SKIP_TAGS = sizeof(SKIP_TAGS) / sizeof(SKIP_TAGS[0]);
 
 bool isWhitespace(const char c) { return c == ' ' || c == '\r' || c == '\n' || c == '\t'; }
 
+// Check if a Unicode codepoint is CJK (Chinese/Japanese/Korean)
+// CJK characters should be treated as individual "words" for line breaking
+bool isCjkCodepointForSplit(const uint32_t cp) {
+  // CJK Unified Ideographs: U+4E00 - U+9FFF
+  if (cp >= 0x4E00 && cp <= 0x9FFF) return true;
+  // CJK Unified Ideographs Extension A: U+3400 - U+4DBF
+  if (cp >= 0x3400 && cp <= 0x4DBF) return true;
+  // CJK Punctuation: U+3000 - U+303F
+  if (cp >= 0x3000 && cp <= 0x303F) return true;
+  // Hiragana: U+3040 - U+309F
+  if (cp >= 0x3040 && cp <= 0x309F) return true;
+  // Katakana: U+30A0 - U+30FF
+  if (cp >= 0x30A0 && cp <= 0x30FF) return true;
+  // CJK Compatibility Ideographs: U+F900 - U+FAFF
+  if (cp >= 0xF900 && cp <= 0xFAFF) return true;
+  // Fullwidth forms: U+FF00 - U+FFEF
+  if (cp >= 0xFF00 && cp <= 0xFFEF) return true;
+  return false;
+}
+
+// Get UTF-8 byte length for a lead byte
+int getUtf8ByteLength(unsigned char leadByte) {
+  if ((leadByte & 0x80) == 0) return 1;       // ASCII: 0xxxxxxx
+  if ((leadByte & 0xE0) == 0xC0) return 2;    // 2-byte: 110xxxxx
+  if ((leadByte & 0xF0) == 0xE0) return 3;    // 3-byte: 1110xxxx
+  if ((leadByte & 0xF8) == 0xF0) return 4;    // 4-byte: 11110xxx
+  return 1;  // Invalid, treat as single byte
+}
+
+// Decode UTF-8 codepoint from bytes
+uint32_t decodeUtf8Codepoint(const char* s, int len) {
+  if (len <= 0) return 0;
+  unsigned char b0 = static_cast<unsigned char>(s[0]);
+
+  if ((b0 & 0x80) == 0) {
+    return b0;  // ASCII
+  }
+  if (len >= 2 && (b0 & 0xE0) == 0xC0) {
+    unsigned char b1 = static_cast<unsigned char>(s[1]);
+    return ((b0 & 0x1F) << 6) | (b1 & 0x3F);
+  }
+  if (len >= 3 && (b0 & 0xF0) == 0xE0) {
+    unsigned char b1 = static_cast<unsigned char>(s[1]);
+    unsigned char b2 = static_cast<unsigned char>(s[2]);
+    return ((b0 & 0x0F) << 12) | ((b1 & 0x3F) << 6) | (b2 & 0x3F);
+  }
+  if (len >= 4 && (b0 & 0xF8) == 0xF0) {
+    unsigned char b1 = static_cast<unsigned char>(s[1]);
+    unsigned char b2 = static_cast<unsigned char>(s[2]);
+    unsigned char b3 = static_cast<unsigned char>(s[3]);
+    return ((b0 & 0x07) << 18) | ((b1 & 0x3F) << 12) | ((b2 & 0x3F) << 6) | (b3 & 0x3F);
+  }
+  return b0;  // Fallback
+}
+
 // given the start and end of a tag, check to see if it matches a known tag
 bool matches(const char* tag_name, const char* possible_tags[], const int possible_tag_count) {
   for (int i = 0; i < possible_tag_count; i++) {
@@ -158,40 +213,76 @@ void XMLCALL ChapterHtmlSlimParser::characterData(void* userData, const XML_Char
     fontStyle = EpdFontFamily::ITALIC;
   }
 
-  for (int i = 0; i < len; i++) {
+  int i = 0;
+  while (i < len) {
+    // Check for whitespace (ASCII only)
     if (isWhitespace(s[i])) {
-      // Currently looking at whitespace, if there's anything in the partWordBuffer, flush it
+      // Flush any buffered content as a word
       if (self->partWordBufferIndex > 0) {
         self->partWordBuffer[self->partWordBufferIndex] = '\0';
         self->currentTextBlock->addWord(self->partWordBuffer, fontStyle);
         self->partWordBufferIndex = 0;
       }
-      // Skip the whitespace char
+      i++;
       continue;
     }
 
     // Skip Zero Width No-Break Space / BOM (U+FEFF) = 0xEF 0xBB 0xBF
-    const XML_Char FEFF_BYTE_1 = static_cast<XML_Char>(0xEF);
-    const XML_Char FEFF_BYTE_2 = static_cast<XML_Char>(0xBB);
-    const XML_Char FEFF_BYTE_3 = static_cast<XML_Char>(0xBF);
-
-    if (s[i] == FEFF_BYTE_1) {
-      // Check if the next two bytes complete the 3-byte sequence
-      if ((i + 2 < len) && (s[i + 1] == FEFF_BYTE_2) && (s[i + 2] == FEFF_BYTE_3)) {
-        // Sequence 0xEF 0xBB 0xBF found!
-        i += 2;    // Skip the next two bytes
-        continue;  // Move to the next iteration
+    const unsigned char b0 = static_cast<unsigned char>(s[i]);
+    if (b0 == 0xEF && (i + 2 < len)) {
+      const unsigned char b1 = static_cast<unsigned char>(s[i + 1]);
+      const unsigned char b2 = static_cast<unsigned char>(s[i + 2]);
+      if (b1 == 0xBB && b2 == 0xBF) {
+        i += 3;
+        continue;
       }
     }
 
-    // If we're about to run out of space, then cut the word off and start a new one
-    if (self->partWordBufferIndex >= MAX_WORD_SIZE) {
+    // Determine UTF-8 character length
+    const int charLen = getUtf8ByteLength(b0);
+    if (i + charLen > len) {
+      // Incomplete UTF-8 sequence at end, just add the byte
+      if (self->partWordBufferIndex < MAX_WORD_SIZE) {
+        self->partWordBuffer[self->partWordBufferIndex++] = s[i];
+      }
+      i++;
+      continue;
+    }
+
+    // Decode the codepoint to check if it's CJK
+    const uint32_t cp = decodeUtf8Codepoint(&s[i], charLen);
+
+    if (isCjkCodepointForSplit(cp)) {
+      // CJK character: flush any buffered ASCII content first
+      if (self->partWordBufferIndex > 0) {
+        self->partWordBuffer[self->partWordBufferIndex] = '\0';
+        self->currentTextBlock->addWord(self->partWordBuffer, fontStyle);
+        self->partWordBufferIndex = 0;
+      }
+
+      // Add this CJK character as its own "word"
+      char cjkWord[5] = {0};  // Max 4 bytes for UTF-8 + null terminator
+      for (int j = 0; j < charLen && j < 4; j++) {
+        cjkWord[j] = s[i + j];
+      }
+      self->currentTextBlock->addWord(cjkWord, fontStyle);
+      i += charLen;
+      continue;
+    }
+
+    // Non-CJK character: buffer it
+    // If we're about to run out of space, flush the buffer first
+    if (self->partWordBufferIndex + charLen >= MAX_WORD_SIZE) {
       self->partWordBuffer[self->partWordBufferIndex] = '\0';
       self->currentTextBlock->addWord(self->partWordBuffer, fontStyle);
       self->partWordBufferIndex = 0;
     }
 
-    self->partWordBuffer[self->partWordBufferIndex++] = s[i];
+    // Add all bytes of this character to the buffer
+    for (int j = 0; j < charLen; j++) {
+      self->partWordBuffer[self->partWordBufferIndex++] = s[i + j];
+    }
+    i += charLen;
   }
 
   // If we have > 750 words buffered up, perform the layout and consume out all but the last line

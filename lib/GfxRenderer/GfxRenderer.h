@@ -38,8 +38,6 @@ private:
   Orientation orientation;
   uint8_t *bwBufferChunks[BW_BUFFER_NUM_CHUNKS] = {nullptr};
   std::map<int, EpdFontFamily> fontMap;
-  // UI font size: 0=20px(SMALL), 1=22px(MEDIUM), 2=24px(LARGE)
-  uint8_t uiFontSize = 0;
   // Dark mode: true = black background, false = white background
   bool darkMode = false;
   // Extra spacing (in pixels) for ASCII letters/digits when using external reader font.
@@ -59,6 +57,8 @@ private:
   void renderBuiltinCjkGlyph(uint32_t cp, int *x, int y, bool pixelState) const;
   // Check if fontId is a reader font (should use external Chinese font)
   static bool isReaderFont(int fontId);
+  // Get effective font ID, handling fallback for external reader font IDs
+  int getEffectiveFontId(int fontId) const;
   void freeBwBufferChunks();
   void rotateCoordinates(int x, int y, int *rotatedX, int *rotatedY) const;
 
@@ -83,10 +83,6 @@ public:
   // transforms)
   void setOrientation(const Orientation o) { orientation = o; }
   Orientation getOrientation() const { return orientation; }
-
-  // UI font size control (0=20px, 1=22px, 2=24px)
-  void setUiFontSize(uint8_t size) { uiFontSize = (size > 2) ? 2 : size; }
-  uint8_t getUiFontSize() const { return uiFontSize; }
 
   // Dark mode control
   void setDarkMode(bool darkMode) { this->darkMode = darkMode; }

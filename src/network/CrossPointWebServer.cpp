@@ -203,7 +203,7 @@ void CrossPointWebServer::handleClient() const {
 }
 
 void CrossPointWebServer::handleRoot() const {
-  server->send(200, "text/html", HomePageHtml);
+  server->send_P(200, "text/html", HomePageHtml);
   Serial.printf("[%lu] [WEB] Served root page\n", millis());
 }
 
@@ -294,7 +294,7 @@ bool CrossPointWebServer::isEpubFile(const String& filename) const {
   return lower.endsWith(".epub");
 }
 
-void CrossPointWebServer::handleFileList() const { server->send(200, "text/html", FilesPageHtml); }
+void CrossPointWebServer::handleFileList() const { server->send_P(200, "text/html", FilesPageHtml); }
 
 void CrossPointWebServer::handleFileListData() const {
   // Get current path from query string (default to root)
