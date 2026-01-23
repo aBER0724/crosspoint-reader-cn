@@ -112,7 +112,7 @@ void FontSelectActivity::render() {
   // Title
   const char *title = (mode == SelectMode::Reader) ? TR(EXT_CHINESE_FONT)
                                                    : TR(EXT_UI_FONT);
-  renderer.drawCenteredText(UI_12_FONT_ID, 15, title, true,
+  renderer.drawCenteredText(UI_20_FONT_ID, 15, title, true,
                             EpdFontFamily::BOLD);
 
   // Current selected font marker
@@ -134,7 +134,7 @@ void FontSelectActivity::render() {
     // Draw text
     if (i == 0) {
       // Built-in option
-      renderer.drawText(UI_10_FONT_ID, 20, itemY, TR(BUILTIN_DISABLED),
+      renderer.drawText(UI_20_FONT_ID, 20, itemY, TR(BUILTIN_DISABLED),
                         !isSelected);
     } else {
       // External font
@@ -142,22 +142,22 @@ void FontSelectActivity::render() {
       if (info) {
         char label[64];
         snprintf(label, sizeof(label), "%s (%dpt)", info->name, info->size);
-        renderer.drawText(UI_10_FONT_ID, 20, itemY, label, !isSelected);
+        renderer.drawText(UI_20_FONT_ID, 20, itemY, label, !isSelected);
       }
     }
 
     // Draw current selection marker
     if (isCurrent) {
       const char* marker = TR(ON);
-      const auto width = renderer.getTextWidth(UI_10_FONT_ID, marker);
-      renderer.drawText(UI_10_FONT_ID, pageWidth - 20 - width, itemY,
+      const auto width = renderer.getTextWidth(UI_20_FONT_ID, marker);
+      renderer.drawText(UI_20_FONT_ID, pageWidth - 20 - width, itemY,
                         marker, !isSelected);
     }
   }
 
   // Button hints
   const auto labels = mappedInput.mapLabels(TR(BACK), TR(SELECT), "", "");
-  renderer.drawButtonHints(UI_10_FONT_ID, labels.btn1, labels.btn2, labels.btn3,
+  renderer.drawButtonHints(UI_20_FONT_ID, labels.btn1, labels.btn2, labels.btn3,
                            labels.btn4);
 
   renderer.displayBuffer();

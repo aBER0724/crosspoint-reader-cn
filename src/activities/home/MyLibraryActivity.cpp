@@ -321,11 +321,11 @@ void MyLibraryActivity::render() const {
 
   // Draw side button hints (up/down navigation on right side)
   // Note: text is rotated 90° CW, so ">" appears as "^" and "<" appears as "v"
-  renderer.drawSideButtonHints(UI_10_FONT_ID, ">", "<");
+  renderer.drawSideButtonHints(UI_20_FONT_ID, ">", "<");
 
   // Draw bottom button hints
   const auto labels = mappedInput.mapLabels(TR(BACK), TR(OPEN), "<", ">");
-  renderer.drawButtonHints(UI_10_FONT_ID, labels.btn1, labels.btn2, labels.btn3, labels.btn4);
+  renderer.drawButtonHints(UI_20_FONT_ID, labels.btn1, labels.btn2, labels.btn3, labels.btn4);
 
   renderer.displayBuffer();
 }
@@ -336,7 +336,7 @@ void MyLibraryActivity::renderRecentTab() const {
   const int bookCount = static_cast<int>(bookTitles.size());
 
   if (bookCount == 0) {
-    renderer.drawText(UI_10_FONT_ID, LEFT_MARGIN, CONTENT_START_Y, TR(NO_BOOKS_FOUND));
+    renderer.drawText(UI_20_FONT_ID, LEFT_MARGIN, CONTENT_START_Y, TR(NO_BOOKS_FOUND));
     return;
   }
 
@@ -348,8 +348,8 @@ void MyLibraryActivity::renderRecentTab() const {
 
   // Draw items
   for (int i = pageStartIndex; i < bookCount && i < pageStartIndex + pageItems; i++) {
-    auto item = renderer.truncatedText(UI_10_FONT_ID, bookTitles[i].c_str(), pageWidth - LEFT_MARGIN - RIGHT_MARGIN);
-    renderer.drawText(UI_10_FONT_ID, LEFT_MARGIN, CONTENT_START_Y + (i % pageItems) * LINE_HEIGHT, item.c_str(),
+    auto item = renderer.truncatedText(UI_20_FONT_ID, bookTitles[i].c_str(), pageWidth - LEFT_MARGIN - RIGHT_MARGIN);
+    renderer.drawText(UI_20_FONT_ID, LEFT_MARGIN, CONTENT_START_Y + (i % pageItems) * LINE_HEIGHT, item.c_str(),
                       i != selectorIndex);
   }
 }
@@ -360,7 +360,7 @@ void MyLibraryActivity::renderFilesTab() const {
   const int fileCount = static_cast<int>(files.size());
 
   if (fileCount == 0) {
-    renderer.drawText(UI_10_FONT_ID, LEFT_MARGIN, CONTENT_START_Y, TR(NO_BOOKS_FOUND));
+    renderer.drawText(UI_20_FONT_ID, LEFT_MARGIN, CONTENT_START_Y, TR(NO_BOOKS_FOUND));
     return;
   }
 
@@ -372,8 +372,8 @@ void MyLibraryActivity::renderFilesTab() const {
 
   // Draw items
   for (int i = pageStartIndex; i < fileCount && i < pageStartIndex + pageItems; i++) {
-    auto item = renderer.truncatedText(UI_10_FONT_ID, files[i].c_str(), pageWidth - LEFT_MARGIN - RIGHT_MARGIN);
-    renderer.drawText(UI_10_FONT_ID, LEFT_MARGIN, CONTENT_START_Y + (i % pageItems) * LINE_HEIGHT, item.c_str(),
+    auto item = renderer.truncatedText(UI_20_FONT_ID, files[i].c_str(), pageWidth - LEFT_MARGIN - RIGHT_MARGIN);
+    renderer.drawText(UI_20_FONT_ID, LEFT_MARGIN, CONTENT_START_Y + (i % pageItems) * LINE_HEIGHT, item.c_str(),
                       i != selectorIndex);
   }
 }

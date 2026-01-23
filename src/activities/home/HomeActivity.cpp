@@ -494,9 +494,9 @@ void HomeActivity::render() {
   } else {
     // No book to continue reading
     const int y =
-        bookY + (bookHeight - renderer.getLineHeight(UI_12_FONT_ID) - renderer.getLineHeight(UI_10_FONT_ID)) / 2;
-    renderer.drawCenteredText(UI_12_FONT_ID, y, TR(NO_OPEN_BOOK));
-    renderer.drawCenteredText(UI_10_FONT_ID, y + renderer.getLineHeight(UI_12_FONT_ID), TR(START_READING));
+        bookY + (bookHeight - renderer.getLineHeight(UI_20_FONT_ID) - renderer.getLineHeight(UI_20_FONT_ID)) / 2;
+    renderer.drawCenteredText(UI_20_FONT_ID, y, TR(NO_OPEN_BOOK));
+    renderer.drawCenteredText(UI_20_FONT_ID, y + renderer.getLineHeight(UI_20_FONT_ID), TR(START_READING));
   }
 
   // --- Bottom menu tiles ---
@@ -533,17 +533,17 @@ void HomeActivity::render() {
     }
 
     const char* label = menuItems[i];
-    const int textWidth = renderer.getTextWidth(UI_10_FONT_ID, label);
+    const int textWidth = renderer.getTextWidth(UI_20_FONT_ID, label);
     const int textX = tileX + (menuTileWidth - textWidth) / 2;
-    const int lineHeight = renderer.getLineHeight(UI_10_FONT_ID);
+    const int lineHeight = renderer.getLineHeight(UI_20_FONT_ID);
     const int textY = tileY + (menuTileHeight - lineHeight) / 2;  // vertically centered assuming y is top of text
 
     // Invert text when the tile is selected, to contrast with the filled background
-    renderer.drawText(UI_10_FONT_ID, textX, textY, label, !selected);
+    renderer.drawText(UI_20_FONT_ID, textX, textY, label, !selected);
   }
 
   const auto labels = mappedInput.mapLabels("", TR(SELECT), TR(DIR_UP), TR(DIR_DOWN));
-  renderer.drawButtonHints(UI_10_FONT_ID, labels.btn1, labels.btn2, labels.btn3, labels.btn4);
+  renderer.drawButtonHints(UI_20_FONT_ID, labels.btn1, labels.btn2, labels.btn3, labels.btn4);
 
   const bool showBatteryPercentage =
       SETTINGS.hideBatteryPercentage != CrossPointSettings::HIDE_BATTERY_PERCENTAGE::HIDE_ALWAYS;

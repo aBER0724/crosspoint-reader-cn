@@ -404,7 +404,7 @@ void CrossPointWebServerActivity::renderServerRunning() const {
   // Use consistent line spacing
   constexpr int LINE_SPACING = 28;  // Space between lines
 
-  renderer.drawCenteredText(UI_12_FONT_ID, 15, TR(FILE_TRANSFER), true, EpdFontFamily::BOLD);
+  renderer.drawCenteredText(UI_20_FONT_ID, 15, TR(FILE_TRANSFER), true, EpdFontFamily::BOLD);
 
   if (isApMode) {
     // AP mode display - center the content block
@@ -464,5 +464,5 @@ void CrossPointWebServerActivity::renderServerRunning() const {
   }
 
   const auto labels = mappedInput.mapLabels(TR(EXIT), "", "", "");
-  renderer.drawButtonHints(UI_10_FONT_ID, labels.btn1, labels.btn2, labels.btn3, labels.btn4);
+  renderer.drawButtonHints(UI_20_FONT_ID, labels.btn1, labels.btn2, labels.btn3, labels.btn4);
 }

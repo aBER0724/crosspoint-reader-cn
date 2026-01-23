@@ -183,7 +183,7 @@ void SettingsActivity::render() const {
   const auto pageHeight = renderer.getScreenHeight();
 
   // Draw header
-  renderer.drawCenteredText(UI_12_FONT_ID, 15, TR(SETTINGS_TITLE), true, EpdFontFamily::BOLD);
+  renderer.drawCenteredText(UI_20_FONT_ID, 15, TR(SETTINGS_TITLE), true, EpdFontFamily::BOLD);
 
   // Draw selection
   renderer.fillRect(0, 60 + selectedCategoryIndex * 30 - 2, pageWidth - 1, 30);
@@ -198,7 +198,7 @@ void SettingsActivity::render() const {
     const int categoryY = 60 + i * 30;  // 30 pixels between categories
 
     // Draw category name (dynamically translated)
-    renderer.drawText(UI_10_FONT_ID, 20, categoryY, I18N.get(categoryStrIds[i]), i != selectedCategoryIndex);
+    renderer.drawText(UI_20_FONT_ID, 20, categoryY, I18N.get(categoryStrIds[i]), i != selectedCategoryIndex);
   }
 
   // Draw version text above button hints
@@ -207,7 +207,7 @@ void SettingsActivity::render() const {
 
   // Draw help text
   const auto labels = mappedInput.mapLabels(TR(BACK), TR(SELECT), "", "");
-  renderer.drawButtonHints(UI_10_FONT_ID, labels.btn1, labels.btn2, labels.btn3, labels.btn4);
+  renderer.drawButtonHints(UI_20_FONT_ID, labels.btn1, labels.btn2, labels.btn3, labels.btn4);
 
   // Always use standard refresh for settings screen
   renderer.displayBuffer();

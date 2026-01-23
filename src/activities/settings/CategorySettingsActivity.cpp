@@ -167,7 +167,7 @@ void CategorySettingsActivity::render() const {
   const auto pageWidth = renderer.getScreenWidth();
   const auto pageHeight = renderer.getScreenHeight();
 
-  renderer.drawCenteredText(UI_12_FONT_ID, 15, categoryName, true, EpdFontFamily::BOLD);
+  renderer.drawCenteredText(UI_20_FONT_ID, 15, categoryName, true, EpdFontFamily::BOLD);
 
   // Draw selection highlight
   renderer.fillRect(0, 60 + selectedSettingIndex * 30 - 2, pageWidth - 1, 30);
@@ -178,7 +178,7 @@ void CategorySettingsActivity::render() const {
     const bool isSelected = (i == selectedSettingIndex);
 
     // Draw setting name (translated)
-    renderer.drawText(UI_10_FONT_ID, 20, settingY, I18N.get(settingsList[i].nameId), !isSelected);
+    renderer.drawText(UI_20_FONT_ID, 20, settingY, I18N.get(settingsList[i].nameId), !isSelected);
 
     // Draw value based on setting type
     std::string valueText;
@@ -192,8 +192,8 @@ void CategorySettingsActivity::render() const {
       valueText = std::to_string(SETTINGS.*(settingsList[i].valuePtr));
     }
     if (!valueText.empty()) {
-      const auto width = renderer.getTextWidth(UI_10_FONT_ID, valueText.c_str());
-      renderer.drawText(UI_10_FONT_ID, pageWidth - 20 - width, settingY, valueText.c_str(), !isSelected);
+      const auto width = renderer.getTextWidth(UI_20_FONT_ID, valueText.c_str());
+      renderer.drawText(UI_20_FONT_ID, pageWidth - 20 - width, settingY, valueText.c_str(), !isSelected);
     }
   }
 
@@ -201,7 +201,7 @@ void CategorySettingsActivity::render() const {
                     pageHeight - 60, CROSSPOINT_VERSION);
 
   const auto labels = mappedInput.mapLabels(TR(BACK), TR(TOGGLE), "", "");
-  renderer.drawButtonHints(UI_10_FONT_ID, labels.btn1, labels.btn2, labels.btn3, labels.btn4);
+  renderer.drawButtonHints(UI_20_FONT_ID, labels.btn1, labels.btn2, labels.btn3, labels.btn4);
 
   renderer.displayBuffer();
 }

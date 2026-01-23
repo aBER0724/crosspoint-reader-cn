@@ -95,10 +95,10 @@ void NetworkModeSelectionActivity::render() const {
   const auto pageHeight = renderer.getScreenHeight();
 
   // Draw header
-  renderer.drawCenteredText(UI_12_FONT_ID, 15, TR(FILE_TRANSFER), true, EpdFontFamily::BOLD);
+  renderer.drawCenteredText(UI_20_FONT_ID, 15, TR(FILE_TRANSFER), true, EpdFontFamily::BOLD);
 
   // Draw subtitle
-  renderer.drawCenteredText(UI_10_FONT_ID, 50, TR(HOW_CONNECT));
+  renderer.drawCenteredText(UI_20_FONT_ID, 50, TR(HOW_CONNECT));
 
   // Menu items and descriptions
   const char* menuItems[] = {TR(JOIN_NETWORK), TR(CREATE_HOTSPOT)};
@@ -120,13 +120,13 @@ void NetworkModeSelectionActivity::render() const {
 
     // Draw text: black=false (white text) when selected (on black background)
     //            black=true (black text) when not selected (on white background)
-    renderer.drawText(UI_10_FONT_ID, 30, itemY, menuItems[i], /*black=*/!isSelected);
+    renderer.drawText(UI_20_FONT_ID, 30, itemY, menuItems[i], /*black=*/!isSelected);
     renderer.drawText(SMALL_FONT_ID, 30, itemY + 22, menuDescs[i], /*black=*/!isSelected);
   }
 
   // Draw help text at bottom
   const auto labels = mappedInput.mapLabels(TR(BACK), TR(SELECT), "", "");
-  renderer.drawButtonHints(UI_10_FONT_ID, labels.btn1, labels.btn2, labels.btn3, labels.btn4);
+  renderer.drawButtonHints(UI_20_FONT_ID, labels.btn1, labels.btn2, labels.btn3, labels.btn4);
 
   renderer.displayBuffer();
 }

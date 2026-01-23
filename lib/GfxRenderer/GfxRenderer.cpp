@@ -15,8 +15,9 @@ namespace {
 // UI font IDs that should NOT use external reader font
 // Values must match src/fontIds.h
 constexpr int UI_FONT_IDS[] = {
-    -1246724383, // UI_10_FONT_ID
-    -359249323,  // UI_12_FONT_ID
+    -1246724383, // UI_10_FONT_ID - for status display (battery, page number, etc.)
+    -359249323,  // UI_12_FONT_ID - for status display
+    -2089201234, // UI_20_FONT_ID - primary UI font (menus, titles, settings)
     1073217904   // SMALL_FONT_ID
 };
 constexpr int UI_FONT_COUNT = sizeof(UI_FONT_IDS) / sizeof(UI_FONT_IDS[0]);

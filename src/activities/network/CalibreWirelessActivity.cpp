@@ -682,11 +682,11 @@ void CalibreWirelessActivity::render() const {
   const auto pageHeight = renderer.getScreenHeight();
 
   // Draw header
-  renderer.drawCenteredText(UI_12_FONT_ID, 30, TR(CALIBRE_WIRELESS), true, EpdFontFamily::BOLD);
+  renderer.drawCenteredText(UI_20_FONT_ID, 30, TR(CALIBRE_WIRELESS), true, EpdFontFamily::BOLD);
 
   // Draw IP address
   const std::string ipAddr = WiFi.localIP().toString().c_str();
-  renderer.drawCenteredText(UI_10_FONT_ID, 60, (std::string(TR(IP_ADDRESS_PREFIX)) + ipAddr).c_str());
+  renderer.drawCenteredText(UI_20_FONT_ID, 60, (std::string(TR(IP_ADDRESS_PREFIX)) + ipAddr).c_str());
 
   // Draw status message
   int statusY = pageHeight / 2 - 40;
@@ -695,12 +695,12 @@ void CalibreWirelessActivity::render() const {
   std::string status = statusMessage;
   size_t pos = 0;
   while ((pos = status.find('\n')) != std::string::npos) {
-    renderer.drawCenteredText(UI_10_FONT_ID, statusY, status.substr(0, pos).c_str());
+    renderer.drawCenteredText(UI_20_FONT_ID, statusY, status.substr(0, pos).c_str());
     statusY += 25;
     status = status.substr(pos + 1);
   }
   if (!status.empty()) {
-    renderer.drawCenteredText(UI_10_FONT_ID, statusY, status.c_str());
+    renderer.drawCenteredText(UI_20_FONT_ID, statusY, status.c_str());
     statusY += 25;
   }
 
@@ -715,12 +715,12 @@ void CalibreWirelessActivity::render() const {
 
   // Draw error if present
   if (!errorMessage.empty()) {
-    renderer.drawCenteredText(UI_10_FONT_ID, pageHeight - 120, errorMessage.c_str());
+    renderer.drawCenteredText(UI_20_FONT_ID, pageHeight - 120, errorMessage.c_str());
   }
 
   // Draw button hints
   const auto labels = mappedInput.mapLabels(TR(BACK), "", "", "");
-  renderer.drawButtonHints(UI_10_FONT_ID, labels.btn1, labels.btn2, labels.btn3, labels.btn4);
+  renderer.drawButtonHints(UI_20_FONT_ID, labels.btn1, labels.btn2, labels.btn3, labels.btn4);
 
   renderer.displayBuffer();
 }
