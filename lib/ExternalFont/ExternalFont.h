@@ -79,9 +79,10 @@ private:
   uint8_t _bytesPerRow = 0;
   uint16_t _bytesPerChar = 0;
 
-  // LRU cache - 256 glyphs for better Chinese text performance
-  // Memory: ~52KB (256 * 204 bytes per entry)
-  static constexpr int CACHE_SIZE = 256; // 256 glyphs
+  // LRU cache - 128 glyphs for better Chinese text performance
+  // Memory: ~26KB (128 * 204 bytes per entry)
+  // Reduced from 256 to save RAM on ESP32-C3
+  static constexpr int CACHE_SIZE = 128; // 128 glyphs
   static constexpr int MAX_GLYPH_BYTES =
       200; // Max 200 bytes per glyph (enough for 33x39)
 
