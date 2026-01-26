@@ -19,6 +19,8 @@ void ExternalFont::unload() {
   _bytesPerRow = 0;
   _bytesPerChar = 0;
   _accessCounter = 0;
+  _lastReadOffset = 0;
+  _hasLastReadOffset = false;
 
   // Clear cache and hash table
   for (int i = 0; i < CACHE_SIZE; i++) {
@@ -118,6 +120,8 @@ bool ExternalFont::load(const char *filepath) {
   }
 
   _isLoaded = true;
+  _lastReadOffset = 0;
+  _hasLastReadOffset = false;
   Serial.printf("[EXT_FONT] Loaded: %s\n", filepath);
   return true;
 }
@@ -162,14 +166,28 @@ bool ExternalFont::readGlyphFromSD(uint32_t codepoint, uint8_t *buffer) {
   }
 
   // Calculate offset
-  uint32_t offset = codepoint * _bytesPerChar;
+  const uint32_t offset = codepoint * _bytesPerChar;
 
-  // Seek and read
-  if (!_fontFile.seek(offset)) {
-    return false;
+  // Sequential read fast path - skip seek if reading consecutive glyphs
+  bool needSeek = true;
+  if (_hasLastReadOffset && _bytesPerChar > 0) {
+    const uint32_t expectedNext = _lastReadOffset + _bytesPerChar;
+    if (offset == expectedNext) {
+      needSeek = false;  // Already at correct position
+    }
+  }
+
+  if (needSeek) {
+    if (!_fontFile.seek(offset)) {
+      _hasLastReadOffset = false;
+      return false;
+    }
   }
 
   size_t bytesRead = _fontFile.read(buffer, _bytesPerChar);
+  _lastReadOffset = offset;
+  _hasLastReadOffset = true;
+
   if (bytesRead != _bytesPerChar) {
     // May be end of file or other error, fill with zeros
     memset(buffer, 0, _bytesPerChar);
@@ -209,8 +227,18 @@ const uint8_t *ExternalFont::getGlyph(uint32_t codepoint) {
     }
   }
 
-  // Read glyph from SD card
+  // Try to read glyph - if fullwidth char fails, try halfwidth fallback
+  uint32_t actualCodepoint = codepoint;
   bool readSuccess = readGlyphFromSD(codepoint, _cache[slot].bitmap);
+
+  // Fullwidth to halfwidth fallback (U+FF01-U+FF5E → U+0021-U+007E)
+  if (!readSuccess && codepoint >= 0xFF01 && codepoint <= 0xFF5E) {
+    uint32_t halfwidth = codepoint - 0xFEE0;
+    readSuccess = readGlyphFromSD(halfwidth, _cache[slot].bitmap);
+    if (readSuccess) {
+      actualCodepoint = halfwidth;
+    }
+  }
 
   // Calculate metrics and check if glyph is empty
   uint8_t minX = _charWidth;

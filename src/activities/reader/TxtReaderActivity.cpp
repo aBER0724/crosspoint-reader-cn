@@ -1,5 +1,6 @@
 #include "TxtReaderActivity.h"
 
+#include <FontManager.h>
 #include <GfxRenderer.h>
 #include <I18n.h>
 #include <SDCardManager.h>
@@ -473,8 +474,10 @@ void TxtReaderActivity::renderPage() {
     pagesUntilFullRefresh--;
   }
 
-  // Grayscale rendering pass (for anti-aliased fonts)
-  if (SETTINGS.textAntiAliasing) {
+  // Grayscale rendering pass - only for built-in fonts (external fonts are 1-bit)
+  FontManager &fm = FontManager::getInstance();
+  const bool useExternalFont = fm.isExternalFontEnabled();
+  if (SETTINGS.textAntiAliasing && !useExternalFont) {
     // Save BW buffer for restoration after grayscale pass
     renderer.storeBwBuffer();
 

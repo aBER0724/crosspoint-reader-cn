@@ -1,6 +1,7 @@
 #pragma once
 #include <SdFat.h>
 
+#include <cstddef>
 #include <utility>
 #include <vector>
 
@@ -19,6 +20,7 @@ class PageElement {
   virtual ~PageElement() = default;
   virtual void render(GfxRenderer& renderer, int fontId, int xOffset, int yOffset) = 0;
   virtual bool serialize(FsFile& file) = 0;
+  virtual void collectCodepoints(std::vector<uint32_t>& out, size_t max) const {}
 };
 
 // a line from a block element
@@ -30,6 +32,7 @@ class PageLine final : public PageElement {
       : PageElement(xPos, yPos), block(std::move(block)) {}
   void render(GfxRenderer& renderer, int fontId, int xOffset, int yOffset) override;
   bool serialize(FsFile& file) override;
+  void collectCodepoints(std::vector<uint32_t>& out, size_t max) const override;
   static std::unique_ptr<PageLine> deserialize(FsFile& file);
 };
 
@@ -38,6 +41,7 @@ class Page {
   // the list of block index and line numbers on this page
   std::vector<std::shared_ptr<PageElement>> elements;
   void render(GfxRenderer& renderer, int fontId, int xOffset, int yOffset) const;
+  void collectCodepoints(std::vector<uint32_t>& out, size_t max) const;
   bool serialize(FsFile& file) const;
   static std::unique_ptr<Page> deserialize(FsFile& file);
 };

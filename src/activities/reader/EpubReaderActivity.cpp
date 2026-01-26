@@ -1,10 +1,13 @@
 #include "EpubReaderActivity.h"
 
 #include <Epub/Page.h>
+#include <FontManager.h>
 #include <FsHelpers.h>
 #include <GfxRenderer.h>
 #include <I18n.h>
 #include <SDCardManager.h>
+
+#include <vector>
 
 #include "CrossPointSettings.h"
 #include "CrossPointState.h"
@@ -390,6 +393,23 @@ void EpubReaderActivity::renderScreen() {
 void EpubReaderActivity::renderContents(std::unique_ptr<Page> page, const int orientedMarginTop,
                                         const int orientedMarginRight, const int orientedMarginBottom,
                                         const int orientedMarginLeft) {
+  // Page-level glyph preloading for better SD card performance
+  FontManager &fm = FontManager::getInstance();
+  ExternalFont *extFont = nullptr;
+  if (fm.isExternalFontEnabled()) {
+    extFont = fm.getActiveFont();
+  }
+
+  if (extFont && extFont->isLoaded()) {
+    const size_t maxLoad = extFont->getCacheCapacity();
+    std::vector<uint32_t> codepoints;
+    codepoints.reserve(maxLoad);
+    page->collectCodepoints(codepoints, maxLoad);
+    if (!codepoints.empty()) {
+      extFont->preloadGlyphs(codepoints.data(), codepoints.size());
+    }
+  }
+
   page->render(renderer, SETTINGS.getReaderFontId(), orientedMarginLeft, orientedMarginTop);
   renderStatusBar(orientedMarginRight, orientedMarginBottom, orientedMarginLeft);
   if (pagesUntilFullRefresh <= 1) {
@@ -403,9 +423,9 @@ void EpubReaderActivity::renderContents(std::unique_ptr<Page> page, const int or
   // Save bw buffer to reset buffer state after grayscale data sync
   renderer.storeBwBuffer();
 
-  // grayscale rendering
-  // TODO: Only do this if font supports it
-  if (SETTINGS.textAntiAliasing) {
+  // grayscale rendering - only for built-in fonts (external fonts are 1-bit)
+  const bool useExternalFont = fm.isExternalFontEnabled();
+  if (SETTINGS.textAntiAliasing && !useExternalFont) {
     renderer.clearScreen(0x00);
     renderer.setRenderMode(GfxRenderer::GRAYSCALE_LSB);
     page->render(renderer, SETTINGS.getReaderFontId(), orientedMarginLeft, orientedMarginTop);

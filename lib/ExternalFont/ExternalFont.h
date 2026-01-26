@@ -1,6 +1,7 @@
 #pragma once
 
 #include <SDCardManager.h>
+#include <cstddef>
 #include <cstdint>
 
 /**
@@ -52,6 +53,7 @@ public:
   uint16_t getBytesPerChar() const { return _bytesPerChar; }
   const char *getFontName() const { return _fontName; }
   uint8_t getFontSize() const { return _fontSize; }
+  size_t getCacheCapacity() const { return CACHE_SIZE; }
 
   bool isLoaded() const { return _isLoaded; }
   void unload();
@@ -79,10 +81,9 @@ private:
   uint8_t _bytesPerRow = 0;
   uint16_t _bytesPerChar = 0;
 
-  // LRU cache - 128 glyphs for better Chinese text performance
-  // Memory: ~26KB (128 * 204 bytes per entry)
-  // Reduced from 256 to save RAM on ESP32-C3
-  static constexpr int CACHE_SIZE = 128; // 128 glyphs
+  // LRU cache - 256 glyphs for better Chinese text performance
+  // Memory: ~52KB (256 * 204 bytes per entry)
+  static constexpr int CACHE_SIZE = 256; // 256 glyphs
   static constexpr int MAX_GLYPH_BYTES =
       200; // Max 200 bytes per glyph (enough for 33x39)
 
@@ -99,6 +100,10 @@ private:
   };
   CacheEntry _cache[CACHE_SIZE];
   uint32_t _accessCounter = 0;
+
+  // Sequential read fast path - skip seek if reading consecutive glyphs
+  uint32_t _lastReadOffset = 0;
+  bool _hasLastReadOffset = false;
 
   // Simple hash table for O(1) cache lookup (codepoint -> cache index, -1 if
   // not cached)
