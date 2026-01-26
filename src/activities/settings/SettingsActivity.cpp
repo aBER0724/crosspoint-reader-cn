@@ -10,11 +10,12 @@
 #include "fontIds.h"
 
 namespace {
-constexpr int displaySettingsCount = 6;
+constexpr int displaySettingsCount = 7;
 const SettingInfo displaySettings[displaySettingsCount] = {
     // Should match with SLEEP_SCREEN_MODE
     SettingInfo::Enum(StrId::SLEEP_SCREEN, &CrossPointSettings::sleepScreen, {StrId::DARK, StrId::LIGHT, StrId::CUSTOM, StrId::COVER, StrId::NONE}),
     SettingInfo::Enum(StrId::SLEEP_COVER_MODE, &CrossPointSettings::sleepScreenCoverMode, {StrId::FIT, StrId::CROP}),
+    SettingInfo::Enum(StrId::COLOR_MODE, &CrossPointSettings::colorMode, {StrId::LIGHT, StrId::DARK}),
     SettingInfo::Enum(StrId::STATUS_BAR, &CrossPointSettings::statusBar, {StrId::NONE, StrId::NO_PROGRESS, StrId::FULL}),
     SettingInfo::Enum(StrId::HIDE_BATTERY, &CrossPointSettings::hideBatteryPercentage, {StrId::NEVER, StrId::IN_READER, StrId::ALWAYS}),
     SettingInfo::Enum(StrId::REFRESH_FREQ, &CrossPointSettings::refreshFrequency,

@@ -1524,6 +1524,8 @@ void GfxRenderer::renderChar(const int fontId, const EpdFontFamily &fontFamily,
         return;
       }
     }
+    // For non-CJK characters in reader font, skip UI font logic and go directly to EPD font
+    // This ensures English text uses the selected reader font (Bookerly/NotoSans/etc.)
   } else {
     // UI font - for CJK characters, prioritize built-in UI font (Flash, fast)
     // Only fall back to external font if built-in doesn't have the glyph

@@ -54,6 +54,9 @@ void EpubReaderActivity::onEnter() {
       break;
   }
 
+  // Configure dark mode based on settings
+  renderer.setDarkMode(SETTINGS.colorMode == CrossPointSettings::COLOR_MODE::DARK_MODE);
+
   renderingMutex = xSemaphoreCreateMutex();
 
   epub->setupCacheDir();
@@ -437,8 +440,9 @@ void EpubReaderActivity::renderContents(std::unique_ptr<Page> page, const int or
     page->render(renderer, SETTINGS.getReaderFontId(), orientedMarginLeft, orientedMarginTop);
     renderer.copyGrayscaleMsbBuffers();
 
-    // display grayscale part
-    renderer.displayGrayBuffer();
+    // display grayscale part - pass darkMode for correct LUT selection
+    const bool darkMode = SETTINGS.colorMode == CrossPointSettings::COLOR_MODE::DARK_MODE;
+    renderer.displayGrayBuffer(false, darkMode);
     renderer.setRenderMode(GfxRenderer::BW);
   }
 

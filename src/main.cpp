@@ -324,6 +324,9 @@ void setup() {
   SETTINGS.loadFromFile();
   KOREADER_STORE.loadFromFile();
 
+  // Apply global dark mode setting
+  renderer.setDarkMode(SETTINGS.colorMode == CrossPointSettings::COLOR_MODE::DARK_MODE);
+
   // Initialize FontManager - scan fonts and load user's font selection
   FontMgr.scanFonts();
   FontMgr.loadSettings();

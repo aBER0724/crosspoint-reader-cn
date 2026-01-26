@@ -53,6 +53,9 @@ void TxtReaderActivity::onEnter() {
       break;
   }
 
+  // Configure dark mode based on settings
+  renderer.setDarkMode(SETTINGS.colorMode == CrossPointSettings::COLOR_MODE::DARK_MODE);
+
   renderingMutex = xSemaphoreCreateMutex();
 
   txt->setupCacheDir();
@@ -491,7 +494,9 @@ void TxtReaderActivity::renderPage() {
     renderLines();
     renderer.copyGrayscaleMsbBuffers();
 
-    renderer.displayGrayBuffer();
+    // display grayscale part - pass darkMode for correct LUT selection
+    const bool darkMode = SETTINGS.colorMode == CrossPointSettings::COLOR_MODE::DARK_MODE;
+    renderer.displayGrayBuffer(false, darkMode);
     renderer.setRenderMode(GfxRenderer::BW);
 
     // Restore BW buffer

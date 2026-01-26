@@ -145,6 +145,9 @@ void CategorySettingsActivity::toggleCurrentSetting() {
   }
 
   SETTINGS.saveToFile();
+
+  // Update dark mode immediately when color mode setting changes
+  renderer.setDarkMode(SETTINGS.colorMode == CrossPointSettings::COLOR_MODE::DARK_MODE);
 }
 
 void CategorySettingsActivity::displayTaskLoop() {
