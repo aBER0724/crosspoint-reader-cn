@@ -19,37 +19,19 @@ except ImportError:
 
 # UI characters needed (extracted from I18n strings + common punctuation)
 UI_CHARS = """
-!#$%&'()*+,-./0123456789:;<=>?@
-ABCDEFGHIJKLMNOPQRSTUVWXYZ[\]^_`
-abcdefghijklmnopqrstuvwxyz{|}~
-启动中休眠进入浏览文件传输设置书库继续阅读无打开的籍从下方开始
-未找到选择章节空已末索引内存错误页面加载
-网络扫描连接失败超时忘记保存密码删除按确定重新任意键
-左右上确认加热点现有供他人
-此址或手机二维码地检查输入文字
-正在搜寻等待指令断更多容创建需要中
-屏幕封显示模式状态栏隐藏电量百分比段落额外间距抗锯齿
-电源短阅读方向前置按钮布局侧边长跳转字体大小行
-颜色边距对齐时间刷新频率语言壁纸清理缓存
-深浅自定义适应裁剪度完整从不始终忽略翻竖横顺逆针
-返确左右上一下紧凑正常宽松两端居分钟
-版本新可用当前中检查数据成功信息
-外内禁停全最后退出主保切换取消打回重试是否关
-大写小决
-英简繁體日本語
-个令信先写制力务卡去受同名命壁多容待得必指控搜收数断服期析步母汉清理符等简系纸统缓获要解订需颜
-ファイル一覧転送定ライブラリ続読開本ありません下書始
-見つかりませんを章なし終わり空のインデックスメモリエラー
-ページ込み範囲外失敗しました
-ネットワークスキャン接続完了タイムアウト忘れるパスワード
-押して再任意ボタン行方法参加ホットスポット作成既存
-デバイスブラウザこのURLまたはスマホQRコードをして
-無線ケーブル送受信待機
-画面カバー非表示常にベル配置向きボン前後サイド押し飛ばし
-フォントサイズ幅余白揃え分
-アップート利チェック新しいバージョン現更失敗完成功
-フ使用可中壊オフオンセ解除左右上回戻キャンセル再度はいいいえ
-検機決漢紙題
+!%&()*+,-./0123456789:;<=>?@，。！、：；？""''「」『』【】〈〉《》〔〕…—―─·•
+ABCDEFGHIJKLMNOPQRSTUVWXYZ[]{}_
+abcdefghijklmnopqrstuvwxyz|«»
+あいうえおかきくけこさしすせそたちつてとなにぬねのはひふへほまみむめもやゆよらりるれろわをん
+がぎぐげござじずぜぞだぢづでどばびぶべぼぱぴぷぺぽ
+ぁぃぅぇぉっゃゅょゔ
+アイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホマミムメモヤユヨラリルレロワヲン
+ガギグゲゴザジズゼゾダヂヅデドバビブベボパピプペポ
+ァィゥェォッャュョヴヵヶー
+一二三四五六七八九十百千万亿
+简体中文日本語启动休眠进入浏览件传输设置书库继续阅读无打开的籍从下方始未找到选择章节已末空索引内存错误页面加载超出范围失败卡网络个扫描连接时忘记保密码删除按确定重新任意键左右认式创建热点现有供他人模将备此在器或用手机维线地址作为检查字正搜等待指令试断收更多容需要显示控制系统屏幕封状态栏隐藏电量百分比段落额外间距抗锯齿源短向前钮布局侧边长跳转大小行母数汉颜色对齐符刷频率同步语言壁纸清理缓户名服务档匹配证请先凭据成功就绪完这所度丢当再次项看串口了解详情深浅自义适应裁剪整不终忽略翻竖横顺针倒逆返回上特紧凑常宽松两端居钟版可是最禁条目命获取订析退主切换消否关写起動覧転送設続読開書見選択終込範囲敗削押確認法参既暗号化済力検機試受信必画隠追間隔電側長漢余白時頻期紙去証初報利能進捗項詳細無視縦計反戻狭普通広両揃え央現部蔵効題得替決
+远程本应置账户配来自
+リモートローカルセクションアップロード元
 """
 
 # Extract unique characters
@@ -60,16 +42,26 @@ def get_unique_chars(text):
             chars.add(c)
     return sorted(chars, key=ord)
 
+def load_font_fitting_cell(font_path, pixel_size):
+    """Load a font and shrink it until ascent+descent fits the cell height."""
+    pt_size = max(1, int(pixel_size))
+    while pt_size > 0:
+        try:
+            font = ImageFont.truetype(font_path, pt_size)
+        except Exception as e:
+            print(f"Error loading font: {e}")
+            return None, None, None, None
+        ascent, descent = font.getmetrics()
+        if ascent + descent <= pixel_size:
+            return font, pt_size, ascent, descent
+        pt_size -= 1
+    return None, None, None, None
+
 def generate_font_header(font_path, pixel_size, output_path):
     """Generate CJK UI font header file."""
 
-    # Calculate font point size (approximately pixel_size * 0.7)
-    pt_size = int(pixel_size * 0.7)
-
-    try:
-        font = ImageFont.truetype(font_path, pt_size)
-    except Exception as e:
-        print(f"Error loading font: {e}")
+    font, pt_size, ascent, descent = load_font_fitting_cell(font_path, pixel_size)
+    if font is None:
         return False
 
     chars = get_unique_chars(UI_CHARS)
@@ -79,6 +71,11 @@ def generate_font_header(font_path, pixel_size, output_path):
     codepoints = []
     widths = []
     bitmaps = []
+
+    # Get font metrics for consistent vertical alignment
+    font_height = ascent + descent
+    # Fixed baseline (from top): align all glyphs to the same baseline to avoid jitter
+    baseline = pixel_size - descent
 
     for char in chars:
         cp = ord(char)
@@ -100,12 +97,18 @@ def generate_font_header(font_path, pixel_size, output_path):
             char_width = pixel_size // 2
             char_height = pixel_size
 
-        # Center character in cell
-        x = (pixel_size - char_width) // 2
-        y = (pixel_size - char_height) // 2 - (bbox[1] if bbox else 0)
+        # Left align with 1px padding if space allows
+        x = 0 if char_width > pixel_size - 2 else 1
+        # Align to a fixed baseline to keep CJK/Latin stable within the same line
+        y = baseline
 
         # Draw character
-        draw.text((x, y), char, font=font, fill=1)
+        try:
+            # Use left-baseline anchor: y is the baseline position
+            draw.text((x, y), char, font=font, fill=1, anchor="ls")
+        except TypeError:
+            # Fallback for older Pillow: approximate baseline by shifting up
+            draw.text((x, y - ascent), char, font=font, fill=1)
 
         # Convert to bytes
         bytes_per_row = (pixel_size + 7) // 8

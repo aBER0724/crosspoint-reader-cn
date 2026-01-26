@@ -280,6 +280,25 @@ enum class StrId : uint16_t {
   CAPS_ON,   // "CAPS" / "大写"
   CAPS_OFF,  // "caps" / "小写"
   OK_BUTTON, // "OK" / "确定"
+  UPLOAD,    // "Upload" / "上传"
+  SYNC_PROGRESS, // "Sync Progress" / "同步进度"
+
+  // === KOReader Sync ===
+  KOREADER_SYNC_TITLE,    // "KOReader Sync" / "KOReader同步"
+  NO_CREDENTIALS_CONFIGURED, // "No credentials configured" / "未配置凭据"
+  SETUP_KOREADER_HINT,    // "Set up KOReader account in Settings" / "请在设置中配置KOReader账户"
+  PROGRESS_FOUND,         // "Progress found!" / "找到进度!"
+  REMOTE,                 // "Remote:" / "远程:"
+  LOCAL,                  // "Local:" / "本地:"
+  APPLY_REMOTE_PROGRESS,  // "Apply remote progress" / "应用远程进度"
+  UPLOAD_LOCAL_PROGRESS,  // "Upload local progress" / "上传本地进度"
+  NO_REMOTE_PROGRESS,     // "No remote progress found" / "未找到远程进度"
+  UPLOAD_CURRENT_POSITION, // "Upload current position?" / "上传当前位置?"
+  PROGRESS_UPLOADED,      // "Progress uploaded!" / "进度已上传!"
+  SYNC_FAILED,            // "Sync failed" / "同步失败"
+  SECTION,                // "Section" / "章节"
+  PAGE,                   // "Page" / "页"
+  FROM_DEVICE,            // "From:" / "来自:"
 
   // === Languages ===
   ENGLISH,          // "English"

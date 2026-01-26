@@ -6,6 +6,7 @@
 #include "KOReaderSyncActivity.h"
 #include "MappedInputManager.h"
 #include "fontIds.h"
+#include <I18n.h>
 
 namespace {
 // Time threshold for treating a long press as a page-up/page-down
@@ -194,7 +195,9 @@ void EpubReaderChapterSelectionActivity::renderScreen() {
 
     if (isSyncItem(itemIndex)) {
       // Draw sync option (at top or bottom)
-      renderer.drawText(UI_10_FONT_ID, 20, displayY, ">> Sync Progress", !isSelected);
+      std::string syncLabel = ">> ";
+      syncLabel += TR(SYNC_PROGRESS);
+      renderer.drawText(UI_10_FONT_ID, 20, displayY, syncLabel.c_str(), !isSelected);
     } else {
       // Draw TOC item (account for top sync offset)
       const int tocIndex = tocIndexFromItemIndex(itemIndex);
@@ -207,7 +210,7 @@ void EpubReaderChapterSelectionActivity::renderScreen() {
     }
   }
 
-  const auto labels = mappedInput.mapLabels("« Back", "Select", "Up", "Down");
+  const auto labels = mappedInput.mapLabels(TR(BACK), TR(SELECT), TR(DIR_UP), TR(DIR_DOWN));
   renderer.drawButtonHints(UI_10_FONT_ID, labels.btn1, labels.btn2, labels.btn3, labels.btn4);
 
   renderer.displayBuffer();
