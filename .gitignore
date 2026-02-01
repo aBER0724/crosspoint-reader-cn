@@ -4,11 +4,8 @@
 .vscode
 lib/EpdFont/fontsrc
 *.generated.h
+.vs
 build
 **/__pycache__/
-
-# AI
-.claude/
-.serena/
-.spec-workflow/
-docs/plans
+/compile_commands.json
+/.cache
