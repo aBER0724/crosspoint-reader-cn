@@ -27,7 +27,7 @@ const char *const I18n::STRINGS_EN[] = {
     "Continue Reading", "No open book", "Start reading below",
 
     // File Browser
-    "Books", "No books found",
+    "Books", "No books found", "No recent books", "Recent", "Files",
 
     // Reader
     "Select Chapter", "No chapters", "End of book", "Empty chapter",
@@ -159,6 +159,9 @@ const char *const I18n::STRINGS_ZH[] = {
     // File Browser
     "\xE4\xB9\xA6\xE7\xB1\x8D",                                     // 书籍
     "\xE6\x9C\xAA\xE6\x89\xBE\xE5\x88\xB0\xE4\xB9\xA6\xE7\xB1\x8D", // 未找到书籍
+    "\xE6\x97\xA0\xE6\x9C\x80\xE8\xBF\x91\xE9\x98\x85\xE9\x98\x85",                 // 无最近阅读
+    "\xE6\x9C\x80\xE8\xBF\x91",                                 // 最近
+    "\xE6\x96\x87\xE4\xBB\xB6",                                 // 文件
 
     // Reader
     "\xE9\x80\x89\xE6\x8B\xA9\xE7\xAB\xA0\xE8\x8A\x82", // 选择章节
@@ -493,6 +496,9 @@ const char *const I18n::STRINGS_JA[] = {
     "\xE6\x9C\xAC\xE3\x81\x8C\xE8\xA6\x8B\xE3\x81\xA4\xE3\x81\x8B\xE3"
     "\x82"
     "\x8A\xE3\x81\xBE\xE3\x81\x9B\xE3\x82\x93", // 本が見つかりません
+    "\xE3\x81\xA9\xE3\x81\x8A\xE3\x81\xBE\xE6\xA5\x85\xA6\xE6\x9C\xAC",            // どの本もない
+    "\xE6\x9C\x80\xE8\xBF\x91",                                 // 最近
+    "\xE3\x83\x95\xE3\x82\xA1\xE3\x82\xA4\xE3\x83\xAB",                    // ファイル
 
     // Reader
     "\xE7\xAB\xA0\xE3\x82\x92\xE9\x81\xB8\xE6\x8A\x9E",             // 章を選択

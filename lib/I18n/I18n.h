@@ -27,6 +27,9 @@ enum class StrId : uint16_t {
   // === File Browser ===
   BOOKS,          // "Books" / "书籍"
   NO_BOOKS_FOUND, // "No books found" / "未找到书籍"
+  NO_RECENT_BOOKS,  // "No recent books" / "无最近阅读"
+  TAB_RECENT,   // "Recent" / "最近"
+  TAB_FILES,    // "Files" / "文件"
 
   // === Reader ===
   SELECT_CHAPTER,  // "Select Chapter" / "选择章节"
@@ -307,7 +310,7 @@ enum class StrId : uint16_t {
   JAPANESE,         // "日本語"
 
   // Sentinel - must be last
-  _COUNT
+  _COUNT = 258
 };
 
 // Language enum
