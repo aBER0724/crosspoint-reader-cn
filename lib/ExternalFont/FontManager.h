@@ -113,7 +113,16 @@ public:
   void loadSettings();
 
 private:
-  FontManager() = default;
+  FontManager() {
+    // Initialize font array
+    for (int i = 0; i < MAX_FONTS; i++) {
+      _fonts[i].filename[0] = '\0';
+      _fonts[i].name[0] = '\0';
+      _fonts[i].size = 0;
+      _fonts[i].width = 0;
+      _fonts[i].height = 0;
+    }
+  }
 
   static constexpr int MAX_FONTS = 16;
   static constexpr const char *FONTS_DIR = "/fonts";

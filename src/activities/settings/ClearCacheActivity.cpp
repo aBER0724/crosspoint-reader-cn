@@ -34,13 +34,13 @@ void ClearCacheActivity::onExit() {
   // Set exit flag to prevent clearCache from accessing mutex after deletion
   isExiting = true;
 
-  // Wait for clearCache task to complete (max 10 seconds)
-  if (clearCacheTaskHandle) {
-    for (int i = 0; i < 1000 && clearCacheTaskHandle != nullptr; i++) {
+  if (clearCacheTaskHandle != nullptr) {
+    int i = 0;
+    while (i < 1000 && clearCacheTaskHandle != nullptr) {
       vTaskDelay(10 / portTICK_PERIOD_MS);
+      i++;
     }
-    // Force delete if still running (shouldn't happen)
-    if (clearCacheTaskHandle) {
+    if (clearCacheTaskHandle != nullptr) {
       vTaskDelete(clearCacheTaskHandle);
       clearCacheTaskHandle = nullptr;
     }

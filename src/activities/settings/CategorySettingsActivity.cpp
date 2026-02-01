@@ -242,7 +242,7 @@ void CategorySettingsActivity::render() const {
 
 bool CategorySettingsActivity::isSettingVisible(const SettingInfo& setting) const {
   if (setting.nameId == StrId::FONT_SIZE) {
-    FontManager& fm = FontManager::getInstance();
+    const FontManager &fm = FontManager::getInstance();
     return !fm.isExternalFontEnabled();
   }
   return true;

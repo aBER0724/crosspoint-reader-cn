@@ -29,7 +29,6 @@ void FontSelectActivity::onEnter() {
   FontMgr.scanFonts();
 
   if (mode == SelectMode::Reader) {
-    // Built-in reader fonts + external fonts
     totalItems = kBuiltinReaderFontCount + FontMgr.getFontCount();
 
     const int currentExternal = FontMgr.getSelectedIndex();
@@ -37,8 +36,7 @@ void FontSelectActivity::onEnter() {
       selectedIndex = kBuiltinReaderFontCount + currentExternal;
     } else {
       const int familyIndex = static_cast<int>(SETTINGS.fontFamily);
-      selectedIndex =
-          (familyIndex >= 0 && familyIndex < kBuiltinReaderFontCount) ? familyIndex : 0;
+      selectedIndex = (familyIndex < kBuiltinReaderFontCount) ? familyIndex : 0;
     }
   } else {
     // Built-in UI font + external fonts
@@ -149,8 +147,7 @@ void FontSelectActivity::render() {
       currentIndex = kBuiltinReaderFontCount + currentExternal;
     } else {
       const int familyIndex = static_cast<int>(SETTINGS.fontFamily);
-      currentIndex =
-          (familyIndex >= 0 && familyIndex < kBuiltinReaderFontCount) ? familyIndex : 0;
+      currentIndex = (familyIndex < kBuiltinReaderFontCount) ? familyIndex : 0;
     }
   } else {
     const int currentFont = FontMgr.getUiSelectedIndex();

@@ -113,18 +113,15 @@ void LanguageSelectActivity::render() {
     "\xE6\x97\xA5\xE6\x9C\xAC\xE8\xAA\x9E"               // 日本語
   };
 
-  // Draw options
-  for (int i = 0; i < totalItems && i < 10; i++) { // Max 10 items
+  for (int i = 0; i < totalItems; i++) {
     const int itemY = 60 + i * rowHeight;
     const bool isSelected = (i == selectedIndex);
     const bool isCurrent = (i == currentLang);
 
-    // Draw selection highlight
     if (isSelected) {
       renderer.fillRect(0, itemY - 2, pageWidth - 1, rowHeight);
     }
 
-    // Draw language name
     renderer.drawText(UI_20_FONT_ID, 20, itemY, langNames[i], !isSelected);
 
     // Draw current selection marker

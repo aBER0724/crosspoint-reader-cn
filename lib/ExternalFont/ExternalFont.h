@@ -16,7 +16,17 @@
  */
 class ExternalFont {
 public:
-  ExternalFont() = default;
+  ExternalFont() {
+    // Initialize cache and hash table
+    for (int i = 0; i < CACHE_SIZE; i++) {
+      _cache[i].codepoint = 0xFFFFFFFF;
+      _cache[i].lastUsed = 0;
+      _cache[i].notFound = false;
+      _cache[i].minX = 0;
+      _cache[i].advanceX = 0;
+      _hashTable[i] = -1;
+    }
+  }
   ~ExternalFont();
 
   // Disable copy

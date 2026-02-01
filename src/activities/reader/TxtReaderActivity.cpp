@@ -477,8 +477,7 @@ void TxtReaderActivity::renderPage() {
     pagesUntilFullRefresh--;
   }
 
-  // Grayscale rendering pass - only for built-in fonts (external fonts are 1-bit)
-  FontManager &fm = FontManager::getInstance();
+  const FontManager &fm = FontManager::getInstance();
   const bool useExternalFont = fm.isExternalFontEnabled();
   if (SETTINGS.textAntiAliasing && !useExternalFont) {
     // Save BW buffer for restoration after grayscale pass
