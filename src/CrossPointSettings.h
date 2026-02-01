@@ -32,7 +32,14 @@ class CrossPointSettings {
   // Front button layout options
   // Default: Back, Confirm, Left, Right
   // Swapped: Left, Right, Back, Confirm
-  enum FRONT_BUTTON_LAYOUT { BACK_CONFIRM_LEFT_RIGHT = 0, LEFT_RIGHT_BACK_CONFIRM = 1, LEFT_BACK_CONFIRM_RIGHT = 2 };
+  // Swapped: Left, Back, Confirm, Right
+  // Swapped: Back, Confirm, Right, Left
+  enum FRONT_BUTTON_LAYOUT {
+    BACK_CONFIRM_LEFT_RIGHT = 0,
+    LEFT_RIGHT_BACK_CONFIRM = 1,
+    LEFT_BACK_CONFIRM_RIGHT = 2,
+    BACK_CONFIRM_RIGHT_LEFT = 3
+  };
 
   // Side button layout options
   // Default: Previous, Next
@@ -109,6 +116,7 @@ class CrossPointSettings {
     return (shortPwrBtn == CrossPointSettings::SHORT_PWRBTN::SLEEP) ? 10 : 400;
   }
   int getReaderFontId() const;
+  int getBuiltInReaderFontId() const;
 
   bool saveToFile() const;
   bool loadFromFile();

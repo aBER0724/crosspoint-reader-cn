@@ -22,9 +22,11 @@ const SettingInfo displaySettings[displaySettingsCount] = {
                       {StrId::PAGES_1, StrId::PAGES_5, StrId::PAGES_10, StrId::PAGES_15, StrId::PAGES_30}),
     SettingInfo::Action(StrId::EXT_UI_FONT)};
 
-constexpr int readerSettingsCount = 8;
+constexpr int readerSettingsCount = 9;
 const SettingInfo readerSettings[readerSettingsCount] = {
     SettingInfo::Action(StrId::EXT_READER_FONT),
+    SettingInfo::Enum(StrId::FONT_SIZE, &CrossPointSettings::fontSize,
+                      {StrId::SMALL, StrId::MEDIUM, StrId::LARGE, StrId::X_LARGE}),
     SettingInfo::Enum(StrId::LINE_SPACING, &CrossPointSettings::lineSpacing, {StrId::TIGHT, StrId::NORMAL, StrId::WIDE}),
     SettingInfo::Value(StrId::SCREEN_MARGIN, &CrossPointSettings::screenMargin, {5, 40, 5}),
     SettingInfo::Enum(StrId::PARA_ALIGNMENT, &CrossPointSettings::paragraphAlignment,
@@ -38,7 +40,8 @@ const SettingInfo readerSettings[readerSettingsCount] = {
 constexpr int controlsSettingsCount = 4;
 const SettingInfo controlsSettings[controlsSettingsCount] = {
     SettingInfo::Enum(StrId::FRONT_BTN_LAYOUT, &CrossPointSettings::frontButtonLayout,
-                      {StrId::FRONT_LAYOUT_BCLR, StrId::FRONT_LAYOUT_LRBC, StrId::FRONT_LAYOUT_LBCR}),
+                      {StrId::FRONT_LAYOUT_BCLR, StrId::FRONT_LAYOUT_LRBC, StrId::FRONT_LAYOUT_LBCR,
+                       StrId::FRONT_LAYOUT_BCRL}),
     SettingInfo::Enum(StrId::SIDE_BTN_LAYOUT, &CrossPointSettings::sideButtonLayout,
                       {StrId::PREV_NEXT, StrId::NEXT_PREV}),
     SettingInfo::Toggle(StrId::LONG_PRESS_SKIP, &CrossPointSettings::longPressChapterSkip),

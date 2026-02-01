@@ -1,12 +1,12 @@
 #include <Arduino.h>
 #include <EInkDisplay.h>
 #include <Epub.h>
+#include <FontManager.h>
 #include <GfxRenderer.h>
-#include <InputManager.h>
+#include <HalGPIO.h>
+#include <I18n.h>
 #include <SDCardManager.h>
 #include <SPI.h>
-#include <FontManager.h>
-#include <I18n.h>
 #include <builtinFonts/all.h>
 
 #include <cstring>
@@ -29,20 +29,9 @@
 #include "fontIds.h"
 
 #define SPI_FQ 40000000
-// Display SPI pins (custom pins for XteinkX4, not hardware SPI defaults)
-#define EPD_SCLK 8   // SPI Clock
-#define EPD_MOSI 10  // SPI MOSI (Master Out Slave In)
-#define EPD_CS 21    // Chip Select
-#define EPD_DC 4     // Data/Command
-#define EPD_RST 5    // Reset
-#define EPD_BUSY 6   // Busy
-
-#define UART0_RXD 20  // Used for USB connection detection
-
-#define SD_SPI_MISO 7
 
 EInkDisplay einkDisplay(EPD_SCLK, EPD_MOSI, EPD_CS, EPD_DC, EPD_RST, EPD_BUSY);
-InputManager inputManager;
+HalGPIO inputManager;
 MappedInputManager mappedInputManager(inputManager);
 GfxRenderer renderer(einkDisplay);
 Activity* currentActivity;
@@ -309,7 +298,7 @@ void setup() {
   pinMode(BAT_GPIO0, INPUT);
 
   // Initialize SPI with custom pins
-  SPI.begin(EPD_SCLK, SD_SPI_MISO, EPD_MOSI, EPD_CS);
+  SPI.begin(EPD_SCLK, SPI_MISO, EPD_MOSI, EPD_CS);
 
   // SD Card Initialization
   // We need 6 open files concurrently when parsing a new chapter
@@ -323,6 +312,7 @@ void setup() {
 
   SETTINGS.loadFromFile();
   KOREADER_STORE.loadFromFile();
+  renderer.setReaderFallbackFontId(SETTINGS.getBuiltInReaderFontId());
 
   // Apply global dark mode setting
   renderer.setDarkMode(SETTINGS.colorMode == CrossPointSettings::COLOR_MODE::DARK_MODE);

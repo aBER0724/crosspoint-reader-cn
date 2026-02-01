@@ -65,7 +65,7 @@ const char *const I18n::STRINGS_EN[] = {
     "Sleep Screen", "Sleep Screen Cover Mode", "Status Bar", "Hide Battery %",
     "Extra Paragraph Spacing", "Text Anti-Aliasing", "Short Power Button Click",
     "Reading Orientation", "Front Button Layout", "Side Button Layout (reader)",
-    "Long-press Chapter Skip", "Reader Font Family", "External Reader Font", "Reader Font", "UI Font",
+    "Long-press Chapter Skip", "Reader Font Family", "Reader Font", "Reader Font", "UI Font",
     "UI Font Size", "Reader Line Spacing",
     "ASCII Letter Spacing", "ASCII Digit Spacing", "CJK Spacing", "Color Mode",
     "Reader Screen Margin", "Reader Paragraph Alignment", "Hyphenation", "Time to Sleep",
@@ -94,6 +94,7 @@ const char *const I18n::STRINGS_EN[] = {
     "Full", "Never", "In Reader", "Always", "Ignore", "Sleep", "Page Turn",
     "Portrait", "Landscape CW", "Inverted", "Landscape CCW",
     "Bck, Cnfrm, Lft, Rght", "Lft, Rght, Bck, Cnfrm", "Lft, Bck, Cnfrm, Rght",
+    "Bck, Cnfrm, Rght, Lft",
     "Prev/Next", "Next/Prev", "Bookerly", "Noto Sans", "Open Dyslexic", "Small",
     "Medium",
     "Large", "X Large", "Tight", "Normal", "Wide", "Justify", "Left", "Center",
@@ -107,7 +108,7 @@ const char *const I18n::STRINGS_EN[] = {
     "Press and hold power button to turn back on",
 
     // Font Selection
-    "External Font", "Built-in (Disabled)",
+    "External Font", "Built-in",
 
     // OPDS Browser
     "No entries found", "Downloading...", "Download failed", "Error:",
@@ -347,6 +348,7 @@ const char *const I18n::STRINGS_ZH[] = {
     "\xE8\xBF\x94\xE5\x9B\x9E\x2C\x20\xE7\xA1\xAE\xE8\xAE\xA4\x2C\x20\xE5\xB7\xA6\x2C\x20\xE5\x8F\xB3", // 返回, 确认, 左, 右
     "\xE5\xB7\xA6\x2C\x20\xE5\x8F\xB3\x2C\x20\xE8\xBF\x94\xE5\x9B\x9E\x2C\x20\xE7\xA1\xAE\xE8\xAE\xA4", // 左, 右, 返回, 确认
     "\xE5\xB7\xA6\x2C\x20\xE8\xBF\x94\xE5\x9B\x9E\x2C\x20\xE7\xA1\xAE\xE8\xAE\xA4\x2C\x20\xE5\x8F\xB3", // 左, 返回, 确认, 右
+    "\xE8\xBF\x94\xE5\x9B\x9E\x2C\x20\xE7\xA1\xAE\xE8\xAE\xA4\x2C\x20\xE5\x8F\xB3\x2C\x20\xE5\xB7\xA6", // 返回, 确认, 右, 左
     "\xE4\xB8\x8A\xE4\xB8\x80\xE9\xA1\xB5/"
     "\xE4\xB8\x8B\xE4\xB8\x80\xE9\xA1\xB5", // 上一页/下一页
     "\xE4\xB8\x8B\xE4\xB8\x80\xE9\xA1\xB5/"
@@ -391,7 +393,7 @@ const char *const I18n::STRINGS_ZH[] = {
 
     // Font Selection
     "\xE5\xA4\x96\xE7\xBD\xAE\xE5\xAD\x97\xE4\xBD\x93", // 外置字体
-    "\xE5\x86\x85\xE7\xBD\xAE(\xE5\xB7\xB2\xE7\xA6\x81\xE7\x94\xA8)", // 内置(已禁用)
+    "\xE5\x86\x85\xE7\xBD\xAE", // 内置
 
     // OPDS Browser
     "\xE6\x97\xA0\xE6\x9D\xA1\xE7\x9B\xAE",    // 无条目
@@ -764,6 +766,7 @@ const char *const I18n::STRINGS_JA[] = {
     "\xE6\x88\xBB\xE3\x82\x8B\x2C\x20\xE7\xA2\xBA\xE8\xAA\x8D\x2C\x20\xE5\xB7\xA6\x2C\x20\xE5\x8F\xB3", // 戻る, 確認, 左, 右
     "\xE5\xB7\xA6\x2C\x20\xE5\x8F\xB3\x2C\x20\xE6\x88\xBB\xE3\x82\x8B\x2C\x20\xE7\xA2\xBA\xE8\xAA\x8D", // 左, 右, 戻る, 確認
     "\xE5\xB7\xA6\x2C\x20\xE6\x88\xBB\xE3\x82\x8B\x2C\x20\xE7\xA2\xBA\xE8\xAA\x8D\x2C\x20\xE5\x8F\xB3", // 左, 戻る, 確認, 右
+    "\xE6\x88\xBB\xE3\x82\x8B\x2C\x20\xE7\xA2\xBA\xE8\xAA\x8D\x2C\x20\xE5\x8F\xB3\x2C\x20\xE5\xB7\xA6", // 戻る, 確認, 右, 左
     "\xE5\x89\x8D/\xE6\xAC\xA1",    // 前/次
     "\xE6\xAC\xA1/\xE5\x89\x8D",    // 次/前
     "Bookerly", "Noto Sans", "Open Dyslexic",
@@ -827,7 +830,7 @@ const char *const I18n::STRINGS_JA[] = {
     "\xE5\xA4\x96\xE9\x83\xA8\xE3\x83\x95\xE3\x82\xA9\xE3\x83\xB3\xE3"
     "\x83"
     "\x88",                                               // 外部フォント
-    "\xE5\x86\x85\xE8\x94\xB5(\xE7\x84\xA1\xE5\x8A\xB9)", // 内蔵(無効)
+    "\xE5\x86\x85\xE8\x94\xB5", // 内蔵
 
     // OPDS Browser
     "\xE3\x82\xA8\xE3\x83\xB3\xE3\x83\x88\xE3\x83\xAA\xE3\x81\x8C\xE8\xA6"

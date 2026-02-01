@@ -93,7 +93,13 @@ public:
    * Check if external UI font is enabled
    */
   bool isUiFontEnabled() const {
-    return _selectedUiIndex >= 0 && _activeUiFont.isLoaded();
+    if (_selectedUiIndex < 0) {
+      return false;
+    }
+    if (isUiSharingReaderFont()) {
+      return _activeFont.isLoaded();
+    }
+    return _activeUiFont.isLoaded();
   }
 
   /**
@@ -121,6 +127,10 @@ private:
 
   ExternalFont _activeFont;   // Reader font
   ExternalFont _activeUiFont; // UI font
+
+  bool isUiSharingReaderFont() const {
+    return _selectedUiIndex >= 0 && _selectedUiIndex == _selectedIndex;
+  }
 
   /**
    * Load selected reader font file

@@ -270,40 +270,29 @@ int GfxRenderer::getTextWidth(const int fontId, const char *text,
     if (fm.isExternalFontEnabled()) {
       ExternalFont *extFont = fm.getActiveFont();
       if (extFont) {
-        const int extCharWidth = extFont->getCharWidth();
-        const int cjkAdvance = clampExternalAdvance(extCharWidth, cjkSpacing);
-
-        // FAST PATH: Single CJK character (3-byte UTF-8, most common after CJK
-        // splitting) Check: first byte is 0xE0-0xEF (3-byte UTF-8 lead),
-        // followed by continuation bytes, then null
-        const auto b0 = static_cast<unsigned char>(text[0]);
-        if (b0 >= 0xE0 && b0 <= 0xEF && text[3] == '\0') {
-          const auto b1 = static_cast<unsigned char>(text[1]);
-          const auto b2 = static_cast<unsigned char>(text[2]);
-          if ((b1 & 0xC0) == 0x80 && (b2 & 0xC0) == 0x80) {
-            // This is a single 3-byte UTF-8 character
-            // Decode codepoint to check if it's CJK
-            const uint32_t cp =
-                ((b0 & 0x0F) << 12) | ((b1 & 0x3F) << 6) | (b2 & 0x3F);
-            if (isCjkCodepoint(cp)) {
-              return extCharWidth;
-            }
-          }
-        }
-
-        // Mixed width calculation: use external font width ONLY for CJK
-        // ASCII letters/digits use built-in font (Flash is faster)
         int width = 0;
         const char *ptr = text;
         const EpdFontFamily &fontFamily = fontMap.at(effectiveFontId);
         uint32_t cp;
         while ((
             cp = utf8NextCodepoint(reinterpret_cast<const uint8_t **>(&ptr)))) {
-          if (isCjkCodepoint(cp)) {
-            // CJK character: use external font width
-            width += cjkAdvance;
+          const uint8_t *bitmap = extFont->getGlyph(cp);
+          if (bitmap) {
+            uint8_t advanceX = extFont->getCharWidth();
+            extFont->getGlyphMetrics(cp, nullptr, &advanceX);
+            int spacing = 0;
+            if (isCjkCodepoint(cp)) {
+              spacing = cjkSpacing;
+            } else if (isAsciiDigit(cp)) {
+              spacing = asciiDigitSpacing;
+            } else if (isAsciiLetter(cp)) {
+              spacing = asciiLetterSpacing;
+            }
+            width += clampExternalAdvance(advanceX, spacing);
+          } else if (isCjkCodepoint(cp) && CjkUiFont20::hasCjkUiGlyph(cp)) {
+            width += CjkUiFont20::getCjkUiGlyphWidth(cp);
           } else {
-            // Non-CJK character: use built-in font width
+            // Fall back to built-in reader font width
             const EpdGlyph *glyph = fontFamily.getGlyph(cp, style);
             if (glyph) {
               width += glyph->advanceX;
@@ -1485,9 +1474,9 @@ int GfxRenderer::getEffectiveFontId(int fontId) const {
   // Only negative IDs that are reader fonts need fallback
   // UI fonts have negative IDs too but should not be redirected
   if (fontId < 0 && isReaderFont(fontId)) {
-    // This is an external reader font ID, use the first built-in reader font as
-    // fallback
-    return READER_FONT_IDS[0];
+    // This is an external reader font ID, use the selected built-in reader
+    // font as fallback
+    return readerFallbackFontId != 0 ? readerFallbackFontId : READER_FONT_IDS[0];
   }
   return fontId;
 }
@@ -1501,31 +1490,35 @@ void GfxRenderer::renderChar(const int fontId, const EpdFontFamily &fontFamily,
   // Cache character classification results to avoid repeated calls (perf opt)
   const bool isCjk = isCjkCodepoint(cp);
 
-  // Try external font ONLY for CJK characters
-  // ASCII letters/digits should use built-in font (Flash is much faster than SD)
+  // Prefer external reader font when enabled; fall back to built-in only if missing
   if (isReaderFont(fontId)) {
-    // Reader font - use external font ONLY for CJK characters
-    if (isCjk && fm.isExternalFontEnabled()) {
+    if (fm.isExternalFontEnabled()) {
       ExternalFont *extFont = fm.getActiveFont();
       if (extFont) {
         const uint8_t *bitmap = extFont->getGlyph(cp);
         if (bitmap) {
-          int advance = clampExternalAdvance(extFont->getCharWidth(), cjkSpacing);
+          uint8_t advanceX = extFont->getCharWidth();
+          extFont->getGlyphMetrics(cp, nullptr, &advanceX);
+          int spacing = 0;
+          if (isCjk) {
+            spacing = cjkSpacing;
+          } else if (isAsciiDigit(cp)) {
+            spacing = asciiDigitSpacing;
+          } else if (isAsciiLetter(cp)) {
+            spacing = asciiLetterSpacing;
+          }
+          int advance = clampExternalAdvance(advanceX, spacing);
           renderExternalGlyph(bitmap, extFont, x, *y, pixelState, advance);
           return;
         }
-        // Glyph not found in external font - try built-in UI font
-        if (CjkUiFont20::hasCjkUiGlyph(cp)) {
+        // Missing glyph in external font - try built-in CJK UI font for CJK
+        if (isCjk && CjkUiFont20::hasCjkUiGlyph(cp)) {
           renderBuiltinCjkGlyph(cp, x, *y, pixelState);
           return;
         }
-        // CJK character not in any CJK font - use default width
-        *x += extFont->getCharWidth();
-        return;
+        // Fall through to built-in reader font rendering below
       }
     }
-    // For non-CJK characters in reader font, skip UI font logic and go directly to EPD font
-    // This ensures English text uses the selected reader font (Bookerly/NotoSans/etc.)
   } else {
     // UI font - for CJK characters, prioritize built-in UI font (Flash, fast)
     // Only fall back to external font if built-in doesn't have the glyph

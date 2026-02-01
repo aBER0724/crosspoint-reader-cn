@@ -116,7 +116,7 @@ enum class StrId : uint16_t {
   SIDE_BTN_LAYOUT,  // "Side Button Layout (reader)" / "侧边按钮布局"
   LONG_PRESS_SKIP,  // "Long-press Chapter Skip" / "长按跳转章节"
   FONT_FAMILY,      // "Reader Font Family" / "阅读字体"
-  EXT_READER_FONT,  // "External Reader Font" / "阅读器字体"
+  EXT_READER_FONT,  // "Reader Font" / "阅读器字体"
   EXT_CHINESE_FONT, // "Reader Font" / "阅读器字体"
   EXT_UI_FONT,      // "External UI Font" / "UI字体"
   FONT_SIZE,        // "Reader Font Size" / "字体大小"
@@ -196,6 +196,7 @@ enum class StrId : uint16_t {
   FRONT_LAYOUT_BCLR, // "Bck, Cnfrm, Lft, Rght" / "返回, 确认, 左, 右"
   FRONT_LAYOUT_LRBC, // "Lft, Rght, Bck, Cnfrm" / "左, 右, 返回, 确认"
   FRONT_LAYOUT_LBCR, // "Lft, Bck, Cnfrm, Rght" / "左, 返回, 确认, 右"
+  FRONT_LAYOUT_BCRL, // "Bck, Cnfrm, Rght, Lft" / "返回, 确认, 右, 左"
   PREV_NEXT,     // "Prev/Next" / "上一页/下一页"
   NEXT_PREV,     // "Next/Prev" / "下一页/上一页"
   BOOKERLY,      // "Bookerly"
@@ -238,7 +239,7 @@ enum class StrId : uint16_t {
 
   // === Font Selection ===
   EXTERNAL_FONT,    // "External Font" / "外置字体"
-  BUILTIN_DISABLED, // "Built-in (Disabled)" / "内置(已禁用)"
+  BUILTIN_DISABLED, // "Built-in" / "内置"
 
   // === OPDS Browser ===
   NO_ENTRIES,        // "No entries found" / "无条目"

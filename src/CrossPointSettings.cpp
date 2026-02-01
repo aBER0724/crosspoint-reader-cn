@@ -210,6 +210,10 @@ int CrossPointSettings::getReaderFontId() const {
   }
 
   // Fall back to built-in font selection
+  return getBuiltInReaderFontId();
+}
+
+int CrossPointSettings::getBuiltInReaderFontId() const {
   switch (fontFamily) {
     case BOOKERLY:
     default:

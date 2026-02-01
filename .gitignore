@@ -9,3 +9,8 @@ build
 **/__pycache__/
 /compile_commands.json
 /.cache
+
+docs/plans/
+.spec-workflow/
+.serena/
+.claude/

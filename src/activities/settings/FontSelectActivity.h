@@ -24,8 +24,8 @@ public:
 
 private:
   SelectMode mode;
-  int selectedIndex = 0; // 0 = Built-in, 1+ = external fonts
-  int totalItems = 1;    // At least "Built-in" option
+  int selectedIndex = 0; // Index in the current list
+  int totalItems = 1;    // At least one built-in option
   const std::function<void()> onBack;
 
   void render();

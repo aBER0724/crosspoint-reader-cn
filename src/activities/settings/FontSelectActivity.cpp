@@ -4,8 +4,19 @@
 #include <GfxRenderer.h>
 #include <I18n.h>
 
+#include "CrossPointSettings.h"
 #include "MappedInputManager.h"
 #include "fontIds.h"
+
+namespace {
+constexpr int kBuiltinReaderFontCount = 3;
+constexpr CrossPointSettings::FONT_FAMILY kBuiltinReaderFonts[kBuiltinReaderFontCount] = {
+    CrossPointSettings::BOOKERLY,
+    CrossPointSettings::NOTOSANS,
+    CrossPointSettings::OPENDYSLEXIC};
+constexpr StrId kBuiltinReaderFontLabels[kBuiltinReaderFontCount] = {
+    StrId::BOOKERLY, StrId::NOTO_SANS, StrId::OPEN_DYSLEXIC};
+}  // namespace
 
 void FontSelectActivity::onEnter() {
   ActivityWithSubactivity::onEnter();
@@ -17,16 +28,24 @@ void FontSelectActivity::onEnter() {
   // Scan fonts
   FontMgr.scanFonts();
 
-  // Total items = 1 (Built-in) + external font count
-  totalItems = 1 + FontMgr.getFontCount();
+  if (mode == SelectMode::Reader) {
+    // Built-in reader fonts + external fonts
+    totalItems = kBuiltinReaderFontCount + FontMgr.getFontCount();
 
-  // Set current selection based on mode
-  int currentFont = (mode == SelectMode::Reader) ? FontMgr.getSelectedIndex()
-                                                 : FontMgr.getUiSelectedIndex();
-  if (currentFont < 0) {
-    selectedIndex = 0; // Built-in
+    const int currentExternal = FontMgr.getSelectedIndex();
+    if (currentExternal >= 0) {
+      selectedIndex = kBuiltinReaderFontCount + currentExternal;
+    } else {
+      const int familyIndex = static_cast<int>(SETTINGS.fontFamily);
+      selectedIndex =
+          (familyIndex >= 0 && familyIndex < kBuiltinReaderFontCount) ? familyIndex : 0;
+    }
   } else {
-    selectedIndex = currentFont + 1; // External font index + 1
+    // Built-in UI font + external fonts
+    totalItems = 1 + FontMgr.getFontCount();
+
+    const int currentFont = FontMgr.getUiSelectedIndex();
+    selectedIndex = (currentFont < 0) ? 0 : currentFont + 1;
   }
 
   // 同步渲染，不使用后台任务
@@ -76,23 +95,30 @@ void FontSelectActivity::handleSelection() {
   Serial.printf("[FONT_SELECT] handleSelection: mode=%d, selectedIndex=%d\n",
                 static_cast<int>(mode), selectedIndex);
 
-  if (selectedIndex == 0) {
-    // Select Built-in (disable external font)
-    if (mode == SelectMode::Reader) {
-      Serial.printf("[FONT_SELECT] Disabling reader font\n");
+  if (mode == SelectMode::Reader) {
+    if (selectedIndex < kBuiltinReaderFontCount) {
+      // Select built-in reader font
+      Serial.printf("[FONT_SELECT] Selecting built-in reader font index %d\n", selectedIndex);
       FontMgr.selectFont(-1);
+      SETTINGS.fontFamily = static_cast<uint8_t>(kBuiltinReaderFonts[selectedIndex]);
+      SETTINGS.saveToFile();
     } else {
+      // Select external reader font
+      const int externalIndex = selectedIndex - kBuiltinReaderFontCount;
+      Serial.printf("[FONT_SELECT] Selecting reader font index %d\n", externalIndex);
+      FontMgr.selectFont(externalIndex);
+    }
+    renderer.setReaderFallbackFontId(SETTINGS.getBuiltInReaderFontId());
+  } else {
+    if (selectedIndex == 0) {
+      // Select built-in UI font (disable external font)
       Serial.printf("[FONT_SELECT] Disabling UI font\n");
       FontMgr.selectUiFont(-1);
-    }
-  } else {
-    // Select external font
-    if (mode == SelectMode::Reader) {
-      Serial.printf("[FONT_SELECT] Selecting reader font index %d\n", selectedIndex - 1);
-      FontMgr.selectFont(selectedIndex - 1);
     } else {
-      Serial.printf("[FONT_SELECT] Selecting UI font index %d\n", selectedIndex - 1);
-      FontMgr.selectUiFont(selectedIndex - 1);
+      // Select external UI font
+      const int externalIndex = selectedIndex - 1;
+      Serial.printf("[FONT_SELECT] Selecting UI font index %d\n", externalIndex);
+      FontMgr.selectUiFont(externalIndex);
     }
   }
 
@@ -110,21 +136,32 @@ void FontSelectActivity::render() {
   constexpr int rowHeight = 30;
 
   // Title
-  const char *title = (mode == SelectMode::Reader) ? TR(EXT_CHINESE_FONT)
+  const char *title = (mode == SelectMode::Reader) ? TR(EXT_READER_FONT)
                                                    : TR(EXT_UI_FONT);
   renderer.drawCenteredText(UI_20_FONT_ID, 15, title, true,
                             EpdFontFamily::BOLD);
 
   // Current selected font marker
-  int currentFont = (mode == SelectMode::Reader) ? FontMgr.getSelectedIndex()
-                                                 : FontMgr.getUiSelectedIndex();
+  int currentIndex = 0;
+  if (mode == SelectMode::Reader) {
+    const int currentExternal = FontMgr.getSelectedIndex();
+    if (currentExternal >= 0) {
+      currentIndex = kBuiltinReaderFontCount + currentExternal;
+    } else {
+      const int familyIndex = static_cast<int>(SETTINGS.fontFamily);
+      currentIndex =
+          (familyIndex >= 0 && familyIndex < kBuiltinReaderFontCount) ? familyIndex : 0;
+    }
+  } else {
+    const int currentFont = FontMgr.getUiSelectedIndex();
+    currentIndex = (currentFont < 0) ? 0 : currentFont + 1;
+  }
 
   // Draw options
   for (int i = 0; i < totalItems && i < 20; i++) { // Max 20 items
     const int itemY = 60 + i * rowHeight;
     const bool isSelected = (i == selectedIndex);
-    const bool isCurrent =
-        (i == 0 && currentFont < 0) || (i > 0 && i - 1 == currentFont);
+    const bool isCurrent = (i == currentIndex);
 
     // Draw selection highlight
     if (isSelected) {
@@ -132,17 +169,32 @@ void FontSelectActivity::render() {
     }
 
     // Draw text
-    if (i == 0) {
-      // Built-in option
-      renderer.drawText(UI_20_FONT_ID, 20, itemY, TR(BUILTIN_DISABLED),
-                        !isSelected);
+    if (mode == SelectMode::Reader) {
+      if (i < kBuiltinReaderFontCount) {
+        renderer.drawText(UI_20_FONT_ID, 20, itemY,
+                          I18N.get(kBuiltinReaderFontLabels[i]), !isSelected);
+      } else {
+        const FontInfo *info =
+            FontMgr.getFontInfo(i - kBuiltinReaderFontCount);
+        if (info) {
+          char label[64];
+          snprintf(label, sizeof(label), "%s (%dpt)", info->name, info->size);
+          renderer.drawText(UI_20_FONT_ID, 20, itemY, label, !isSelected);
+        }
+      }
     } else {
-      // External font
-      const FontInfo *info = FontMgr.getFontInfo(i - 1);
-      if (info) {
-        char label[64];
-        snprintf(label, sizeof(label), "%s (%dpt)", info->name, info->size);
-        renderer.drawText(UI_20_FONT_ID, 20, itemY, label, !isSelected);
+      if (i == 0) {
+        // Built-in option
+        renderer.drawText(UI_20_FONT_ID, 20, itemY, TR(BUILTIN_DISABLED),
+                          !isSelected);
+      } else {
+        // External font
+        const FontInfo *info = FontMgr.getFontInfo(i - 1);
+        if (info) {
+          char label[64];
+          snprintf(label, sizeof(label), "%s (%dpt)", info->name, info->size);
+          renderer.drawText(UI_20_FONT_ID, 20, itemY, label, !isSelected);
+        }
       }
     }
 

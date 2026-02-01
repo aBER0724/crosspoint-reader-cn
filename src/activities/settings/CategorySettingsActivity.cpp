@@ -1,5 +1,6 @@
 #include "CategorySettingsActivity.h"
 
+#include <FontManager.h>
 #include <GfxRenderer.h>
 #include <HardwareSerial.h>
 #include <I18n.h>
@@ -49,6 +50,14 @@ void CategorySettingsActivity::loop() {
     return;
   }
 
+  const int visibleCount = getVisibleSettingsCount();
+  if (visibleCount <= 0) {
+    return;
+  }
+  if (selectedSettingIndex >= visibleCount) {
+    selectedSettingIndex = visibleCount - 1;
+  }
+
   // Handle actions with early return
   if (mappedInput.wasPressed(MappedInputManager::Button::Confirm)) {
     toggleCurrentSetting();
@@ -69,21 +78,22 @@ void CategorySettingsActivity::loop() {
   // Handle navigation
   if (mappedInput.wasPressed(MappedInputManager::Button::Up) ||
       mappedInput.wasPressed(MappedInputManager::Button::Left)) {
-    selectedSettingIndex = (selectedSettingIndex > 0) ? (selectedSettingIndex - 1) : (settingsCount - 1);
+    selectedSettingIndex = (selectedSettingIndex > 0) ? (selectedSettingIndex - 1) : (visibleCount - 1);
     updateRequired = true;
   } else if (mappedInput.wasPressed(MappedInputManager::Button::Down) ||
              mappedInput.wasPressed(MappedInputManager::Button::Right)) {
-    selectedSettingIndex = (selectedSettingIndex < settingsCount - 1) ? (selectedSettingIndex + 1) : 0;
+    selectedSettingIndex = (selectedSettingIndex < visibleCount - 1) ? (selectedSettingIndex + 1) : 0;
     updateRequired = true;
   }
 }
 
 void CategorySettingsActivity::toggleCurrentSetting() {
-  if (selectedSettingIndex < 0 || selectedSettingIndex >= settingsCount) {
+  const int actualIndex = getActualIndex(selectedSettingIndex);
+  if (actualIndex < 0 || actualIndex >= settingsCount) {
     return;
   }
 
-  const auto& setting = settingsList[selectedSettingIndex];
+  const auto& setting = settingsList[actualIndex];
 
   if (setting.type == SettingType::TOGGLE && setting.valuePtr != nullptr) {
     // Toggle the boolean value using the member pointer
@@ -144,6 +154,11 @@ void CategorySettingsActivity::toggleCurrentSetting() {
     return;
   }
 
+  if (setting.valuePtr == &CrossPointSettings::fontFamily ||
+      setting.valuePtr == &CrossPointSettings::fontSize) {
+    renderer.setReaderFallbackFontId(SETTINGS.getBuiltInReaderFontId());
+  }
+
   SETTINGS.saveToFile();
 
   // Update dark mode immediately when color mode setting changes
@@ -173,12 +188,27 @@ void CategorySettingsActivity::render() const {
   renderer.drawCenteredText(UI_20_FONT_ID, 15, categoryName, true, EpdFontFamily::BOLD);
 
   // Draw selection highlight
-  renderer.fillRect(0, 60 + selectedSettingIndex * 30 - 2, pageWidth - 1, 30);
+  const int visibleCount = getVisibleSettingsCount();
+  if (visibleCount <= 0) {
+    renderer.displayBuffer();
+    return;
+  }
+  int highlightIndex = selectedSettingIndex;
+  if (highlightIndex < 0) {
+    highlightIndex = 0;
+  } else if (highlightIndex >= visibleCount) {
+    highlightIndex = visibleCount - 1;
+  }
+  renderer.fillRect(0, 60 + highlightIndex * 30 - 2, pageWidth - 1, 30);
 
   // Draw all settings
+  int visibleIndex = 0;
   for (int i = 0; i < settingsCount; i++) {
-    const int settingY = 60 + i * 30;  // 30 pixels between settings
-    const bool isSelected = (i == selectedSettingIndex);
+    if (!isSettingVisible(settingsList[i])) {
+      continue;
+    }
+    const int settingY = 60 + visibleIndex * 30;  // 30 pixels between settings
+    const bool isSelected = (visibleIndex == highlightIndex);
 
     // Draw setting name (translated)
     renderer.drawText(UI_20_FONT_ID, 20, settingY, I18N.get(settingsList[i].nameId), !isSelected);
@@ -198,6 +228,7 @@ void CategorySettingsActivity::render() const {
       const auto width = renderer.getTextWidth(UI_20_FONT_ID, valueText.c_str());
       renderer.drawText(UI_20_FONT_ID, pageWidth - 20 - width, settingY, valueText.c_str(), !isSelected);
     }
+    visibleIndex++;
   }
 
   renderer.drawText(SMALL_FONT_ID, pageWidth - 20 - renderer.getTextWidth(SMALL_FONT_ID, CROSSPOINT_VERSION),
@@ -207,4 +238,39 @@ void CategorySettingsActivity::render() const {
   renderer.drawButtonHints(UI_20_FONT_ID, labels.btn1, labels.btn2, labels.btn3, labels.btn4);
 
   renderer.displayBuffer();
+}
+
+bool CategorySettingsActivity::isSettingVisible(const SettingInfo& setting) const {
+  if (setting.nameId == StrId::FONT_SIZE) {
+    FontManager& fm = FontManager::getInstance();
+    return !fm.isExternalFontEnabled();
+  }
+  return true;
+}
+
+int CategorySettingsActivity::getVisibleSettingsCount() const {
+  int count = 0;
+  for (int i = 0; i < settingsCount; i++) {
+    if (isSettingVisible(settingsList[i])) {
+      count++;
+    }
+  }
+  return count;
+}
+
+int CategorySettingsActivity::getActualIndex(const int visibleIndex) const {
+  if (visibleIndex < 0) {
+    return -1;
+  }
+  int visible = 0;
+  for (int i = 0; i < settingsCount; i++) {
+    if (!isSettingVisible(settingsList[i])) {
+      continue;
+    }
+    if (visible == visibleIndex) {
+      return i;
+    }
+    visible++;
+  }
+  return -1;
 }

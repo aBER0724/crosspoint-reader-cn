@@ -45,6 +45,8 @@ private:
   int8_t asciiDigitSpacing = 0;
   // Extra spacing (in pixels) for CJK characters when using external reader font.
   int8_t cjkSpacing = 0;
+  // Built-in reader font to fall back to when external glyphs are missing.
+  int readerFallbackFontId = 0;
   // Skip dark mode inversion for images (cover art should not be inverted)
   mutable bool skipDarkModeForImages = false;
   void renderChar(int fontId, const EpdFontFamily &fontFamily, uint32_t cp,
@@ -93,6 +95,8 @@ public:
   int8_t getAsciiLetterSpacing() const { return asciiLetterSpacing; }
   int8_t getAsciiDigitSpacing() const { return asciiDigitSpacing; }
   int8_t getCjkSpacing() const { return cjkSpacing; }
+  void setReaderFallbackFontId(int fontId) { readerFallbackFontId = fontId; }
+  int getReaderFallbackFontId() const { return readerFallbackFontId; }
 
   // Screen ops
   int getScreenWidth() const;

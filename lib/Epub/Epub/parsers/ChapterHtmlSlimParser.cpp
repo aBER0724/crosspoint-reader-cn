@@ -1,5 +1,6 @@
 #include "ChapterHtmlSlimParser.h"
 
+#include <Arduino.h>
 #include <GfxRenderer.h>
 #include <HardwareSerial.h>
 #include <SDCardManager.h>
@@ -12,6 +13,10 @@ constexpr int NUM_HEADER_TAGS = sizeof(HEADER_TAGS) / sizeof(HEADER_TAGS[0]);
 
 // Minimum file size (in bytes) to show progress bar - smaller chapters don't benefit from it
 constexpr size_t MIN_SIZE_FOR_PROGRESS = 50 * 1024;  // 50KB
+constexpr size_t MAX_WORDS_BEFORE_FLUSH = 400;
+constexpr size_t MIN_WORDS_BEFORE_FLUSH = 100;
+constexpr size_t LOW_FREE_HEAP_BEFORE_FLUSH = 24 * 1024;
+constexpr size_t CRITICAL_FREE_HEAP_BEFORE_FLUSH = 12 * 1024;
 
 const char* BLOCK_TAGS[] = {"p", "li", "div", "br", "blockquote"};
 constexpr int NUM_BLOCK_TAGS = sizeof(BLOCK_TAGS) / sizeof(BLOCK_TAGS[0]);
@@ -204,6 +209,33 @@ void XMLCALL ChapterHtmlSlimParser::characterData(void* userData, const XML_Char
     return;
   }
 
+  auto flushIfNeeded = [self]() {
+    if (!self->currentTextBlock) {
+      return;
+    }
+    const size_t wordCount = self->currentTextBlock->size();
+    if (wordCount == 0) {
+      return;
+    }
+    const size_t freeHeap = ESP.getFreeHeap();
+    const bool tooManyWords = wordCount >= MAX_WORDS_BEFORE_FLUSH;
+    const bool lowHeapWithBuffer =
+        freeHeap < LOW_FREE_HEAP_BEFORE_FLUSH && wordCount >= MIN_WORDS_BEFORE_FLUSH;
+    const bool criticalHeap = freeHeap < CRITICAL_FREE_HEAP_BEFORE_FLUSH;
+
+    if (!(tooManyWords || lowHeapWithBuffer || criticalHeap)) {
+      return;
+    }
+
+    const bool includeLastLine = criticalHeap;
+    Serial.printf("[%lu] [EHP] Flushing text block (words=%u, free=%u)\n", millis(),
+                  static_cast<unsigned>(wordCount),
+                  static_cast<unsigned>(freeHeap));
+      self->currentTextBlock->layoutAndExtractLines(
+          self->renderer, self->fontId, self->viewportWidth,
+          [self](const std::shared_ptr<TextBlock>& textBlock) { self->addLineToPage(textBlock); }, includeLastLine);
+  };
+
   EpdFontFamily::Style fontStyle = EpdFontFamily::REGULAR;
   if (self->boldUntilDepth < self->depth && self->italicUntilDepth < self->depth) {
     fontStyle = EpdFontFamily::BOLD_ITALIC;
@@ -222,6 +254,7 @@ void XMLCALL ChapterHtmlSlimParser::characterData(void* userData, const XML_Char
         self->partWordBuffer[self->partWordBufferIndex] = '\0';
         self->currentTextBlock->addWord(self->partWordBuffer, fontStyle);
         self->partWordBufferIndex = 0;
+        flushIfNeeded();
       }
       i++;
       continue;
@@ -258,6 +291,7 @@ void XMLCALL ChapterHtmlSlimParser::characterData(void* userData, const XML_Char
         self->partWordBuffer[self->partWordBufferIndex] = '\0';
         self->currentTextBlock->addWord(self->partWordBuffer, fontStyle);
         self->partWordBufferIndex = 0;
+        flushIfNeeded();
       }
 
       // Add this CJK character as its own "word"
@@ -266,6 +300,7 @@ void XMLCALL ChapterHtmlSlimParser::characterData(void* userData, const XML_Char
         cjkWord[j] = s[i + j];
       }
       self->currentTextBlock->addWord(cjkWord, fontStyle);
+      flushIfNeeded();
       i += charLen;
       continue;
     }
@@ -276,6 +311,7 @@ void XMLCALL ChapterHtmlSlimParser::characterData(void* userData, const XML_Char
       self->partWordBuffer[self->partWordBufferIndex] = '\0';
       self->currentTextBlock->addWord(self->partWordBuffer, fontStyle);
       self->partWordBufferIndex = 0;
+      flushIfNeeded();
     }
 
     // Add all bytes of this character to the buffer
@@ -285,16 +321,7 @@ void XMLCALL ChapterHtmlSlimParser::characterData(void* userData, const XML_Char
     i += charLen;
   }
 
-  // If we have > 750 words buffered up, perform the layout and consume out all but the last line
-  // There should be enough here to build out 1-2 full pages and doing this will free up a lot of
-  // memory.
-  // Spotted when reading Intermezzo, there are some really long text blocks in there.
-  if (self->currentTextBlock->size() > 750) {
-    Serial.printf("[%lu] [EHP] Text block too long, splitting into multiple pages\n", millis());
-    self->currentTextBlock->layoutAndExtractLines(
-        self->renderer, self->fontId, self->viewportWidth,
-        [self](const std::shared_ptr<TextBlock>& textBlock) { self->addLineToPage(textBlock); }, false);
-  }
+  flushIfNeeded();
 }
 
 void XMLCALL ChapterHtmlSlimParser::endElement(void* userData, const XML_Char* name) {

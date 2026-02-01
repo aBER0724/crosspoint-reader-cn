@@ -119,15 +119,28 @@ bool FontManager::loadSelectedFont() {
   snprintf(filepath, sizeof(filepath), "%s/%s", FONTS_DIR,
            _fonts[_selectedIndex].filename);
 
-  return _activeFont.load(filepath);
+  const bool loaded = _activeFont.load(filepath);
+  if (isUiSharingReaderFont()) {
+    _activeUiFont.unload();
+  }
+  return loaded;
 }
 
 bool FontManager::loadSelectedUiFont() {
-  _activeUiFont.unload();
-
   if (_selectedUiIndex < 0 || _selectedUiIndex >= _fontCount) {
+    _activeUiFont.unload();
     return false;
   }
+
+  if (isUiSharingReaderFont()) {
+    _activeUiFont.unload();
+    if (!_activeFont.isLoaded()) {
+      return loadSelectedFont();
+    }
+    return true;
+  }
+
+  _activeUiFont.unload();
 
   char filepath[80];
   snprintf(filepath, sizeof(filepath), "%s/%s", FONTS_DIR,
@@ -176,7 +189,13 @@ ExternalFont *FontManager::getActiveFont() {
 }
 
 ExternalFont *FontManager::getActiveUiFont() {
-  if (_selectedUiIndex >= 0 && _activeUiFont.isLoaded()) {
+  if (_selectedUiIndex < 0) {
+    return nullptr;
+  }
+  if (isUiSharingReaderFont()) {
+    return _activeFont.isLoaded() ? &_activeFont : nullptr;
+  }
+  if (_activeUiFont.isLoaded()) {
     return &_activeUiFont;
   }
   return nullptr;

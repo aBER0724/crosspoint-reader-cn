@@ -16,13 +16,14 @@ RecentBooksStore RecentBooksStore::instance;
 
 void RecentBooksStore::addBook(const std::string& path) {
   // Remove existing entry if present
-  auto it = std::find(recentBooks.begin(), recentBooks.end(), path);
+  const auto it = std::find_if(recentBooks.begin(), recentBooks.end(),
+                               [&path](const RecentBook& book) { return book.path == path; });
   if (it != recentBooks.end()) {
     recentBooks.erase(it);
   }
 
   // Add to front
-  recentBooks.insert(recentBooks.begin(), path);
+  recentBooks.insert(recentBooks.begin(), {path, "", ""});
 
   // Trim to max size
   if (recentBooks.size() > MAX_RECENT_BOOKS) {
@@ -46,7 +47,7 @@ bool RecentBooksStore::saveToFile() const {
   serialization::writePod(outputFile, count);
 
   for (const auto& book : recentBooks) {
-    serialization::writeString(outputFile, book);
+    serialization::writeString(outputFile, book.path);
   }
 
   outputFile.close();
@@ -77,7 +78,7 @@ bool RecentBooksStore::loadFromFile() {
   for (uint8_t i = 0; i < count; i++) {
     std::string path;
     serialization::readString(inputFile, path);
-    recentBooks.push_back(path);
+    recentBooks.push_back({path, "", ""});
   }
 
   inputFile.close();
