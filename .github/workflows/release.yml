@@ -42,16 +42,25 @@ jobs:
             .pio/build/gh_release/firmware.map
             .pio/build/gh_release/partitions.bin
 
-      - name: Zip Firmware
-        run: |
-          cd .pio/build/gh_release
-          zip ../../CrossPoint-${{ github.ref_name }}.zip bootloader.bin firmware.bin partitions.bin
-
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
-          files: .pio/CrossPoint-${{ github.ref_name }}.zip
-          generate_release_notes: true
+          name: CrossPoint Reader CJK ${{ github.ref_name }}
+          files: .pio/build/gh_release/firmware.bin
+          body: |
+            ## CrossPoint Reader CJK ${{ github.ref_name }}
+
+            基于 [CrossPoint Reader](https://github.com/daveallie/crosspoint-reader) 的 CJK 适配版本。
+
+            ### 📥 安装方式
+
+            1. 下载 \`firmware.bin\`
+            2. 访问 https://xteink.dve.al/ 使用 OTA 刷入
+
+            ### 📝 详细说明
+
+            - [README](https://github.com/aBER0724/crosspoint-reader-cjk)
+            - [完整变更日志](https://github.com/aBER0724/crosspoint-reader-cjk/commits/${{ github.ref_name }})
           prerelease: ${{ contains(github.ref, '-') }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
