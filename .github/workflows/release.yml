@@ -39,3 +39,17 @@ jobs:
             .pio/build/gh_release/firmware.elf
             .pio/build/gh_release/firmware.map
             .pio/build/gh_release/partitions.bin
+
+      - name: Zip Firmware
+        run: |
+          cd .pio/build/gh_release
+          zip ../../CrossPoint-${{ github.ref_name }}.zip bootloader.bin firmware.bin partitions.bin
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: .pio/CrossPoint-${{ github.ref_name }}.zip
+          generate_release_notes: true
+          prerelease: ${{ contains(github.ref, '-') }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
