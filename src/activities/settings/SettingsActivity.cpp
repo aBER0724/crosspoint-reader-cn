@@ -159,11 +159,11 @@ void SettingsActivity::enterCategory(int categoryIndex) {
       break;
   }
 
-  enterNewActivity(new CategorySettingsActivity(renderer, mappedInput, I18N.get(categoryStrIds[categoryIndex]), settingsList,
-                                                settingsCount, [this] {
-                                                  exitActivity();
-                                                  updateRequired = true;
-                                                }));
+  enterNewActivity(new CategorySettingsActivity(renderer, mappedInput, I18N.get(categoryStrIds[categoryIndex]),
+                                                settingsList, settingsCount, [this] {
+                                                   exitActivity();
+                                                   updateRequired = true;
+                                                 }));
   xSemaphoreGive(renderingMutex);
 }
 
@@ -192,9 +192,8 @@ void SettingsActivity::render() const {
   renderer.fillRect(0, 60 + selectedCategoryIndex * 30 - 2, pageWidth - 1, 30);
 
   // Category StrIds for dynamic translation
-  static constexpr StrId categoryStrIds[categoryCount] = {
-    StrId::CAT_DISPLAY, StrId::CAT_READER, StrId::CAT_CONTROLS, StrId::CAT_SYSTEM
-  };
+  static constexpr StrId categoryStrIds[categoryCount] = {StrId::CAT_DISPLAY, StrId::CAT_READER, StrId::CAT_CONTROLS,
+                                                          StrId::CAT_SYSTEM};
 
   // Draw all categories
   for (int i = 0; i < categoryCount; i++) {
