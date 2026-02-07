@@ -1497,8 +1497,8 @@ void GfxRenderer::renderChar(const int fontId, const EpdFontFamily &fontFamily,
       if (extFont) {
         const uint8_t *bitmap = extFont->getGlyph(cp);
         if (bitmap) {
-          uint8_t advanceX = extFont->getCharWidth();
-          extFont->getGlyphMetrics(cp, nullptr, &advanceX);
+          uint8_t minX = 0, advanceX = extFont->getCharWidth();
+          extFont->getGlyphMetrics(cp, &minX, &advanceX);
           int spacing = 0;
           if (isCjk) {
             spacing = cjkSpacing;
@@ -1508,7 +1508,7 @@ void GfxRenderer::renderChar(const int fontId, const EpdFontFamily &fontFamily,
             spacing = asciiLetterSpacing;
           }
           int advance = clampExternalAdvance(advanceX, spacing);
-          renderExternalGlyph(bitmap, extFont, x, *y, pixelState, advance);
+          renderExternalGlyph(bitmap, extFont, x, *y, pixelState, advance, minX);
           return;
         }
         // Missing glyph in external font - try built-in CJK UI font for CJK
@@ -1535,9 +1535,9 @@ void GfxRenderer::renderChar(const int fontId, const EpdFontFamily &fontFamily,
         if (uiExtFont) {
           const uint8_t *bitmap = uiExtFont->getGlyph(cp);
           if (bitmap) {
-            uint8_t advanceX = 0;
-            uiExtFont->getGlyphMetrics(cp, nullptr, &advanceX);
-            renderExternalGlyph(bitmap, uiExtFont, x, *y, pixelState, advanceX);
+            uint8_t minX = 0, advanceX = 0;
+            uiExtFont->getGlyphMetrics(cp, &minX, &advanceX);
+            renderExternalGlyph(bitmap, uiExtFont, x, *y, pixelState, advanceX, minX);
             return;
           }
         }
@@ -1549,9 +1549,9 @@ void GfxRenderer::renderChar(const int fontId, const EpdFontFamily &fontFamily,
         if (extFont) {
           const uint8_t *bitmap = extFont->getGlyph(cp);
           if (bitmap) {
-            uint8_t advanceX = 0;
-            extFont->getGlyphMetrics(cp, nullptr, &advanceX);
-            renderExternalGlyph(bitmap, extFont, x, *y, pixelState, advanceX);
+            uint8_t minX = 0, advanceX = 0;
+            extFont->getGlyphMetrics(cp, &minX, &advanceX);
+            renderExternalGlyph(bitmap, extFont, x, *y, pixelState, advanceX, minX);
             return;
           }
         }
@@ -1568,9 +1568,9 @@ void GfxRenderer::renderChar(const int fontId, const EpdFontFamily &fontFamily,
         if (uiExtFont) {
           const uint8_t *bitmap = uiExtFont->getGlyph(cp);
           if (bitmap) {
-            uint8_t advanceX = 0;
-            uiExtFont->getGlyphMetrics(cp, nullptr, &advanceX);
-            renderExternalGlyph(bitmap, uiExtFont, x, *y, pixelState, advanceX);
+            uint8_t minX = 0, advanceX = 0;
+            uiExtFont->getGlyphMetrics(cp, &minX, &advanceX);
+            renderExternalGlyph(bitmap, uiExtFont, x, *y, pixelState, advanceX, minX);
             return;
           }
         }
@@ -1721,7 +1721,8 @@ void GfxRenderer::getOrientedViewableTRBL(int *outTop, int *outRight,
 void GfxRenderer::renderExternalGlyph(const uint8_t *bitmap, ExternalFont *font,
                                       int *x, const int y,
                                       const bool pixelState,
-                                      const int advanceOverride) const {
+                                      const int advanceOverride,
+                                      const int minX) const {
   const uint8_t width = font->getCharWidth();
   const uint8_t height = font->getCharHeight();
   const uint8_t bytesPerRow = font->getBytesPerRow();
@@ -1729,14 +1730,16 @@ void GfxRenderer::renderExternalGlyph(const uint8_t *bitmap, ExternalFont *font,
   // Calculate starting Y position (baseline alignment)
   const int startY = y - height + 4; // +4 is baseline adjustment
 
+  // Only render pixels from minX onwards, drawn at screen position *x
+  // This trims the left-side empty space so advanceX matches the drawn width
   for (int glyphY = 0; glyphY < height; glyphY++) {
     const int screenY = startY + glyphY;
-    for (int glyphX = 0; glyphX < width; glyphX++) {
+    for (int glyphX = minX; glyphX < width; glyphX++) {
       const int byteIndex = glyphY * bytesPerRow + (glyphX / 8);
       const int bitIndex = 7 - (glyphX % 8); // MSB first
 
       if ((bitmap[byteIndex] >> bitIndex) & 1) {
-        drawPixel(*x + glyphX, screenY, pixelState);
+        drawPixel(*x + (glyphX - minX), screenY, pixelState);
       }
     }
   }
