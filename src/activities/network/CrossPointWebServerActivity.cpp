@@ -188,6 +188,17 @@ void CrossPointWebServerActivity::startAccessPoint() {
   WiFi.mode(WIFI_AP);
   delay(100);
 
+  // Explicitly configure AP network parameters BEFORE starting softAP.
+  // Without this, some devices fail to route traffic to the ESP32 after connecting,
+  // because the DHCP server may not advertise the correct gateway.
+  const IPAddress apLocalIP(192, 168, 4, 1);
+  const IPAddress apGateway(192, 168, 4, 1);
+  const IPAddress apSubnet(255, 255, 255, 0);
+  if (!WiFi.softAPConfig(apLocalIP, apGateway, apSubnet)) {
+    Serial.printf("[%lu] [WEBACT] WARNING: softAPConfig failed!\n", millis());
+  }
+  delay(50);
+
   // Start soft AP
   bool apStarted;
   if (AP_PASSWORD && strlen(AP_PASSWORD) >= 8) {

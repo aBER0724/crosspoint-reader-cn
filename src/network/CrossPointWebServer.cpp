@@ -106,6 +106,16 @@ void CrossPointWebServer::begin() {
   // Delete file/folder endpoint
   server->on("/delete", HTTP_POST, [this] { handleDelete(); });
 
+  // Captive portal detection endpoints — respond correctly so devices
+  // recognise the network as "online" and route traffic through it.
+  server->on("/generate_204", HTTP_GET, [this] { handleCaptivePortal(); });          // Android
+  server->on("/gen_204", HTTP_GET, [this] { handleCaptivePortal(); });               // Android alt
+  server->on("/hotspot-detect.html", HTTP_GET, [this] { handleCaptivePortal(); });   // iOS / macOS
+  server->on("/library/test/success.html", HTTP_GET, [this] { handleCaptivePortal(); }); // iOS alt
+  server->on("/connecttest.txt", HTTP_GET, [this] { handleCaptivePortal(); });       // Windows
+  server->on("/redirect", HTTP_GET, [this] { handleCaptivePortal(); });              // Windows alt
+  server->on("/fwlink", HTTP_GET, [this] { handleCaptivePortal(); });                // Windows alt
+
   server->onNotFound([this] { handleNotFound(); });
   Serial.printf("[%lu] [WEB] [MEM] Free heap after route setup: %d bytes\n", millis(), ESP.getFreeHeap());
 
@@ -208,9 +218,27 @@ void CrossPointWebServer::handleRoot() const {
 }
 
 void CrossPointWebServer::handleNotFound() const {
+  // In AP mode, redirect unknown URLs to our root page (captive portal behavior).
+  // This catches any captive-portal probe we didn't explicitly register.
+  if (apMode) {
+    const String ip = WiFi.softAPIP().toString();
+    server->sendHeader("Location", "http://" + ip + "/", true);
+    server->send(302, "text/plain", "");
+    return;
+  }
   String message = "404 Not Found\n\n";
   message += "URI: " + server->uri() + "\n";
   server->send(404, "text/plain", message);
+}
+
+void CrossPointWebServer::handleCaptivePortal() const {
+  // Redirect captive portal detection probes to our root page.
+  // This makes iOS/Android/Windows recognise the network and open our page.
+  const String ip = WiFi.softAPIP().toString();
+  const String redirectUrl = "http://" + ip + "/";
+  server->sendHeader("Location", redirectUrl, true);
+  server->send(302, "text/html", "");
+  Serial.printf("[%lu] [WEB] Captive portal redirect: %s -> %s\n", millis(), server->uri().c_str(), redirectUrl.c_str());
 }
 
 void CrossPointWebServer::handleStatus() const {
@@ -311,15 +339,16 @@ void CrossPointWebServer::handleFileListData() const {
     }
   }
 
-  server->setContentLength(CONTENT_LENGTH_UNKNOWN);
-  server->send(200, "application/json", "");
-  server->sendContent("[");
-  char output[512];
-  constexpr size_t outputSize = sizeof(output);
+  // Collect all file entries first, then send as a single response.
+  // This avoids chunked transfer which can block indefinitely if the client
+  // disconnects mid-stream, causing the device to freeze.
+  String json = "[";
   bool seenFirst = false;
   JsonDocument doc;
+  char output[512];
+  constexpr size_t outputSize = sizeof(output);
 
-  scanFiles(currentPath.c_str(), [this, &output, &doc, seenFirst](const FileInfo& info) mutable {
+  scanFiles(currentPath.c_str(), [&json, &doc, &output, &seenFirst](const FileInfo& info) mutable {
     doc.clear();
     doc["name"] = info.name;
     doc["size"] = info.size;
@@ -328,22 +357,22 @@ void CrossPointWebServer::handleFileListData() const {
 
     const size_t written = serializeJson(doc, output, outputSize);
     if (written >= outputSize) {
-      // JSON output truncated; skip this entry to avoid sending malformed JSON
       Serial.printf("[%lu] [WEB] Skipping file entry with oversized JSON for name: %s\n", millis(), info.name.c_str());
       return;
     }
 
     if (seenFirst) {
-      server->sendContent(",");
+      json += ",";
     } else {
       seenFirst = true;
     }
-    server->sendContent(output);
+    json += output;
   });
-  server->sendContent("]");
-  // End of streamed response, empty chunk to signal client
-  server->sendContent("");
-  Serial.printf("[%lu] [WEB] Served file listing page for path: %s\n", millis(), currentPath.c_str());
+  json += "]";
+
+  server->send(200, "application/json", json);
+  Serial.printf("[%lu] [WEB] Served file listing page for path: %s (%d bytes)\n", millis(), currentPath.c_str(),
+                json.length());
 }
 
 // Static variables for upload handling
