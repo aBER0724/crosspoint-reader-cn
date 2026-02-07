@@ -35,6 +35,23 @@ constexpr int NUM_SKIP_TAGS = sizeof(SKIP_TAGS) / sizeof(SKIP_TAGS[0]);
 
 bool isWhitespace(const char c) { return c == ' ' || c == '\r' || c == '\n' || c == '\t'; }
 
+// Check if a Unicode codepoint is an invisible/zero-width character that should be skipped
+bool isInvisibleCodepoint(const uint32_t cp) {
+  if (cp == 0xFEFF) return true;   // BOM / Zero Width No-Break Space
+  if (cp == 0x200B) return true;   // Zero Width Space
+  if (cp == 0x200C) return true;   // Zero Width Non-Joiner
+  if (cp == 0x200D) return true;   // Zero Width Joiner
+  if (cp == 0x200E) return true;   // Left-to-Right Mark
+  if (cp == 0x200F) return true;   // Right-to-Left Mark
+  if (cp == 0x2060) return true;   // Word Joiner
+  if (cp == 0x00AD) return true;   // Soft Hyphen
+  if (cp == 0x034F) return true;   // Combining Grapheme Joiner
+  if (cp == 0x061C) return true;   // Arabic Letter Mark
+  if (cp >= 0x2066 && cp <= 0x2069) return true;  // Directional isolates
+  if (cp >= 0x202A && cp <= 0x202E) return true;  // Directional formatting
+  return false;
+}
+
 // Check if a Unicode codepoint is CJK (Chinese/Japanese/Korean)
 // CJK characters should be treated as individual "words" for line breaking
 bool isCjkCodepointForSplit(const uint32_t cp) {
@@ -260,18 +277,8 @@ void XMLCALL ChapterHtmlSlimParser::characterData(void* userData, const XML_Char
       continue;
     }
 
-    // Skip Zero Width No-Break Space / BOM (U+FEFF) = 0xEF 0xBB 0xBF
-    const unsigned char b0 = static_cast<unsigned char>(s[i]);
-    if (b0 == 0xEF && (i + 2 < len)) {
-      const unsigned char b1 = static_cast<unsigned char>(s[i + 1]);
-      const unsigned char b2 = static_cast<unsigned char>(s[i + 2]);
-      if (b1 == 0xBB && b2 == 0xBF) {
-        i += 3;
-        continue;
-      }
-    }
-
     // Determine UTF-8 character length
+    const unsigned char b0 = static_cast<unsigned char>(s[i]);
     const int charLen = getUtf8ByteLength(b0);
     if (i + charLen > len) {
       // Incomplete UTF-8 sequence at end, just add the byte
@@ -284,6 +291,24 @@ void XMLCALL ChapterHtmlSlimParser::characterData(void* userData, const XML_Char
 
     // Decode the codepoint to check if it's CJK
     const uint32_t cp = decodeUtf8Codepoint(&s[i], charLen);
+
+    // Skip invisible/zero-width Unicode characters that fonts can't render
+    if (isInvisibleCodepoint(cp)) {
+      i += charLen;
+      continue;
+    }
+
+    // Treat ideographic space (U+3000) as whitespace - flush buffer and skip
+    if (cp == 0x3000) {
+      if (self->partWordBufferIndex > 0) {
+        self->partWordBuffer[self->partWordBufferIndex] = '\0';
+        self->currentTextBlock->addWord(self->partWordBuffer, fontStyle);
+        self->partWordBufferIndex = 0;
+        flushIfNeeded();
+      }
+      i += charLen;
+      continue;
+    }
 
     if (isCjkCodepointForSplit(cp)) {
       // CJK character: flush any buffered ASCII content first
