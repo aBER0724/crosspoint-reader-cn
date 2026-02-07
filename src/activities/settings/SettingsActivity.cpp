@@ -22,7 +22,7 @@ const SettingInfo displaySettings[displaySettingsCount] = {
                       {StrId::PAGES_1, StrId::PAGES_5, StrId::PAGES_10, StrId::PAGES_15, StrId::PAGES_30}),
     SettingInfo::Action(StrId::EXT_UI_FONT)};
 
-constexpr int readerSettingsCount = 9;
+constexpr int readerSettingsCount = 10;
 const SettingInfo readerSettings[readerSettingsCount] = {
     SettingInfo::Action(StrId::EXT_READER_FONT),
     SettingInfo::Enum(StrId::FONT_SIZE, &CrossPointSettings::fontSize,
@@ -35,6 +35,7 @@ const SettingInfo readerSettings[readerSettingsCount] = {
     SettingInfo::Enum(StrId::ORIENTATION, &CrossPointSettings::orientation,
                       {StrId::PORTRAIT, StrId::LANDSCAPE_CW, StrId::INVERTED, StrId::LANDSCAPE_CCW}),
     SettingInfo::Toggle(StrId::EXTRA_SPACING, &CrossPointSettings::extraParagraphSpacing),
+    SettingInfo::Toggle(StrId::FIRST_LINE_INDENT, &CrossPointSettings::firstLineIndent),
     SettingInfo::Toggle(StrId::TEXT_AA, &CrossPointSettings::textAntiAliasing)};
 
 constexpr int controlsSettingsCount = 4;

@@ -63,7 +63,7 @@ const char *const I18n::STRINGS_EN[] = {
 
     // Settings
     "Sleep Screen", "Sleep Screen Cover Mode", "Status Bar", "Hide Battery %",
-    "Extra Paragraph Spacing", "Text Anti-Aliasing", "Short Power Button Click",
+    "Extra Paragraph Spacing", "First Line Indent", "Text Anti-Aliasing", "Short Power Button Click",
     "Reading Orientation", "Front Button Layout", "Side Button Layout (reader)",
     "Long-press Chapter Skip", "Reader Font Family", "Reader Font", "Reader Font", "UI Font",
     "UI Font Size", "Reader Line Spacing",
@@ -259,6 +259,7 @@ const char *const I18n::STRINGS_ZH[] = {
     "\x86\xE6\xAF\x94", // 隐藏电量百分比
     "\xE6\xAE\xB5\xE8\x90\xBD\xE9\xA2\x9D\xE5\xA4\x96\xE9\x97\xB4\xE8\xB7"
     "\x9D", // 段落额外间距
+    "\xE9\xA6\x96\xE8\xA1\x8C\xE7\xBC\xA9\xE8\xBF\x9B", // 首行缩进
     "\xE6\x96\x87\xE5\xAD\x97\xE6\x8A\x97\xE9\x94\xAF\xE9\xBD\xBF", // 文字抗锯齿
     "\xE7\x94\xB5\xE6\xBA\x90\xE9\x94\xAE\xE7\x9F\xAD\xE6\x8C\x89", // 电源键短按
     "\xE9\x98\x85\xE8\xAF\xBB\xE6\x96\xB9\xE5\x90\x91",             // 阅读方向
@@ -650,6 +651,7 @@ const char *const I18n::STRINGS_JA[] = {
     "\xE6\xAE\xB5\xE8\x90\xBD\xE8\xBF\xBD\xE5\x8A\xA0\xE9\x96\x93\xE9"
     "\x9A"
     "\x94", // 段落追加間隔
+    "\xE5\xAD\x97\xE4\xB8\x8B\xE3\x81\x92", // 字下げ
     "\xE3\x83\x86\xE3\x82\xAD\xE3\x82\xB9\xE3\x83\x88\xE3\x82\xA2\xE3"
     "\x83"
     "\xB3\xE3\x83\x81\xE3\x82\xA8\xE3\x82\xA4\xE3\x83\xAA\xE3\x82\xA2"

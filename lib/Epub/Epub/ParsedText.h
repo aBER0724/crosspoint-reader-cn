@@ -17,6 +17,7 @@ class ParsedText {
   std::list<EpdFontFamily::Style> wordStyles;
   TextBlock::Style style;
   bool extraParagraphSpacing;
+  bool firstLineIndent;
   bool hyphenationEnabled;
 
   void applyParagraphIndent();
@@ -33,8 +34,8 @@ class ParsedText {
 
  public:
   explicit ParsedText(const TextBlock::Style style, const bool extraParagraphSpacing,
-                      const bool hyphenationEnabled = false)
-      : style(style), extraParagraphSpacing(extraParagraphSpacing), hyphenationEnabled(hyphenationEnabled) {}
+                      const bool hyphenationEnabled = false, const bool firstLineIndent = false)
+      : style(style), extraParagraphSpacing(extraParagraphSpacing), firstLineIndent(firstLineIndent), hyphenationEnabled(hyphenationEnabled) {}
   ~ParsedText() = default;
 
   void addWord(std::string word, EpdFontFamily::Style fontStyle);

@@ -196,12 +196,13 @@ std::vector<size_t> ParsedText::computeLineBreaks(const GfxRenderer& renderer, c
 }
 
 void ParsedText::applyParagraphIndent() {
-  if (extraParagraphSpacing || words.empty()) {
+  if (words.empty()) {
     return;
   }
 
-  if (style == TextBlock::JUSTIFIED || style == TextBlock::LEFT_ALIGN) {
-    words.front().insert(0, "\xe2\x80\x83");
+  // Apply first line indent: insert two em-spaces at the beginning of the paragraph
+  if (firstLineIndent && (style == TextBlock::JUSTIFIED || style == TextBlock::LEFT_ALIGN)) {
+    words.front().insert(0, "\xe2\x80\x83\xe2\x80\x83");
   }
 }
 

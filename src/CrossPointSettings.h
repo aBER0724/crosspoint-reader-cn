@@ -104,6 +104,8 @@ class CrossPointSettings {
   uint8_t hideBatteryPercentage = HIDE_NEVER;
   // Long-press chapter skip on side buttons
   uint8_t longPressChapterSkip = 1;
+  // First line indent for paragraphs
+  uint8_t firstLineIndent = 0;
   // Color mode (light/dark) for reader
   uint8_t colorMode = LIGHT_MODE;
 

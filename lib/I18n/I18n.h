@@ -112,6 +112,7 @@ enum class StrId : uint16_t {
   STATUS_BAR,       // "Status Bar" / "状态栏"
   HIDE_BATTERY,     // "Hide Battery %" / "隐藏电量百分比"
   EXTRA_SPACING,    // "Extra Paragraph Spacing" / "段落额外间距"
+  FIRST_LINE_INDENT, // "First Line Indent" / "首行缩进"
   TEXT_AA,          // "Text Anti-Aliasing" / "文字抗锯齿"
   SHORT_PWR_BTN,    // "Short Power Button Click" / "电源键短按"
   ORIENTATION,      // "Reading Orientation" / "阅读方向"
@@ -310,7 +311,7 @@ enum class StrId : uint16_t {
   JAPANESE,         // "日本語"
 
   // Sentinel - must be last
-  _COUNT = 258
+  _COUNT = 259
 };
 
 // Language enum
