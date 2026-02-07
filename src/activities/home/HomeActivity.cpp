@@ -265,20 +265,14 @@ void HomeActivity::render() {
           // Draw the cover image centered within the book card
           renderer.drawBitmap(bitmap, coverX, coverY, bookWidth, bookHeight);
 
-          // Draw border around the card
-          renderer.drawRect(bookX, bookY, bookWidth, bookHeight);
+          // Draw border around the card (always white in dark mode)
+          renderer.drawRect(bookX, bookY, bookWidth, bookHeight, renderer.isDarkMode());
 
           // No bookmark ribbon when cover is shown - it would just cover the art
 
           // Store the buffer with cover image for fast navigation
           coverBufferStored = storeCoverBuffer();
           coverRendered = true;
-
-          // First render: if selected, draw selection indicators now
-          if (bookSelected) {
-            renderer.drawRect(bookX + 1, bookY + 1, bookWidth - 2, bookHeight - 2);
-            renderer.drawRect(bookX + 2, bookY + 2, bookWidth - 4, bookHeight - 4);
-          }
         }
         file.close();
       }
@@ -315,14 +309,7 @@ void HomeActivity::render() {
       }
     }
 
-    // If buffer was restored, draw selection indicators if needed
-    if (bufferRestored && bookSelected && coverRendered) {
-      // Draw selection border (no bookmark inversion needed since cover has no bookmark)
-      renderer.drawRect(bookX + 1, bookY + 1, bookWidth - 2, bookHeight - 2);
-      renderer.drawRect(bookX + 2, bookY + 2, bookWidth - 4, bookHeight - 4);
-    } else if (!coverRendered && !bufferRestored) {
-      // Selection border already handled above in the no-cover case
-    }
+
   }
 
   if (hasContinueReading) {

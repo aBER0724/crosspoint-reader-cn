@@ -572,14 +572,6 @@ void GfxRenderer::drawBitmap(const Bitmap &bitmap, const int x, const int y,
   skipDarkModeForImages = true;
   auto cleanup = [this]() { skipDarkModeForImages = false; };
 
-  // If in dark mode and drawing a positive image, we need a white background
-  // first, as the global background is black.
-  if (darkMode && renderMode == BW) {
-    // skipDarkModeForImages is true, so drawPixel(..., false) will not invert
-    // and will set the bit (White).
-    fillRect(x, y, maxWidth, maxHeight, false);
-  }
-
   float scale = 1.0f;
   bool isScaled = false;
   int cropPixX = std::floor(bitmap.getWidth() * cropX / 2.0f);
@@ -601,6 +593,14 @@ void GfxRenderer::drawBitmap(const Bitmap &bitmap, const int x, const int y,
   }
   Serial.printf("[%lu] [GFX] Scaling by %f - %s\n", millis(), scale,
                 isScaled ? "scaled" : "not scaled");
+
+  if (darkMode && renderMode == BW) {
+    const int sourceWidth = static_cast<int>((1.0f - cropX) * bitmap.getWidth() - cropPixX);
+    const int sourceHeight = static_cast<int>((1.0f - cropY) * bitmap.getHeight() - cropPixY);
+    const int scaledWidth = isScaled ? static_cast<int>(std::floor(sourceWidth * scale)) : sourceWidth;
+    const int scaledHeight = isScaled ? static_cast<int>(std::floor(sourceHeight * scale)) : sourceHeight;
+    fillRect(x, y, scaledWidth, scaledHeight, false);
+  }
 
   // Calculate output row size (2 bits per pixel, packed into bytes)
   // IMPORTANT: Use int, not uint8_t, to avoid overflow for images > 1020 pixels
@@ -683,14 +683,6 @@ void GfxRenderer::drawBitmap1Bit(const Bitmap &bitmap, const int x, const int y,
   skipDarkModeForImages = true;
   auto cleanup = [this]() { skipDarkModeForImages = false; };
 
-  // If in dark mode and drawing a positive image, we need a white background
-  // first, as the global background is black.
-  if (darkMode && renderMode == BW) {
-    // skipDarkModeForImages is true, so drawPixel(..., false) will not invert
-    // and will set the bit (White).
-    fillRect(x, y, maxWidth, maxHeight, false);
-  }
-
   float scale = 1.0f;
   bool isScaled = false;
   if (maxWidth > 0 && bitmap.getWidth() > maxWidth) {
@@ -702,6 +694,14 @@ void GfxRenderer::drawBitmap1Bit(const Bitmap &bitmap, const int x, const int y,
     scale = std::min(scale, static_cast<float>(maxHeight) /
                                 static_cast<float>(bitmap.getHeight()));
     isScaled = true;
+  }
+
+  if (darkMode && renderMode == BW) {
+    const int sourceWidth = bitmap.getWidth();
+    const int sourceHeight = bitmap.getHeight();
+    const int scaledWidth = isScaled ? static_cast<int>(std::floor(sourceWidth * scale)) : sourceWidth;
+    const int scaledHeight = isScaled ? static_cast<int>(std::floor(sourceHeight * scale)) : sourceHeight;
+    fillRect(x, y, scaledWidth, scaledHeight, false);
   }
 
   // For 1-bit BMP, output is still 2-bit packed (for consistency with
