@@ -8,7 +8,9 @@
 #include <esp_task_wdt.h>
 
 #include <algorithm>
+#include <map>
 
+#include "WifiCredentialStore.h"
 #include "html/FilesPageHtml.generated.h"
 #include "html/HomePageHtml.generated.h"
 #include "util/StringUtils.h"
@@ -105,6 +107,12 @@ void CrossPointWebServer::begin() {
 
   // Delete file/folder endpoint
   server->on("/delete", HTTP_POST, [this] { handleDelete(); });
+
+  // WiFi credential management endpoints (work in both modes, but most useful in AP mode)
+  server->on("/api/wifi/scan", HTTP_GET, [this] { handleWifiScan(); });
+  server->on("/api/wifi/save", HTTP_POST, [this] { handleWifiSave(); });
+  server->on("/api/wifi/list", HTTP_GET, [this] { handleWifiList(); });
+  server->on("/api/wifi/delete", HTTP_POST, [this] { handleWifiDelete(); });
 
   // Captive portal detection endpoints — respond correctly so devices
   // recognise the network as "online" and route traffic through it.
@@ -847,5 +855,156 @@ void CrossPointWebServer::onWebSocketEvent(uint8_t num, WStype_t type, uint8_t* 
 
     default:
       break;
+  }
+}
+
+// --- WiFi credential management API handlers ---
+
+void CrossPointWebServer::handleWifiScan() const {
+  Serial.printf("[%lu] [WEB] WiFi scan requested\n", millis());
+
+  // In AP mode we need to briefly enable STA to scan, without tearing down the AP.
+  const wifi_mode_t prevMode = WiFi.getMode();
+  if (apMode) {
+    WiFi.mode(WIFI_AP_STA);
+    delay(100);
+  }
+
+  // Synchronous scan — blocks but keeps AP alive in AP_STA mode
+  const int n = WiFi.scanNetworks(/*async=*/false, /*show_hidden=*/false);
+
+  // Restore previous WiFi mode after scan
+  if (apMode && prevMode != WIFI_AP_STA) {
+    WiFi.mode(prevMode);
+  }
+
+  if (n < 0) {
+    server->send(500, "application/json", "{\"error\":\"Scan failed\"}");
+    Serial.printf("[%lu] [WEB] WiFi scan failed with code %d\n", millis(), n);
+    return;
+  }
+
+  // De-duplicate by SSID, keeping the strongest signal
+  std::map<String, int> bestIndex;
+  for (int i = 0; i < n; i++) {
+    const String ssid = WiFi.SSID(i);
+    if (ssid.isEmpty()) continue;  // Skip hidden networks
+    auto it = bestIndex.find(ssid);
+    if (it == bestIndex.end() || WiFi.RSSI(i) > WiFi.RSSI(it->second)) {
+      bestIndex[ssid] = i;
+    }
+  }
+
+  // Build JSON array
+  String json = "[";
+  bool first = true;
+  for (const auto& entry : bestIndex) {
+    const int i = entry.second;
+    if (!first) json += ",";
+    first = false;
+
+    JsonDocument doc;
+    doc["ssid"] = WiFi.SSID(i);
+    doc["rssi"] = WiFi.RSSI(i);
+    doc["encrypted"] = (WiFi.encryptionType(i) != WIFI_AUTH_OPEN);
+    doc["saved"] = WIFI_STORE.hasSavedCredential(WiFi.SSID(i).c_str());
+
+    char buf[256];
+    serializeJson(doc, buf, sizeof(buf));
+    json += buf;
+  }
+  json += "]";
+
+  WiFi.scanDelete();
+  server->send(200, "application/json", json);
+  Serial.printf("[%lu] [WEB] WiFi scan returned %d unique networks\n", millis(), bestIndex.size());
+}
+
+void CrossPointWebServer::handleWifiSave() const {
+  // Expect JSON body: {"ssid": "...", "password": "..."}
+  if (!server->hasArg("plain")) {
+    server->send(400, "application/json", "{\"error\":\"Missing request body\"}");
+    return;
+  }
+
+  JsonDocument doc;
+  const DeserializationError err = deserializeJson(doc, server->arg("plain"));
+  if (err) {
+    server->send(400, "application/json", "{\"error\":\"Invalid JSON\"}");
+    return;
+  }
+
+  const char* ssid = doc["ssid"];
+  const char* password = doc["password"];
+
+  if (!ssid || strlen(ssid) == 0) {
+    server->send(400, "application/json", "{\"error\":\"SSID is required\"}");
+    return;
+  }
+  if (!password) {
+    server->send(400, "application/json", "{\"error\":\"Password is required\"}");
+    return;
+  }
+
+  // Load existing credentials, add/update, then save
+  WIFI_STORE.loadFromFile();
+  const bool ok = WIFI_STORE.addCredential(ssid, password);
+
+  if (ok) {
+    server->send(200, "application/json", "{\"success\":true}");
+    Serial.printf("[%lu] [WEB] WiFi credential saved for SSID: %s\n", millis(), ssid);
+  } else {
+    server->send(500, "application/json", "{\"error\":\"Failed to save credential\"}");
+    Serial.printf("[%lu] [WEB] Failed to save WiFi credential for SSID: %s\n", millis(), ssid);
+  }
+}
+
+void CrossPointWebServer::handleWifiList() const {
+  WIFI_STORE.loadFromFile();
+  const auto& creds = WIFI_STORE.getCredentials();
+
+  String json = "[";
+  for (size_t i = 0; i < creds.size(); i++) {
+    if (i > 0) json += ",";
+    // Only expose SSID, never the password
+    json += "{\"ssid\":\"";
+    // Escape any quotes in SSID
+    String escaped = creds[i].ssid.c_str();
+    escaped.replace("\"", "\\\"");
+    json += escaped;
+    json += "\"}";
+  }
+  json += "]";
+
+  server->send(200, "application/json", json);
+}
+
+void CrossPointWebServer::handleWifiDelete() const {
+  if (!server->hasArg("plain")) {
+    server->send(400, "application/json", "{\"error\":\"Missing request body\"}");
+    return;
+  }
+
+  JsonDocument doc;
+  const DeserializationError err = deserializeJson(doc, server->arg("plain"));
+  if (err) {
+    server->send(400, "application/json", "{\"error\":\"Invalid JSON\"}");
+    return;
+  }
+
+  const char* ssid = doc["ssid"];
+  if (!ssid || strlen(ssid) == 0) {
+    server->send(400, "application/json", "{\"error\":\"SSID is required\"}");
+    return;
+  }
+
+  WIFI_STORE.loadFromFile();
+  const bool ok = WIFI_STORE.removeCredential(ssid);
+
+  if (ok) {
+    server->send(200, "application/json", "{\"success\":true}");
+    Serial.printf("[%lu] [WEB] WiFi credential deleted for SSID: %s\n", millis(), ssid);
+  } else {
+    server->send(404, "application/json", "{\"error\":\"Credential not found\"}");
   }
 }

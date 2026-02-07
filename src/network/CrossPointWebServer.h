@@ -61,4 +61,10 @@ class CrossPointWebServer {
   void handleUploadPost() const;
   void handleCreateFolder() const;
   void handleDelete() const;
+
+  // WiFi credential management (AP mode only)
+  void handleWifiScan() const;
+  void handleWifiSave() const;
+  void handleWifiList() const;
+  void handleWifiDelete() const;
 };

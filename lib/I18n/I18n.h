@@ -82,6 +82,7 @@ enum class StrId : uint16_t {
   MAC_ADDRESS,      // "MAC address:" / "MAC地址:"
   CHECKING_WIFI,    // "Checking WiFi..." / "检查WiFi..."
   ENTER_WIFI_PASSWORD, // "Enter WiFi Password" / "输入WiFi密码"
+  HOTSPOT_WIFI_HINT,   // "Tip: Use Hotspot to config WiFi on phone" / "提示: 可通过热点在手机上配置WiFi"
   ENTER_TEXT,       // "Enter Text" / "输入文字"
 
   // === Calibre Wireless ===
@@ -311,7 +312,7 @@ enum class StrId : uint16_t {
   JAPANESE,         // "日本語"
 
   // Sentinel - must be last
-  _COUNT = 259
+  _COUNT = 260
 };
 
 // Language enum

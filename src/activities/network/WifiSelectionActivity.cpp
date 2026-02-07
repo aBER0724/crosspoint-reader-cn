@@ -578,14 +578,18 @@ void WifiSelectionActivity::renderNetworkList() const {
     // Show network count
     char countStr[32];
     snprintf(countStr, sizeof(countStr), TR(NETWORKS_FOUND), networks.size());
-    renderer.drawText(SMALL_FONT_ID, 20, pageHeight - 90, countStr);
+    renderer.drawText(SMALL_FONT_ID, 20, pageHeight - 105, countStr);
   }
 
   // Show MAC address above the network count and legend
-  renderer.drawText(SMALL_FONT_ID, 20, pageHeight - 105, cachedMacAddress.c_str());
+  renderer.drawText(SMALL_FONT_ID, 20, pageHeight - 120, cachedMacAddress.c_str());
 
   // Draw help text
-  renderer.drawText(SMALL_FONT_ID, 20, pageHeight - 75, TR(NETWORK_LEGEND));
+  renderer.drawText(SMALL_FONT_ID, 20, pageHeight - 90, TR(NETWORK_LEGEND));
+
+  // Draw hotspot hint
+  renderer.drawText(SMALL_FONT_ID, 20, pageHeight - 75, TR(HOTSPOT_WIFI_HINT));
+
   const auto labels = mappedInput.mapLabels(TR(BACK), TR(CONNECT), "", "");
   renderer.drawButtonHints(UI_20_FONT_ID, labels.btn1, labels.btn2, labels.btn3, labels.btn4);
 }
