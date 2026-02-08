@@ -31,8 +31,13 @@ This project adapts the original CrossPoint Reader for CJK support, featuring a 
 
 ### 🎨 Themes & Display
 
-- **Dark/Light Mode Switching**: Applies to both the reader and UI.
+- **Dark/Light Mode Switching**: Applies to both reader and UI.
 - Smooth theme switching without full refresh.
+
+### 📖 Reading Layout
+
+- **First Line Indent**: Toggle paragraph indentation for improved readability.
+- Indent width calculated based on actual CJK character width.
 
 ## 📦 Feature List
 
@@ -45,7 +50,10 @@ This project adapts the original CrossPoint Reader for CJK support, featuring a 
 - [x] KOReader Reading Progress Sync
 - [x] WiFi File Upload
 - [x] WiFi OTA Firmware Update
+- [x] WiFi Credential Management (Scan, Save, Delete via Web UI)
+- [x] AP Mode Improvements (Captive Portal Support)
 - [x] Dark/Light Mode Switching
+- [x] First Line Indent for Paragraphs
 - [x] Multi-language Hyphenation Support
 - [x] Font, Layout, Display Style Customization
   - [x] External Font System (Reading + UI Fonts)
