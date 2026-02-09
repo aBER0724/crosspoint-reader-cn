@@ -314,8 +314,43 @@ enum class StrId : uint16_t {
   // === UI Orientation ===
   UI_ORIENTATION,   // "UI Orientation" / "界面方向"
 
+  // === Additional Settings (v1.0 merge) ===
+  SLEEP_COVER_FILTER,  // "Sleep Screen Cover Filter" / "封面滤镜"
+  UI_THEME,            // "UI Theme" / "界面主题"
+  FADING_FIX,          // "Sunlight Fading Fix" / "阳光褪色修复"
+  EMBEDDED_STYLE,      // "Book's Embedded Style" / "书籍内嵌样式"
+  REMAP_BUTTONS,       // "Remap Front Buttons" / "重映射前置按钮"
+
+  // === Additional Setting Values (v1.0 merge) ===
+  COVER_CUSTOM,        // "Cover + Custom" / "封面+自定义"
+  CONTRAST,            // "Contrast" / "对比度"
+  STATUS_FULL_PCT,     // "Full w/ Percentage" / "完整含百分比"
+  STATUS_FULL_BOOK,    // "Full w/ Book Bar" / "完整含书籍进度条"
+  STATUS_BOOK_ONLY,    // "Book Bar Only" / "仅书籍进度条"
+  STATUS_FULL_CHAPTER, // "Full w/ Chapter Bar" / "完整含章节进度条"
+  CLASSIC,             // "Classic" / "经典"
+  LYRA,                // "Lyra"
+  BOOKS_STYLE,         // "Book's Style" / "书籍样式"
+
+  // === Reader Menu (v1.0 merge) ===
+  CHAPTER,             // "Chapter" / "章节"
+  BOOK,                // "Book" / "书籍"
+  PAGES,               // "pages" / "页"
+  GO_TO_PERCENT,       // "Go to %" / "跳转到%"
+  GO_HOME_MENU,        // "Go Home" / "回到主页"
+  DELETE_BOOK_CACHE,   // "Delete Book Cache" / "删除书籍缓存"
+  GO_TO_POSITION,      // "Go to Position" / "跳转到位置"
+  PERCENT_STEP_HINT,   // "Left/Right: 1%  Up/Down: 10%" / "左/右: 1%  上/下: 10%"
+
+  // === KOReader Sync status messages ===
+  SYNCING_TIME,        // "Syncing time..." / "同步时间中..."
+  CALCULATING_HASH,    // "Calculating document hash..." / "计算文档哈希中..."
+  HASH_CALC_FAILED,    // "Failed to calculate document hash" / "计算文档哈希失败"
+  FETCHING_PROGRESS,   // "Fetching remote progress..." / "获取远程进度中..."
+  UPLOADING_PROGRESS,  // "Uploading progress..." / "上传进度中..."
+
   // Sentinel - must be last
-  _COUNT = 261
+  _COUNT = 288
 };
 
 // Language enum
