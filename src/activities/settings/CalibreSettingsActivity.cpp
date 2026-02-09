@@ -3,6 +3,9 @@
 #include <GfxRenderer.h>
 
 #include <cstring>
+#include <string>
+
+#include <I18n.h>
 
 #include "CrossPointSettings.h"
 #include "MappedInputManager.h"
@@ -12,7 +15,6 @@
 
 namespace {
 constexpr int MENU_ITEMS = 3;
-const char* menuNames[MENU_ITEMS] = {"OPDS Server URL", "Username", "Password"};
 }  // namespace
 
 void CalibreSettingsActivity::taskTrampoline(void* param) {
@@ -100,7 +102,7 @@ void CalibreSettingsActivity::handleSelection() {
     // Username
     exitActivity();
     enterNewActivity(new KeyboardEntryActivity(
-        renderer, mappedInput, "Username", SETTINGS.opdsUsername, 10,
+        renderer, mappedInput, TR(USERNAME), SETTINGS.opdsUsername, 10,
         63,     // maxLength
         false,  // not password
         [this](const std::string& username) {
@@ -118,7 +120,7 @@ void CalibreSettingsActivity::handleSelection() {
     // Password
     exitActivity();
     enterNewActivity(new KeyboardEntryActivity(
-        renderer, mappedInput, "Password", SETTINGS.opdsPassword, 10,
+        renderer, mappedInput, TR(PASSWORD), SETTINGS.opdsPassword, 10,
         63,     // maxLength
         false,  // not password mode
         [this](const std::string& password) {
@@ -164,6 +166,7 @@ void CalibreSettingsActivity::render() {
   renderer.fillRect(0, 70 + selectedIndex * 30 - 2, pageWidth - 1, 30);
 
   // Draw menu items
+  const char* menuNames[MENU_ITEMS] = {"OPDS Server URL", TR(USERNAME), TR(PASSWORD)};
   for (int i = 0; i < MENU_ITEMS; i++) {
     const int settingY = 70 + i * 30;
     const bool isSelected = (i == selectedIndex);
@@ -171,20 +174,20 @@ void CalibreSettingsActivity::render() {
     renderer.drawText(UI_10_FONT_ID, 20, settingY, menuNames[i], !isSelected);
 
     // Draw status for each setting
-    const char* status = "[Not Set]";
+    std::string statusStr = std::string("[") + TR(NOT_SET) + "]";
     if (i == 0) {
-      status = (strlen(SETTINGS.opdsServerUrl) > 0) ? "[Set]" : "[Not Set]";
+      statusStr = (strlen(SETTINGS.opdsServerUrl) > 0) ? std::string("[") + TR(SET) + "]" : std::string("[") + TR(NOT_SET) + "]";
     } else if (i == 1) {
-      status = (strlen(SETTINGS.opdsUsername) > 0) ? "[Set]" : "[Not Set]";
+      statusStr = (strlen(SETTINGS.opdsUsername) > 0) ? std::string("[") + TR(SET) + "]" : std::string("[") + TR(NOT_SET) + "]";
     } else if (i == 2) {
-      status = (strlen(SETTINGS.opdsPassword) > 0) ? "[Set]" : "[Not Set]";
+      statusStr = (strlen(SETTINGS.opdsPassword) > 0) ? std::string("[") + TR(SET) + "]" : std::string("[") + TR(NOT_SET) + "]";
     }
-    const auto width = renderer.getTextWidth(UI_10_FONT_ID, status);
-    renderer.drawText(UI_10_FONT_ID, pageWidth - 20 - width, settingY, status, !isSelected);
+    const auto width = renderer.getTextWidth(UI_10_FONT_ID, statusStr.c_str());
+    renderer.drawText(UI_10_FONT_ID, pageWidth - 20 - width, settingY, statusStr.c_str(), !isSelected);
   }
 
   // Draw button hints
-  const auto labels = mappedInput.mapLabels("« Back", "Select", "", "");
+  const auto labels = mappedInput.mapLabels(TR(BACK), TR(SELECT), "", "");
   GUI.drawButtonHints(renderer, labels.btn1, labels.btn2, labels.btn3, labels.btn4);
 
   renderer.displayBuffer();

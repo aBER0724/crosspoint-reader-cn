@@ -3,6 +3,9 @@
 #include <GfxRenderer.h>
 
 #include <cstring>
+#include <string>
+
+#include <I18n.h>
 
 #include "KOReaderAuthActivity.h"
 #include "KOReaderCredentialStore.h"
@@ -13,7 +16,6 @@
 
 namespace {
 constexpr int MENU_ITEMS = 5;
-const char* menuNames[MENU_ITEMS] = {"Username", "Password", "Sync Server URL", "Document Matching", "Authenticate"};
 }  // namespace
 
 void KOReaderSettingsActivity::taskTrampoline(void* param) {
@@ -83,7 +85,7 @@ void KOReaderSettingsActivity::handleSelection() {
     // Username
     exitActivity();
     enterNewActivity(new KeyboardEntryActivity(
-        renderer, mappedInput, "KOReader Username", KOREADER_STORE.getUsername(), 10,
+        renderer, mappedInput, TR(KOREADER_USERNAME), KOREADER_STORE.getUsername(), 10,
         64,     // maxLength
         false,  // not password
         [this](const std::string& username) {
@@ -100,7 +102,7 @@ void KOReaderSettingsActivity::handleSelection() {
     // Password
     exitActivity();
     enterNewActivity(new KeyboardEntryActivity(
-        renderer, mappedInput, "KOReader Password", KOREADER_STORE.getPassword(), 10,
+        renderer, mappedInput, TR(KOREADER_PASSWORD), KOREADER_STORE.getPassword(), 10,
         64,     // maxLength
         false,  // show characters
         [this](const std::string& password) {
@@ -119,7 +121,7 @@ void KOReaderSettingsActivity::handleSelection() {
     const std::string prefillUrl = currentUrl.empty() ? "https://" : currentUrl;
     exitActivity();
     enterNewActivity(new KeyboardEntryActivity(
-        renderer, mappedInput, "Sync Server URL", prefillUrl, 10,
+        renderer, mappedInput, TR(SYNC_SERVER_URL), prefillUrl, 10,
         128,    // maxLength - URLs can be long
         false,  // not password
         [this](const std::string& url) {
@@ -177,12 +179,13 @@ void KOReaderSettingsActivity::render() {
   const auto pageWidth = renderer.getScreenWidth();
 
   // Draw header
-  renderer.drawCenteredText(UI_12_FONT_ID, 15, "KOReader Sync", true, EpdFontFamily::BOLD);
+  renderer.drawCenteredText(UI_12_FONT_ID, 15, TR(KOREADER_SYNC), true, EpdFontFamily::BOLD);
 
   // Draw selection highlight
   renderer.fillRect(0, 60 + selectedIndex * 30 - 2, pageWidth - 1, 30);
 
   // Draw menu items
+  const char* menuNames[MENU_ITEMS] = {TR(USERNAME), TR(PASSWORD), TR(SYNC_SERVER_URL), TR(DOCUMENT_MATCHING), TR(AUTHENTICATE)};
   for (int i = 0; i < MENU_ITEMS; i++) {
     const int settingY = 60 + i * 30;
     const bool isSelected = (i == selectedIndex);
@@ -190,25 +193,25 @@ void KOReaderSettingsActivity::render() {
     renderer.drawText(UI_10_FONT_ID, 20, settingY, menuNames[i], !isSelected);
 
     // Draw status for each item
-    const char* status = "";
+    std::string statusStr;
     if (i == 0) {
-      status = KOREADER_STORE.getUsername().empty() ? "[Not Set]" : "[Set]";
+      statusStr = KOREADER_STORE.getUsername().empty() ? std::string("[") + TR(NOT_SET) + "]" : std::string("[") + TR(SET) + "]";
     } else if (i == 1) {
-      status = KOREADER_STORE.getPassword().empty() ? "[Not Set]" : "[Set]";
+      statusStr = KOREADER_STORE.getPassword().empty() ? std::string("[") + TR(NOT_SET) + "]" : std::string("[") + TR(SET) + "]";
     } else if (i == 2) {
-      status = KOREADER_STORE.getServerUrl().empty() ? "[Default]" : "[Custom]";
+      statusStr = KOREADER_STORE.getServerUrl().empty() ? "[Default]" : "[Custom]";
     } else if (i == 3) {
-      status = KOREADER_STORE.getMatchMethod() == DocumentMatchMethod::FILENAME ? "[Filename]" : "[Binary]";
+      statusStr = KOREADER_STORE.getMatchMethod() == DocumentMatchMethod::FILENAME ? std::string("[") + TR(FILENAME) + "]" : std::string("[") + TR(BINARY) + "]";
     } else if (i == 4) {
-      status = KOREADER_STORE.hasCredentials() ? "" : "[Set credentials first]";
+      statusStr = KOREADER_STORE.hasCredentials() ? "" : std::string("[") + TR(SET_CREDENTIALS_FIRST) + "]";
     }
 
-    const auto width = renderer.getTextWidth(UI_10_FONT_ID, status);
-    renderer.drawText(UI_10_FONT_ID, pageWidth - 20 - width, settingY, status, !isSelected);
+    const auto width = renderer.getTextWidth(UI_10_FONT_ID, statusStr.c_str());
+    renderer.drawText(UI_10_FONT_ID, pageWidth - 20 - width, settingY, statusStr.c_str(), !isSelected);
   }
 
   // Draw button hints
-  const auto labels = mappedInput.mapLabels("« Back", "Select", "", "");
+  const auto labels = mappedInput.mapLabels(TR(BACK), TR(SELECT), "", "");
   GUI.drawButtonHints(renderer, labels.btn1, labels.btn2, labels.btn3, labels.btn4);
 
   renderer.displayBuffer();
