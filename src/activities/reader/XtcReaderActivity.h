@@ -41,4 +41,5 @@ class XtcReaderActivity final : public ActivityWithSubactivity {
   void onEnter() override;
   void onExit() override;
   void loop() override;
+  bool supportsLandscape() const override { return true; }
 };

@@ -16,6 +16,7 @@
 #include "CrossPointState.h"
 #include "KOReaderCredentialStore.h"
 #include "MappedInputManager.h"
+#include "OrientationHelper.h"
 #include "RecentBooksStore.h"
 #include "activities/boot_sleep/BootActivity.h"
 #include "activities/boot_sleep/SleepActivity.h"
@@ -139,6 +140,7 @@ void exitActivity() {
 
 void enterNewActivity(Activity* activity) {
   currentActivity = activity;
+  OrientationHelper::applyOrientation(renderer, mappedInputManager, currentActivity);
   currentActivity->onEnter();
 }
 

@@ -29,6 +29,11 @@ class CrossPointSettings {
     LANDSCAPE_CCW = 3  // 800x480 logical coordinates, native panel orientation
   };
 
+  // UI orientation (Portrait or Inverted only).
+  // Values match SettingInfo::Enum indices (0, 1) so the stored setting
+  // value equals the enum value directly.
+  enum UI_ORIENTATION { UI_PORTRAIT = 0, UI_INVERTED = 1 };
+
   // Front button layout options
   // Default: Back, Confirm, Left, Right
   // Swapped: Left, Right, Back, Confirm
@@ -79,8 +84,12 @@ class CrossPointSettings {
   uint8_t textAntiAliasing = 1;
   // Short power button click behaviour
   uint8_t shortPwrBtn = IGNORE;
-  // EPUB reading orientation settings
-  // 0 = portrait (default), 1 = landscape clockwise, 2 = inverted, 3 = landscape counter-clockwise
+  // UI orientation (Portrait or Inverted only)
+  // 0 = UI_PORTRAIT, 1 = UI_INVERTED
+  uint8_t uiOrientation = UI_PORTRAIT;
+
+  // Reader orientation (all four directions supported)
+  // 0 = portrait, 1 = landscape CW, 2 = inverted, 3 = landscape CCW
   uint8_t orientation = PORTRAIT;
   // Button layouts
   uint8_t frontButtonLayout = BACK_CONFIRM_LEFT_RIGHT;

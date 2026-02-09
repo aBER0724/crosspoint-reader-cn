@@ -46,6 +46,7 @@ class KOReaderSyncActivity final : public ActivityWithSubactivity {
   void onExit() override;
   void loop() override;
   bool preventAutoSleep() override { return state == CONNECTING || state == SYNCING; }
+  bool supportsLandscape() const override { return true; }
 
  private:
   enum State {

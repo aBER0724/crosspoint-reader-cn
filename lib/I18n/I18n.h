@@ -311,8 +311,11 @@ enum class StrId : uint16_t {
   CHINESE_SIMPLIFIED,  // "简体中文"
   JAPANESE,         // "日本語"
 
+  // === UI Orientation ===
+  UI_ORIENTATION,   // "UI Orientation" / "界面方向"
+
   // Sentinel - must be last
-  _COUNT = 260
+  _COUNT = 261
 };
 
 // Language enum

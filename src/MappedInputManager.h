@@ -6,6 +6,9 @@ class MappedInputManager {
  public:
   enum class Button { Back, Confirm, Left, Right, Up, Down, Power, PageBack, PageForward };
 
+  // Matches GfxRenderer::Orientation without requiring the header dependency.
+  enum class Orientation { Portrait, LandscapeClockwise, PortraitInverted, LandscapeCounterClockwise };
+
   struct Labels {
     const char* btn1;
     const char* btn2;
@@ -24,8 +27,15 @@ class MappedInputManager {
   unsigned long getHeldTime() const;
   Labels mapLabels(const char* back, const char* confirm, const char* previous, const char* next) const;
 
+  // Set the effective screen orientation (called by OrientationHelper when
+  // switching activities). Button mapping uses this instead of the raw
+  // SETTINGS.orientation so that UI pages in Portrait mode are not affected
+  // by a landscape setting.
+  void setEffectiveOrientation(Orientation o) { effectiveOrientation = o; }
+
  private:
   HalGPIO& gpio;
+  Orientation effectiveOrientation = Orientation::Portrait;
 
   bool mapButton(Button button, bool (HalGPIO::*fn)(uint8_t) const) const;
 };

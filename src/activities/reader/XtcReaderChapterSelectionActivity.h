@@ -38,4 +38,5 @@ class XtcReaderChapterSelectionActivity final : public Activity {
   void onEnter() override;
   void onExit() override;
   void loop() override;
+  bool supportsLandscape() const override { return true; }
 };

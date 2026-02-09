@@ -137,6 +137,9 @@ const char *const I18n::STRINGS_EN[] = {
     "English",
     "\xE7\xAE\x80\xE4\xBD\x93\xE4\xB8\xAD\xE6\x96\x87", // 简体中文
     "\xE6\x97\xA5\xE6\x9C\xAC\xE8\xAA\x9E", // 日本語
+
+    // UI Orientation
+    "UI Orientation",
 };
 
 // Chinese strings
@@ -465,6 +468,9 @@ const char *const I18n::STRINGS_ZH[] = {
     "English",
     "\xE7\xAE\x80\xE4\xBD\x93\xE4\xB8\xAD\xE6\x96\x87", // 简体中文
     "\xE6\x97\xA5\xE6\x9C\xAC\xE8\xAA\x9E", // 日本語
+
+    // UI Orientation
+    "\xE7\x95\x8C\xE9\x9D\xA2\xE6\x96\xB9\xE5\x90\x91", // 界面方向
 };
 
 // Japanese strings
@@ -914,6 +920,9 @@ const char *const I18n::STRINGS_JA[] = {
     "English",
     "\xE7\xAE\x80\xE4\xBD\x93\xE4\xB8\xAD\xE6\x96\x87", // 简体中文
     "\xE6\x97\xA5\xE6\x9C\xAC\xE8\xAA\x9E", // 日本語
+
+    // UI Orientation
+    "UI\xE6\x96\xB9\xE5\x90\x91", // UI方向
 };
 
 // Compile-time check for array sizes

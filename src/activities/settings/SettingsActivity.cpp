@@ -10,7 +10,7 @@
 #include "fontIds.h"
 
 namespace {
-constexpr int displaySettingsCount = 7;
+constexpr int displaySettingsCount = 8;
 const SettingInfo displaySettings[displaySettingsCount] = {
     // Should match with SLEEP_SCREEN_MODE
     SettingInfo::Enum(StrId::SLEEP_SCREEN, &CrossPointSettings::sleepScreen, {StrId::DARK, StrId::LIGHT, StrId::CUSTOM, StrId::COVER, StrId::NONE}),
@@ -20,6 +20,8 @@ const SettingInfo displaySettings[displaySettingsCount] = {
     SettingInfo::Enum(StrId::HIDE_BATTERY, &CrossPointSettings::hideBatteryPercentage, {StrId::NEVER, StrId::IN_READER, StrId::ALWAYS}),
     SettingInfo::Enum(StrId::REFRESH_FREQ, &CrossPointSettings::refreshFrequency,
                       {StrId::PAGES_1, StrId::PAGES_5, StrId::PAGES_10, StrId::PAGES_15, StrId::PAGES_30}),
+    SettingInfo::Enum(StrId::UI_ORIENTATION, &CrossPointSettings::uiOrientation,
+                      {StrId::PORTRAIT, StrId::INVERTED}),
     SettingInfo::Action(StrId::EXT_UI_FONT)};
 
 constexpr int readerSettingsCount = 10;
@@ -31,9 +33,9 @@ const SettingInfo readerSettings[readerSettingsCount] = {
     SettingInfo::Value(StrId::SCREEN_MARGIN, &CrossPointSettings::screenMargin, {5, 40, 5}),
     SettingInfo::Enum(StrId::PARA_ALIGNMENT, &CrossPointSettings::paragraphAlignment,
                       {StrId::JUSTIFY, StrId::LEFT, StrId::CENTER, StrId::RIGHT}),
-    SettingInfo::Toggle(StrId::HYPHENATION, &CrossPointSettings::hyphenationEnabled),
     SettingInfo::Enum(StrId::ORIENTATION, &CrossPointSettings::orientation,
                       {StrId::PORTRAIT, StrId::LANDSCAPE_CW, StrId::INVERTED, StrId::LANDSCAPE_CCW}),
+    SettingInfo::Toggle(StrId::HYPHENATION, &CrossPointSettings::hyphenationEnabled),
     SettingInfo::Toggle(StrId::EXTRA_SPACING, &CrossPointSettings::extraParagraphSpacing),
     SettingInfo::Toggle(StrId::FIRST_LINE_INDENT, &CrossPointSettings::firstLineIndent),
     SettingInfo::Toggle(StrId::TEXT_AA, &CrossPointSettings::textAntiAliasing)};
