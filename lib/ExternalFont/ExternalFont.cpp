@@ -276,8 +276,18 @@ const uint8_t *ExternalFont::getGlyph(uint32_t codepoint) {
   // Store metrics
   if (!isEmpty) {
     _cache[slot].minX = minX;
-    // Variable width: content width + 2px padding
-    _cache[slot].advanceX = (maxX - minX + 1) + 2;
+    // CJK/fullwidth chars: use charWidth (= font-defined character spacing)
+    // Latin/narrow chars: use content width + 2px padding, capped at charWidth
+    const bool isFullwidth = (codepoint >= 0x2E80 && codepoint <= 0x9FFF) ||
+                              (codepoint >= 0x3000 && codepoint <= 0x30FF) ||
+                              (codepoint >= 0xF900 && codepoint <= 0xFAFF) ||
+                              (codepoint >= 0xFF00 && codepoint <= 0xFF60);
+    if (isFullwidth) {
+      _cache[slot].advanceX = _charWidth;
+    } else {
+      const uint8_t contentAdvance = (maxX - minX + 1) + 2;
+      _cache[slot].advanceX = (contentAdvance > _charWidth) ? _charWidth : contentAdvance;
+    }
   } else {
     _cache[slot].minX = 0;
     // Special handling for whitespace characters

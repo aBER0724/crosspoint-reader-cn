@@ -1232,8 +1232,8 @@ int GfxRenderer::getLineHeight(const int fontId) const {
     if (fm.isExternalFontEnabled()) {
       ExternalFont *extFont = fm.getActiveFont();
       if (extFont) {
-        // Use charHeight + small spacing as line height
-        return extFont->getCharHeight() + 4;
+        // charHeight is the line spacing defined by the font
+        return extFont->getCharHeight();
       }
     }
   }
