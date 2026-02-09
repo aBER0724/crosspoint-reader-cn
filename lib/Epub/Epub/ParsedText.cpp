@@ -47,6 +47,29 @@ uint16_t measureWordWidth(const GfxRenderer& renderer, const int fontId, const s
   return renderer.getTextWidth(fontId, sanitized.c_str(), style);
 }
 
+// Check if a word is a single CJK character (used for zero-spacing between adjacent CJK words)
+bool isSingleCjkWord(const std::string& word) {
+  if (word.empty()) return false;
+  const auto* p = reinterpret_cast<const uint8_t*>(word.c_str());
+  uint32_t cp;
+  int len;
+  if ((*p & 0x80) == 0) { cp = *p; len = 1; }
+  else if ((*p & 0xE0) == 0xC0) { cp = *p & 0x1F; len = 2; }
+  else if ((*p & 0xF0) == 0xE0) { cp = *p & 0x0F; len = 3; }
+  else if ((*p & 0xF8) == 0xF0) { cp = *p & 0x07; len = 4; }
+  else return false;
+  for (int i = 1; i < len; i++) {
+    if ((p[i] & 0xC0) != 0x80) return false;
+    cp = (cp << 6) | (p[i] & 0x3F);
+  }
+  if (static_cast<int>(word.size()) != len) return false;
+  return (cp >= 0x2E80 && cp <= 0x9FFF) ||
+         (cp >= 0x3000 && cp <= 0x30FF) ||
+         (cp >= 0x3400 && cp <= 0x4DBF) ||
+         (cp >= 0xF900 && cp <= 0xFAFF) ||
+         (cp >= 0xFF00 && cp <= 0xFFEF);
+}
+
 }  // namespace
 
 void ParsedText::addWord(std::string word, const EpdFontFamily::Style fontStyle, const bool underline,
@@ -90,18 +113,25 @@ void ParsedText::layoutAndExtractLines(const GfxRenderer& renderer, const int fo
   // Build indexed continues vector from the parallel list for O(1) access during layout
   std::vector<bool> continuesVec(wordContinues.begin(), wordContinues.end());
 
+  // Build CJK word flags for zero-spacing between adjacent CJK characters
+  std::vector<bool> wordIsCjkVec;
+  wordIsCjkVec.reserve(words.size());
+  for (const auto& w : words) {
+    wordIsCjkVec.push_back(isSingleCjkWord(w));
+  }
+
   std::vector<size_t> lineBreakIndices;
   if (hyphenationEnabled) {
     // Use greedy layout that can split words mid-loop when a hyphenated prefix fits.
     lineBreakIndices =
-        computeHyphenatedLineBreaks(renderer, fontId, pageWidth, spaceWidth, wordWidths, continuesVec, indentWidth);
+        computeHyphenatedLineBreaks(renderer, fontId, pageWidth, spaceWidth, wordWidths, continuesVec, wordIsCjkVec, indentWidth);
   } else {
-    lineBreakIndices = computeLineBreaks(renderer, fontId, pageWidth, spaceWidth, wordWidths, continuesVec, indentWidth);
+    lineBreakIndices = computeLineBreaks(renderer, fontId, pageWidth, spaceWidth, wordWidths, continuesVec, wordIsCjkVec, indentWidth);
   }
   const size_t lineCount = includeLastLine ? lineBreakIndices.size() : lineBreakIndices.size() - 1;
 
   for (size_t i = 0; i < lineCount; ++i) {
-    extractLine(i, pageWidth, spaceWidth, wordWidths, continuesVec, lineBreakIndices, processLine, indentWidth);
+    extractLine(i, pageWidth, spaceWidth, wordWidths, continuesVec, wordIsCjkVec, lineBreakIndices, processLine, indentWidth);
   }
 }
 
@@ -126,7 +156,8 @@ std::vector<uint16_t> ParsedText::calculateWordWidths(const GfxRenderer& rendere
 
 std::vector<size_t> ParsedText::computeLineBreaks(const GfxRenderer& renderer, const int fontId, const int pageWidth,
                                                   const int spaceWidth, std::vector<uint16_t>& wordWidths,
-                                                  std::vector<bool>& continuesVec, const int indentWidth) {
+                                                  std::vector<bool>& continuesVec, std::vector<bool>& wordIsCjkVec,
+                                                  const int indentWidth) {
   if (words.empty()) {
     return {};
   }
@@ -147,7 +178,7 @@ std::vector<size_t> ParsedText::computeLineBreaks(const GfxRenderer& renderer, c
     const int effectiveWidth = i == 0 ? pageWidth - effectiveIndent : pageWidth;
     while (wordWidths[i] > effectiveWidth) {
       if (!hyphenateWordAtIndex(i, effectiveWidth, renderer, fontId, wordWidths, /*allowFallbackBreaks=*/true,
-                                &continuesVec)) {
+                                &continuesVec, &wordIsCjkVec)) {
         break;
       }
     }
@@ -172,8 +203,10 @@ std::vector<size_t> ParsedText::computeLineBreaks(const GfxRenderer& renderer, c
     const int effectivePageWidth = i == 0 ? pageWidth - effectiveIndent : pageWidth;
 
     for (size_t j = i; j < totalWordCount; ++j) {
-      // Add space before word j, unless it's the first word on the line or a continuation
-      const int gap = j > static_cast<size_t>(i) && !continuesVec[j] ? spaceWidth : 0;
+      // Add space before word j, unless it's the first word on the line, a continuation, or CJK-adjacent
+      const bool cjkAdj = j > static_cast<size_t>(i) && j < wordIsCjkVec.size() &&
+                           wordIsCjkVec[j] && wordIsCjkVec[j - 1];
+      const int gap = j > static_cast<size_t>(i) && !continuesVec[j] && !cjkAdj ? spaceWidth : 0;
       currlen += wordWidths[j] + gap;
 
       if (currlen > effectivePageWidth) {
@@ -258,6 +291,7 @@ std::vector<size_t> ParsedText::computeHyphenatedLineBreaks(const GfxRenderer& r
                                                             const int pageWidth, const int spaceWidth,
                                                             std::vector<uint16_t>& wordWidths,
                                                             std::vector<bool>& continuesVec,
+                                                            std::vector<bool>& wordIsCjkVec,
                                                             const int indentWidth) {
   // Calculate first line indent from CSS text-indent (only for left/justified text without extra paragraph spacing)
   const int cssFirstLineIndent =
@@ -282,7 +316,9 @@ std::vector<size_t> ParsedText::computeHyphenatedLineBreaks(const GfxRenderer& r
     // Consume as many words as possible for current line, splitting when prefixes fit
     while (currentIndex < wordWidths.size()) {
       const bool isFirstWord = currentIndex == lineStart;
-      const int spacing = isFirstWord || continuesVec[currentIndex] ? 0 : spaceWidth;
+      const bool cjkAdj = !isFirstWord && currentIndex < wordIsCjkVec.size() &&
+                           wordIsCjkVec[currentIndex] && wordIsCjkVec[currentIndex - 1];
+      const int spacing = isFirstWord || continuesVec[currentIndex] || cjkAdj ? 0 : spaceWidth;
       const int candidateWidth = spacing + wordWidths[currentIndex];
 
       // Word fits on current line
@@ -297,7 +333,7 @@ std::vector<size_t> ParsedText::computeHyphenatedLineBreaks(const GfxRenderer& r
       const bool allowFallbackBreaks = isFirstWord;  // Only for first word on line
 
       if (availableWidth > 0 && hyphenateWordAtIndex(currentIndex, availableWidth, renderer, fontId, wordWidths,
-                                                     allowFallbackBreaks, &continuesVec)) {
+                                                     allowFallbackBreaks, &continuesVec, &wordIsCjkVec)) {
         // Prefix now fits; append it to this line and move to next line
         lineWidth += spacing + wordWidths[currentIndex];
         ++currentIndex;
@@ -329,7 +365,8 @@ std::vector<size_t> ParsedText::computeHyphenatedLineBreaks(const GfxRenderer& r
 // available width.
 bool ParsedText::hyphenateWordAtIndex(const size_t wordIndex, const int availableWidth, const GfxRenderer& renderer,
                                       const int fontId, std::vector<uint16_t>& wordWidths,
-                                      const bool allowFallbackBreaks, std::vector<bool>* continuesVec) {
+                                      const bool allowFallbackBreaks, std::vector<bool>* continuesVec,
+                                      std::vector<bool>* wordIsCjkVec) {
   // Guard against invalid indices or zero available width before attempting to split.
   if (availableWidth <= 0 || wordIndex >= words.size()) {
     return false;
@@ -406,6 +443,12 @@ bool ParsedText::hyphenateWordAtIndex(const size_t wordIndex, const int availabl
     continuesVec->insert(continuesVec->begin() + wordIndex + 1, originalContinuedToNext);
   }
 
+  // Keep CJK flags in sync (split remainder is never a single CJK char)
+  if (wordIsCjkVec) {
+    (*wordIsCjkVec)[wordIndex] = isSingleCjkWord(*wordIt);
+    wordIsCjkVec->insert(wordIsCjkVec->begin() + wordIndex + 1, isSingleCjkWord(remainder));
+  }
+
   // Update cached widths to reflect the new prefix/remainder pairing.
   wordWidths[wordIndex] = static_cast<uint16_t>(chosenWidth);
   const uint16_t remainderWidth = measureWordWidth(renderer, fontId, remainder, style);
@@ -415,7 +458,7 @@ bool ParsedText::hyphenateWordAtIndex(const size_t wordIndex, const int availabl
 
 void ParsedText::extractLine(const size_t breakIndex, const int pageWidth, const int spaceWidth,
                              const std::vector<uint16_t>& wordWidths, const std::vector<bool>& continuesVec,
-                             const std::vector<size_t>& lineBreakIndices,
+                             const std::vector<bool>& wordIsCjkVec, const std::vector<size_t>& lineBreakIndices,
                              const std::function<void(std::shared_ptr<TextBlock>)>& processLine,
                              const int indentWidth) {
   const size_t lineBreak = lineBreakIndices[breakIndex];
@@ -437,12 +480,17 @@ void ParsedText::extractLine(const size_t breakIndex, const int pageWidth, const
   // (continuation words attach to previous word with no gap)
   int lineWordWidthSum = 0;
   size_t actualGapCount = 0;
+  size_t nonCjkGapCount = 0;
 
   for (size_t wordIdx = 0; wordIdx < lineWordCount; wordIdx++) {
     lineWordWidthSum += wordWidths[lastBreakAt + wordIdx];
     // Count gaps: each word after the first creates a gap, unless it's a continuation
     if (wordIdx > 0 && !continuesVec[lastBreakAt + wordIdx]) {
       actualGapCount++;
+      const bool cjkAdj = wordIsCjkVec[lastBreakAt + wordIdx] && wordIsCjkVec[lastBreakAt + wordIdx - 1];
+      if (!cjkAdj) {
+        nonCjkGapCount++;
+      }
     }
   }
 
@@ -450,24 +498,27 @@ void ParsedText::extractLine(const size_t breakIndex, const int pageWidth, const
   const int effectivePageWidth = pageWidth - effectiveIndent;
   const int spareSpace = effectivePageWidth - lineWordWidthSum;
 
-  int spacing = spaceWidth;
   const bool isLastLine = breakIndex == lineBreakIndices.size() - 1;
+  const bool isJustified = blockStyle.alignment == CssTextAlign::Justify && !isLastLine && actualGapCount >= 1;
 
-  // For justified text, calculate spacing based on actual gap count
-  if (blockStyle.alignment == CssTextAlign::Justify && !isLastLine && actualGapCount >= 1) {
-    spacing = spareSpace / static_cast<int>(actualGapCount);
+  // For justified text: distribute spare space evenly across ALL gaps (including CJK-CJK)
+  // For non-justified: CJK-CJK gaps get 0, other gaps get spaceWidth
+  int justifiedSpacing = 0;
+  if (isJustified) {
+    justifiedSpacing = spareSpace / static_cast<int>(actualGapCount);
   }
 
   // Calculate initial x position (first line starts at indent for left/justified text)
   auto xpos = static_cast<uint16_t>(effectiveIndent);
   if (blockStyle.alignment == CssTextAlign::Right) {
-    xpos = spareSpace - static_cast<int>(actualGapCount) * spaceWidth;
+    xpos = spareSpace - static_cast<int>(nonCjkGapCount) * spaceWidth;
   } else if (blockStyle.alignment == CssTextAlign::Center) {
-    xpos = (spareSpace - static_cast<int>(actualGapCount) * spaceWidth) / 2;
+    xpos = (spareSpace - static_cast<int>(nonCjkGapCount) * spaceWidth) / 2;
   }
 
   // Pre-calculate X positions for words
   // Continuation words attach to the previous word with no space before them
+  // Adjacent CJK words have zero spacing (non-justified) or uniform spacing (justified)
   std::list<uint16_t> lineXPos;
 
   for (size_t wordIdx = 0; wordIdx < lineWordCount; wordIdx++) {
@@ -475,10 +526,19 @@ void ParsedText::extractLine(const size_t breakIndex, const int pageWidth, const
 
     lineXPos.push_back(xpos);
 
-    // Add spacing after this word, unless the next word is a continuation
+    // Calculate gap after this word
     const bool nextIsContinuation = wordIdx + 1 < lineWordCount && continuesVec[lastBreakAt + wordIdx + 1];
+    int gap = 0;
+    if (!nextIsContinuation && wordIdx + 1 < lineWordCount) {
+      if (isJustified) {
+        gap = justifiedSpacing;
+      } else {
+        const bool nextCjkAdj = wordIsCjkVec[lastBreakAt + wordIdx] && wordIsCjkVec[lastBreakAt + wordIdx + 1];
+        gap = nextCjkAdj ? 0 : spaceWidth;
+      }
+    }
 
-    xpos += currentWordWidth + (nextIsContinuation ? 0 : spacing);
+    xpos += currentWordWidth + gap;
   }
 
   // Iterators always start at the beginning as we are moving content with splice below
