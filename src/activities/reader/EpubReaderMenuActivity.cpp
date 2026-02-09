@@ -1,6 +1,7 @@
 #include "EpubReaderMenuActivity.h"
 
 #include <GfxRenderer.h>
+#include <I18n.h>
 
 #include "MappedInputManager.h"
 #include "components/UITheme.h"
@@ -113,9 +114,9 @@ void EpubReaderMenuActivity::renderScreen() {
   // Progress summary
   std::string progressLine;
   if (totalPages > 0) {
-    progressLine = "Chapter: " + std::to_string(currentPage) + "/" + std::to_string(totalPages) + " pages  |  ";
+    progressLine = std::string(TR(CHAPTER)) + ": " + std::to_string(currentPage) + "/" + std::to_string(totalPages) + " " + TR(PAGES) + "  |  ";
   }
-  progressLine += "Book: " + std::to_string(bookProgressPercent) + "%";
+  progressLine += std::string(TR(BOOK)) + ": " + std::to_string(bookProgressPercent) + "%";
   renderer.drawCenteredText(UI_10_FONT_ID, 45, progressLine.c_str());
 
   // Menu Items
@@ -142,7 +143,7 @@ void EpubReaderMenuActivity::renderScreen() {
   }
 
   // Footer / Hints
-  const auto labels = mappedInput.mapLabels("« Back", "Select", "Up", "Down");
+  const auto labels = mappedInput.mapLabels(TR(BACK), TR(SELECT), TR(DIR_UP), TR(DIR_DOWN));
   GUI.drawButtonHints(renderer, labels.btn1, labels.btn2, labels.btn3, labels.btn4);
 
   renderer.displayBuffer();

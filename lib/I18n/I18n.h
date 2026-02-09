@@ -30,6 +30,7 @@ enum class StrId : uint16_t {
   NO_RECENT_BOOKS,  // "No recent books" / "无最近阅读"
   TAB_RECENT,   // "Recent" / "最近"
   TAB_FILES,    // "Files" / "文件"
+  SD_CARD,      // "SD card" / "SD卡"
 
   // === Reader ===
   SELECT_CHAPTER,  // "Select Chapter" / "选择章节"
@@ -350,7 +351,7 @@ enum class StrId : uint16_t {
   UPLOADING_PROGRESS,  // "Uploading progress..." / "上传进度中..."
 
   // Sentinel - must be last
-  _COUNT = 288
+  _COUNT = 289
 };
 
 // Language enum

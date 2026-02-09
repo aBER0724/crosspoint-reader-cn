@@ -1,5 +1,6 @@
 #pragma once
 #include <Epub.h>
+#include <I18n.h>
 #include <freertos/FreeRTOS.h>
 #include <freertos/semphr.h>
 #include <freertos/task.h>
@@ -41,9 +42,9 @@ class EpubReaderMenuActivity final : public ActivityWithSubactivity {
 
   // Fixed menu layout (order matters for up/down navigation).
   const std::vector<MenuItem> menuItems = {
-      {MenuAction::SELECT_CHAPTER, "Go to Chapter"}, {MenuAction::ROTATE_SCREEN, "Reading Orientation"},
-      {MenuAction::GO_TO_PERCENT, "Go to %"},        {MenuAction::GO_HOME, "Go Home"},
-      {MenuAction::SYNC, "Sync Progress"},           {MenuAction::DELETE_CACHE, "Delete Book Cache"}};
+      {MenuAction::SELECT_CHAPTER, TR(SELECT_CHAPTER)}, {MenuAction::ROTATE_SCREEN, TR(ORIENTATION)},
+      {MenuAction::GO_TO_PERCENT, TR(GO_TO_PERCENT)},   {MenuAction::GO_HOME, TR(GO_HOME_MENU)},
+      {MenuAction::SYNC, TR(SYNC_PROGRESS)},            {MenuAction::DELETE_CACHE, TR(DELETE_BOOK_CACHE)}};
 
   int selectedIndex = 0;
   bool updateRequired = false;
@@ -52,7 +53,7 @@ class EpubReaderMenuActivity final : public ActivityWithSubactivity {
   ButtonNavigator buttonNavigator;
   std::string title = "Reader Menu";
   uint8_t pendingOrientation = 0;
-  const std::vector<const char*> orientationLabels = {"Portrait", "Landscape CW", "Inverted", "Landscape CCW"};
+  const std::vector<const char*> orientationLabels = {TR(PORTRAIT), TR(LANDSCAPE_CW), TR(INVERTED), TR(LANDSCAPE_CCW)};
   int currentPage = 0;
   int totalPages = 0;
   int bookProgressPercent = 0;

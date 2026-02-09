@@ -2,6 +2,7 @@
 
 #include <GfxRenderer.h>
 #include <HardwareSerial.h>
+#include <I18n.h>
 
 #include "ButtonRemapActivity.h"
 #include "CalibreSettingsActivity.h"
@@ -14,6 +15,122 @@
 #include "SettingsList.h"
 #include "components/UITheme.h"
 #include "fontIds.h"
+
+namespace {
+
+// Translate setting display names from English keys to localized strings
+const char* translateSettingName(const char* name) {
+  // Display
+  if (strcmp(name, "Sleep Screen") == 0) return TR(SLEEP_SCREEN);
+  if (strcmp(name, "Sleep Screen Cover Mode") == 0) return TR(SLEEP_COVER_MODE);
+  if (strcmp(name, "Sleep Screen Cover Filter") == 0) return TR(SLEEP_COVER_FILTER);
+  if (strcmp(name, "Status Bar") == 0) return TR(STATUS_BAR);
+  if (strcmp(name, "Hide Battery %") == 0) return TR(HIDE_BATTERY);
+  if (strcmp(name, "Refresh Frequency") == 0) return TR(REFRESH_FREQ);
+  if (strcmp(name, "UI Theme") == 0) return TR(UI_THEME);
+  if (strcmp(name, "Sunlight Fading Fix") == 0) return TR(FADING_FIX);
+  if (strcmp(name, "Color Mode") == 0) return TR(COLOR_MODE);
+  if (strcmp(name, "UI Orientation") == 0) return TR(UI_ORIENTATION);
+  // Reader
+  if (strcmp(name, "Font Family") == 0) return TR(FONT_FAMILY);
+  if (strcmp(name, "Font Size") == 0) return TR(FONT_SIZE);
+  if (strcmp(name, "Line Spacing") == 0) return TR(LINE_SPACING);
+  if (strcmp(name, "Screen Margin") == 0) return TR(SCREEN_MARGIN);
+  if (strcmp(name, "Paragraph Alignment") == 0) return TR(PARA_ALIGNMENT);
+  if (strcmp(name, "Book's Embedded Style") == 0) return TR(EMBEDDED_STYLE);
+  if (strcmp(name, "Hyphenation") == 0) return TR(HYPHENATION);
+  if (strcmp(name, "Reading Orientation") == 0) return TR(ORIENTATION);
+  if (strcmp(name, "Extra Paragraph Spacing") == 0) return TR(EXTRA_SPACING);
+  if (strcmp(name, "Text Anti-Aliasing") == 0) return TR(TEXT_AA);
+  if (strcmp(name, "First Line Indent") == 0) return TR(FIRST_LINE_INDENT);
+  // Controls
+  if (strcmp(name, "Remap Front Buttons") == 0) return TR(REMAP_BUTTONS);
+  if (strcmp(name, "Side Button Layout (reader)") == 0) return TR(SIDE_BTN_LAYOUT);
+  if (strcmp(name, "Long-press Chapter Skip") == 0) return TR(LONG_PRESS_SKIP);
+  if (strcmp(name, "Short Power Button Click") == 0) return TR(SHORT_PWR_BTN);
+  // System
+  if (strcmp(name, "Time to Sleep") == 0) return TR(TIME_TO_SLEEP);
+  if (strcmp(name, "Language") == 0) return TR(LANGUAGE);
+  if (strcmp(name, "KOReader Sync") == 0) return TR(KOREADER_SYNC);
+  if (strcmp(name, "Clear Cache") == 0) return TR(CLEAR_READING_CACHE);
+  if (strcmp(name, "Check for updates") == 0) return TR(CHECK_UPDATES);
+  return name;
+}
+
+// Translate enum/value display text from English to localized strings
+const char* translateEnumValue(const std::string& value) {
+  // Sleep screen modes
+  if (value == "Dark") return TR(DARK);
+  if (value == "Light") return TR(LIGHT);
+  if (value == "Custom") return TR(CUSTOM);
+  if (value == "Cover") return TR(COVER);
+  if (value == "None") return TR(NONE);
+  if (value == "Cover + Custom") return TR(COVER_CUSTOM);
+  // Cover mode
+  if (value == "Fit") return TR(FIT);
+  if (value == "Crop") return TR(CROP);
+  // Cover filter
+  if (value == "Contrast") return TR(CONTRAST);
+  if (value == "Inverted") return TR(INVERTED);
+  // Status bar
+  if (value == "No Progress") return TR(NO_PROGRESS);
+  if (value == "Full w/ Percentage") return TR(STATUS_FULL_PCT);
+  if (value == "Full w/ Book Bar") return TR(STATUS_FULL_BOOK);
+  if (value == "Book Bar Only") return TR(STATUS_BOOK_ONLY);
+  if (value == "Full w/ Chapter Bar") return TR(STATUS_FULL_CHAPTER);
+  // Hide battery
+  if (value == "Never") return TR(NEVER);
+  if (value == "In Reader") return TR(IN_READER);
+  if (value == "Always") return TR(ALWAYS);
+  // UI Theme
+  if (value == "Classic") return TR(CLASSIC);
+  if (value == "Lyra") return TR(LYRA);
+  // Orientation
+  if (value == "Portrait") return TR(PORTRAIT);
+  if (value == "Landscape CW") return TR(LANDSCAPE_CW);
+  if (value == "Landscape CCW") return TR(LANDSCAPE_CCW);
+  // Font family
+  if (value == "Bookerly") return TR(BOOKERLY);
+  if (value == "Noto Sans") return TR(NOTO_SANS);
+  if (value == "Open Dyslexic") return TR(OPEN_DYSLEXIC);
+  // Font size
+  if (value == "Small") return TR(SMALL);
+  if (value == "Medium") return TR(MEDIUM);
+  if (value == "Large") return TR(LARGE);
+  if (value == "X Large") return TR(X_LARGE);
+  // Line spacing
+  if (value == "Tight") return TR(TIGHT);
+  if (value == "Normal") return TR(NORMAL);
+  if (value == "Wide") return TR(WIDE);
+  // Paragraph alignment
+  if (value == "Justify") return TR(JUSTIFY);
+  if (value == "Left") return TR(LEFT);
+  if (value == "Center") return TR(CENTER);
+  if (value == "Right") return TR(RIGHT);
+  if (value == "Book's Style") return TR(BOOKS_STYLE);
+  // Side button layout
+  if (value == "Prev, Next") return TR(PREV_NEXT);
+  if (value == "Next, Prev") return TR(NEXT_PREV);
+  // Short power button
+  if (value == "Ignore") return TR(IGNORE);
+  if (value == "Sleep") return TR(SLEEP);
+  if (value == "Page Turn") return TR(PAGE_TURN);
+  // Time to sleep
+  if (value == "1 min") return TR(MIN_1);
+  if (value == "5 min") return TR(MIN_5);
+  if (value == "10 min") return TR(MIN_10);
+  if (value == "15 min") return TR(MIN_15);
+  if (value == "30 min") return TR(MIN_30);
+  // Refresh frequency
+  if (value == "1 page") return TR(PAGES_1);
+  if (value == "5 pages") return TR(PAGES_5);
+  if (value == "10 pages") return TR(PAGES_10);
+  if (value == "15 pages") return TR(PAGES_15);
+  if (value == "30 pages") return TR(PAGES_30);
+  return value.c_str();
+}
+
+}  // namespace
 
 const char* SettingsActivity::categoryNames[categoryCount] = {"Display", "Reader", "Controls", "System"};
 
@@ -256,12 +373,13 @@ void SettingsActivity::render() const {
 
   auto metrics = UITheme::getInstance().getMetrics();
 
-  GUI.drawHeader(renderer, Rect{0, metrics.topPadding, pageWidth, metrics.headerHeight}, "Settings");
+  GUI.drawHeader(renderer, Rect{0, metrics.topPadding, pageWidth, metrics.headerHeight}, TR(SETTINGS_TITLE));
 
+  const char* translatedCategories[] = {TR(CAT_DISPLAY), TR(CAT_READER), TR(CAT_CONTROLS), TR(CAT_SYSTEM)};
   std::vector<TabInfo> tabs;
   tabs.reserve(categoryCount);
   for (int i = 0; i < categoryCount; i++) {
-    tabs.push_back({categoryNames[i], selectedCategoryIndex == i});
+    tabs.push_back({translatedCategories[i], selectedCategoryIndex == i});
   }
   GUI.drawTabBar(renderer, Rect{0, metrics.topPadding + metrics.headerHeight, pageWidth, metrics.tabBarHeight}, tabs,
                  selectedSettingIndex == 0);
@@ -272,16 +390,17 @@ void SettingsActivity::render() const {
       Rect{0, metrics.topPadding + metrics.headerHeight + metrics.tabBarHeight + metrics.verticalSpacing, pageWidth,
            pageHeight - (metrics.topPadding + metrics.headerHeight + metrics.tabBarHeight + metrics.buttonHintsHeight +
                          metrics.verticalSpacing * 2)},
-      settingsCount, selectedSettingIndex - 1, [&settings](int index) { return std::string(settings[index].name); },
+      settingsCount, selectedSettingIndex - 1,
+      [&settings](int index) { return std::string(translateSettingName(settings[index].name)); },
       nullptr, nullptr,
       [&settings](int i) {
         std::string valueText = "";
         if (settings[i].type == SettingType::TOGGLE && settings[i].valuePtr != nullptr) {
           const bool value = SETTINGS.*(settings[i].valuePtr);
-          valueText = value ? "ON" : "OFF";
+          valueText = value ? TR(ON) : TR(OFF);
         } else if (settings[i].type == SettingType::ENUM && settings[i].valuePtr != nullptr) {
           const uint8_t value = SETTINGS.*(settings[i].valuePtr);
-          valueText = settings[i].enumValues[value];
+          valueText = translateEnumValue(settings[i].enumValues[value]);
         } else if (settings[i].type == SettingType::VALUE && settings[i].valuePtr != nullptr) {
           valueText = std::to_string(SETTINGS.*(settings[i].valuePtr));
         }
@@ -294,7 +413,7 @@ void SettingsActivity::render() const {
                     metrics.versionTextY, CROSSPOINT_VERSION);
 
   // Draw help text
-  const auto labels = mappedInput.mapLabels("« Back", "Toggle", "Up", "Down");
+  const auto labels = mappedInput.mapLabels(TR(BACK), TR(TOGGLE), TR(DIR_UP), TR(DIR_DOWN));
   GUI.drawButtonHints(renderer, labels.btn1, labels.btn2, labels.btn3, labels.btn4);
 
   // Always use standard refresh for settings screen
