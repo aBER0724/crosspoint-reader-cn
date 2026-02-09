@@ -1,11 +1,13 @@
 #include "SettingsActivity.h"
 
+#include <FontManager.h>
 #include <GfxRenderer.h>
 #include <HardwareSerial.h>
 #include <I18n.h>
 
 #include "ButtonRemapActivity.h"
 #include "CalibreSettingsActivity.h"
+#include "FontSelectActivity.h"
 #include "ClearCacheActivity.h"
 #include "CrossPointSettings.h"
 #include "KOReaderSettingsActivity.h"
@@ -31,6 +33,7 @@ const char* translateSettingName(const char* name) {
   if (strcmp(name, "Sunlight Fading Fix") == 0) return TR(FADING_FIX);
   if (strcmp(name, "Color Mode") == 0) return TR(COLOR_MODE);
   if (strcmp(name, "UI Orientation") == 0) return TR(UI_ORIENTATION);
+  if (strcmp(name, "UI Font") == 0) return TR(EXT_UI_FONT);
   // Reader
   if (strcmp(name, "Font Family") == 0) return TR(FONT_FAMILY);
   if (strcmp(name, "Font Size") == 0) return TR(FONT_SIZE);
@@ -164,6 +167,7 @@ void SettingsActivity::onEnter() {
   }
 
   // Append device-only ACTION items
+  displaySettings.push_back(SettingInfo::Action("UI Font"));
   controlsSettings.insert(controlsSettings.begin(), SettingInfo::Action("Remap Front Buttons"));
   systemSettings.push_back(SettingInfo::Action("Language"));
   systemSettings.push_back(SettingInfo::Action("KOReader Sync"));
@@ -287,6 +291,22 @@ void SettingsActivity::toggleCurrentSetting() {
     const bool currentValue = SETTINGS.*(setting.valuePtr);
     SETTINGS.*(setting.valuePtr) = !currentValue;
   } else if (setting.type == SettingType::ENUM && setting.valuePtr != nullptr) {
+    // Font Size: skip when external font is active (fixed bitmap size)
+    if (strcmp(setting.name, "Font Size") == 0 && FontMgr.isExternalFontEnabled()) {
+      return;
+    }
+    // Font Family: open FontSelectActivity instead of cycling enum
+    if (strcmp(setting.name, "Font Family") == 0) {
+      xSemaphoreTake(renderingMutex, portMAX_DELAY);
+      exitActivity();
+      enterNewActivity(new FontSelectActivity(renderer, mappedInput,
+          FontSelectActivity::SelectMode::Reader, [this] {
+            exitActivity();
+            updateRequired = true;
+          }));
+      xSemaphoreGive(renderingMutex);
+      return;
+    }
     const uint8_t currentValue = SETTINGS.*(setting.valuePtr);
     SETTINGS.*(setting.valuePtr) = (currentValue + 1) % static_cast<uint8_t>(setting.enumValues.size());
   } else if (setting.type == SettingType::VALUE && setting.valuePtr != nullptr) {
@@ -345,6 +365,15 @@ void SettingsActivity::toggleCurrentSetting() {
         updateRequired = true;
       }));
       xSemaphoreGive(renderingMutex);
+    } else if (strcmp(setting.name, "UI Font") == 0) {
+      xSemaphoreTake(renderingMutex, portMAX_DELAY);
+      exitActivity();
+      enterNewActivity(new FontSelectActivity(renderer, mappedInput,
+          FontSelectActivity::SelectMode::UI, [this] {
+            exitActivity();
+            updateRequired = true;
+          }));
+      xSemaphoreGive(renderingMutex);
     }
   } else {
     return;
@@ -399,10 +428,29 @@ void SettingsActivity::render() const {
           const bool value = SETTINGS.*(settings[i].valuePtr);
           valueText = value ? TR(ON) : TR(OFF);
         } else if (settings[i].type == SettingType::ENUM && settings[i].valuePtr != nullptr) {
-          const uint8_t value = SETTINGS.*(settings[i].valuePtr);
-          valueText = translateEnumValue(settings[i].enumValues[value]);
+          // Font Family: show external font name when external font is active
+          if (strcmp(settings[i].name, "Font Family") == 0 && FontMgr.isExternalFontEnabled()) {
+            const FontInfo* info = FontMgr.getFontInfo(FontMgr.getSelectedIndex());
+            valueText = info ? info->name : "External";
+          // Font Size: show actual pixel size when external font is active
+          } else if (strcmp(settings[i].name, "Font Size") == 0 && FontMgr.isExternalFontEnabled()) {
+            const FontInfo* info = FontMgr.getFontInfo(FontMgr.getSelectedIndex());
+            valueText = info ? (std::to_string(info->size) + "pt") : "—";
+          } else {
+            const uint8_t value = SETTINGS.*(settings[i].valuePtr);
+            valueText = translateEnumValue(settings[i].enumValues[value]);
+          }
         } else if (settings[i].type == SettingType::VALUE && settings[i].valuePtr != nullptr) {
           valueText = std::to_string(SETTINGS.*(settings[i].valuePtr));
+        } else if (settings[i].type == SettingType::ACTION && strcmp(settings[i].name, "UI Font") == 0) {
+          // Show current UI font name or "Built-in"
+          if (FontMgr.isUiFontEnabled()) {
+            const int idx = FontMgr.getUiSelectedIndex();
+            const FontInfo* info = FontMgr.getFontInfo(idx);
+            valueText = info ? info->name : "External";
+          } else {
+            valueText = TR(BUILTIN_DISABLED);
+          }
         }
         return valueText;
       });
