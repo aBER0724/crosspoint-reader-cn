@@ -57,9 +57,9 @@ This project adapts the original CrossPoint Reader for CJK support, featuring a 
 - [x] Multi-language Hyphenation Support
 - [x] Font, Layout, Display Style Customization
   - [x] External Font System (Reading + UI Fonts)
-- [ ] Screen Rotation
-  - [x] Reading Interface Rotation
-  - [ ] UI Interface Rotation
+- [x] Screen Rotation (Independent UI/Reader orientation settings)
+  - [x] Reading Interface Rotation (Portrait, Landscape CW/CCW, Inverted)
+  - [x] UI Interface Rotation (Portrait, Inverted)
 - [x] Calibre Wireless Connection & Web Library Integration
 - [x] Cover Image Display
 
