@@ -23,5 +23,6 @@ class Activity {
   virtual void loop() {}
   virtual bool skipLoopDelay() { return false; }
   virtual bool preventAutoSleep() { return false; }
+  virtual bool isReaderActivity() const { return false; }
   virtual bool supportsLandscape() const { return false; }
 };

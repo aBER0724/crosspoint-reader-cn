@@ -1,5 +1,6 @@
 #include "ExternalFont.h"
 
+#include <HalStorage.h>
 #include <HardwareSerial.h>
 #include <algorithm>
 #include <cstring>
@@ -114,7 +115,7 @@ bool ExternalFont::load(const char *filepath) {
     return false;
   }
 
-  if (!SdMan.openFileForRead("EXT_FONT", filepath, _fontFile)) {
+  if (!Storage.openFileForRead("EXT_FONT", filepath, _fontFile)) {
     Serial.printf("[EXT_FONT] Failed to open: %s\n", filepath);
     return false;
   }

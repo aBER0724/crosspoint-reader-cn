@@ -1,7 +1,7 @@
 #include "JpegToBmpConverter.h"
 
+#include <HalStorage.h>
 #include <HardwareSerial.h>
-#include <SdFat.h>
 #include <picojpeg.h>
 
 #include <cstdio>
@@ -200,7 +200,7 @@ unsigned char JpegToBmpConverter::jpegReadCallback(unsigned char* pBuf, const un
 
 // Internal implementation with configurable target size and bit depth
 bool JpegToBmpConverter::jpegFileToBmpStreamInternal(FsFile& jpegFile, Print& bmpOut, int targetWidth, int targetHeight,
-                                                     bool oneBit) {
+                                                     bool oneBit, bool crop) {
   Serial.printf("[%lu] [JPG] Converting JPEG to %s BMP (target: %dx%d)\n", millis(), oneBit ? "1-bit" : "2-bit",
                 targetWidth, targetHeight);
 
@@ -242,8 +242,12 @@ bool JpegToBmpConverter::jpegFileToBmpStreamInternal(FsFile& jpegFile, Print& bm
     const float scaleToFitWidth = static_cast<float>(targetWidth) / imageInfo.m_width;
     const float scaleToFitHeight = static_cast<float>(targetHeight) / imageInfo.m_height;
     // We scale to the smaller dimension, so we can potentially crop later.
-    // TODO: ideally, we already crop here.
-    const float scale = (scaleToFitWidth > scaleToFitHeight) ? scaleToFitWidth : scaleToFitHeight;
+    float scale = 1.0;
+    if (crop) {  // if we will crop, scale to the smaller dimension
+      scale = (scaleToFitWidth > scaleToFitHeight) ? scaleToFitWidth : scaleToFitHeight;
+    } else {  // else, scale to the larger dimension to fit
+      scale = (scaleToFitWidth < scaleToFitHeight) ? scaleToFitWidth : scaleToFitHeight;
+    }
 
     outWidth = static_cast<int>(imageInfo.m_width * scale);
     outHeight = static_cast<int>(imageInfo.m_height * scale);
@@ -550,8 +554,8 @@ bool JpegToBmpConverter::jpegFileToBmpStreamInternal(FsFile& jpegFile, Print& bm
 }
 
 // Core function: Convert JPEG file to 2-bit BMP (uses default target size)
-bool JpegToBmpConverter::jpegFileToBmpStream(FsFile& jpegFile, Print& bmpOut) {
-  return jpegFileToBmpStreamInternal(jpegFile, bmpOut, TARGET_MAX_WIDTH, TARGET_MAX_HEIGHT, false);
+bool JpegToBmpConverter::jpegFileToBmpStream(FsFile& jpegFile, Print& bmpOut, bool crop) {
+  return jpegFileToBmpStreamInternal(jpegFile, bmpOut, TARGET_MAX_WIDTH, TARGET_MAX_HEIGHT, false, crop);
 }
 
 // Convert with custom target size (for thumbnails, 2-bit)
@@ -563,5 +567,5 @@ bool JpegToBmpConverter::jpegFileToBmpStreamWithSize(FsFile& jpegFile, Print& bm
 // Convert to 1-bit BMP (black and white only, no grays) for fast home screen rendering
 bool JpegToBmpConverter::jpegFileTo1BitBmpStreamWithSize(FsFile& jpegFile, Print& bmpOut, int targetMaxWidth,
                                                          int targetMaxHeight) {
-  return jpegFileToBmpStreamInternal(jpegFile, bmpOut, targetMaxWidth, targetMaxHeight, true);
+  return jpegFileToBmpStreamInternal(jpegFile, bmpOut, targetMaxWidth, targetMaxHeight, true, true);
 }

@@ -1,7 +1,7 @@
 #include "I18n.h"
 
 #include <HardwareSerial.h>
-#include <SDCardManager.h>
+#include <HalStorage.h>
 #include <Serialization.h>
 
 #include <algorithm>
@@ -962,10 +962,10 @@ void I18n::setLanguage(Language lang) {
 }
 
 void I18n::saveSettings() {
-  SdMan.mkdir("/.crosspoint");
+  Storage.mkdir("/.crosspoint");
 
   FsFile file;
-  if (!SdMan.openFileForWrite("I18N", SETTINGS_FILE, file)) {
+  if (!Storage.openFileForWrite("I18N", SETTINGS_FILE, file)) {
     Serial.printf("[I18N] Failed to save settings\n");
     return;
   }
@@ -980,7 +980,7 @@ void I18n::saveSettings() {
 
 void I18n::loadSettings() {
   FsFile file;
-  if (!SdMan.openFileForRead("I18N", SETTINGS_FILE, file)) {
+  if (!Storage.openFileForRead("I18N", SETTINGS_FILE, file)) {
     Serial.printf("[I18N] No settings file, using default (English)\n");
     return;
   }

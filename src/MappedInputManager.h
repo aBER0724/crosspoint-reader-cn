@@ -18,7 +18,6 @@ class MappedInputManager {
 
   explicit MappedInputManager(HalGPIO& gpio) : gpio(gpio) {}
 
-  void update();
   bool wasPressed(Button button) const;
   bool wasReleased(Button button) const;
   bool isPressed(Button button) const;
@@ -26,6 +25,8 @@ class MappedInputManager {
   bool wasAnyReleased() const;
   unsigned long getHeldTime() const;
   Labels mapLabels(const char* back, const char* confirm, const char* previous, const char* next) const;
+  // Returns the raw front button index that was pressed this frame (or -1 if none).
+  int getPressedFrontButton() const;
 
   // Set the effective screen orientation (called by OrientationHelper when
   // switching activities). Button mapping uses this instead of the raw

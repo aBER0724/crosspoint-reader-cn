@@ -1,7 +1,7 @@
 #include "FontManager.h"
 
 #include <HardwareSerial.h>
-#include <SDCardManager.h>
+#include <HalStorage.h>
 #include <Serialization.h>
 
 #include <cstring>
@@ -21,7 +21,7 @@ FontManager &FontManager::getInstance() {
 void FontManager::scanFonts() {
   _fontCount = 0;
 
-  FsFile dir = SdMan.open(FONTS_DIR, O_RDONLY);
+  FsFile dir = Storage.open(FONTS_DIR, O_RDONLY);
   if (!dir) {
     Serial.printf("[FONT_MGR] Cannot open fonts directory: %s\n", FONTS_DIR);
     return;
@@ -202,10 +202,10 @@ ExternalFont *FontManager::getActiveUiFont() {
 }
 
 void FontManager::saveSettings() {
-  SdMan.mkdir("/.crosspoint");
+  Storage.mkdir("/.crosspoint");
 
   FsFile file;
-  if (!SdMan.openFileForWrite("FONT_MGR", SETTINGS_FILE, file)) {
+  if (!Storage.openFileForWrite("FONT_MGR", SETTINGS_FILE, file)) {
     Serial.printf("[FONT_MGR] Failed to save settings\n");
     return;
   }
@@ -236,7 +236,7 @@ void FontManager::saveSettings() {
 
 void FontManager::loadSettings() {
   FsFile file;
-  if (!SdMan.openFileForRead("FONT_MGR", SETTINGS_FILE, file)) {
+  if (!Storage.openFileForRead("FONT_MGR", SETTINGS_FILE, file)) {
     Serial.printf("[FONT_MGR] No settings file, using defaults\n");
     return;
   }

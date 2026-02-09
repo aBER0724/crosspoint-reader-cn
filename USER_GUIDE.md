@@ -13,14 +13,17 @@ Welcome to the **CrossPoint** firmware. This guide outlines the hardware control
     - [3.2 Book Selection](#32-book-selection)
     - [3.3 Reading Mode](#33-reading-mode)
     - [3.4 File Upload Screen](#34-file-upload-screen)
+    - [3.4.1 Calibre Wireless Transfers](#341-calibre-wireless-transfers)
     - [3.5 Settings](#35-settings)
     - [3.6 Sleep Screen](#36-sleep-screen)
   - [4. Reading Mode](#4-reading-mode)
     - [Page Turning](#page-turning)
     - [Chapter Navigation](#chapter-navigation)
     - [System Navigation](#system-navigation)
+    - [Supported Languages](#supported-languages)
   - [5. Chapter Selection Screen](#5-chapter-selection-screen)
   - [6. Current Limitations \& Roadmap](#6-current-limitations--roadmap)
+  - [7. Troubleshooting Issues \& Escaping Bootloop](#7-troubleshooting-issues--escaping-bootloop)
 
 
 ## 1. Hardware Overview
@@ -81,6 +84,18 @@ See the [webserver docs](./docs/webserver.md) for more information on how to con
 > [!TIP]
 > Advanced users can also manage files programmatically or via the command line using `curl`. See the [webserver docs](./docs/webserver.md) for details.
 
+### 3.4.1 Calibre Wireless Transfers
+
+CrossPoint supports sending books from Calibre using the CrossPoint Reader device plugin.
+
+1. Install the plugin in Calibre:
+   - Head to https://github.com/crosspoint-reader/calibre-plugins/releases to download the latest version of the crosspoint_reader plugin.
+   - Download the zip file.
+   - Open Calibre → Preferences → Plugins → Load plugin from file → Select the zip file.
+2. On the device: File Transfer → Connect to Calibre → Join a network.
+3. Make sure your computer is on the same WiFi network.
+4. In Calibre, click "Send to device" to transfer books.
+
 ### 3.5 Settings
 
 The Settings screen allows you to configure the device's behavior. There are a few settings you can adjust:
@@ -90,13 +105,21 @@ The Settings screen allows you to configure the device's behavior. There are a f
   - "Custom" - Custom images from the SD card; see [Sleep Screen](#36-sleep-screen) below for more information
   - "Cover" - The book cover image (Note: this is experimental and may not work as expected)
   - "None" - A blank screen
+  - "Cover + Custom" - The book cover image, fallbacks to "Custom" behavior
 - **Sleep Screen Cover Mode**: How to display the book cover when "Cover" sleep screen is selected:
   - "Fit" (default) - Scale the image down to fit centered on the screen, padding with white borders as necessary
   - "Crop" - Scale the image down and crop as necessary to try to to fill the screen (Note: this is experimental and may not work as expected)
+- **Sleep Screen Cover Filter**: What filter will be applied to the book cover when "Cover" sleep screen is selected 
+  - "None" (default) - The cover image will be converted to a grayscale image and displayed as it is
+  - "Contrast" - The image will be displayed as a black & white image without grayscale conversion
+  - "Inverted" - The image will be inverted as in white&black and will be displayed without grayscale conversion
 - **Status Bar**: Configure the status bar displayed while reading:
   - "None" - No status bar
   - "No Progress" - Show status bar without reading progress
-  - "Full" - Show status bar with reading progress
+  - "Full w/ Percentage" - Show status bar with book progress (as percentage)
+  - "Full w/ Book Bar" - Show status bar with book progress (as bar)
+  - "Book Bar Only" - Show book progress (as bar)
+  - "Full w/ Chapter Bar" - Show status bar with chapter progress (as bar)
 - **Hide Battery %**: Configure where to suppress the battery pecentage display in the status bar; the battery icon will still be shown:
   - "Never" - Always show battery percentage (default)
   - "In Reader" - Show battery percentage everywhere except in reading mode
@@ -116,6 +139,7 @@ The Settings screen allows you to configure the device's behavior. There are a f
   - Back, Confirm, Left, Right (default)
   - Left, Right, Back, Confirm
   - Left, Back, Confirm, Right
+  - Back, Confirm, Right, Left
 - **Side Button Layout (reader)**: Swap the order of the up and down volume buttons from Previous/Next to Next/Previous. This change is only in effect when reading.
 - **Long-press Chapter Skip**: Set whether long-pressing page turn buttons skip to the next/previous chapter.
   - "Chapter Skip" (default) - Long-pressing skips to next/previous chapter
@@ -131,7 +155,10 @@ The Settings screen allows you to configure the device's behavior. There are a f
 - **Reader Paragraph Alignment**: Set the alignment of paragraphs; options are "Justified" (default), "Left", "Center", or "Right".
 - **Time to Sleep**: Set the duration of inactivity before the device automatically goes to sleep.
 - **Refresh Frequency**: Set how often the screen does a full refresh while reading to reduce ghosting.
-- **Calibre Settings**: Set up integration for accessing a Calibre web library or connecting to Calibre as a wireless device.
+- **Sunlight Fading Fix**: Configure whether to enable a software-fix for the issue where white X4 models may fade when used in direct sunlight
+  - "OFF" (default) - Disable the fix
+  - "ON" - Enable the fix
+- **OPDS Browser**: Configure OPDS server settings for browsing and downloading books. Set the server URL (for Calibre Content Server, add `/opds` to the end), and optionally configure username and password for servers requiring authentication. Note: Only HTTP Basic authentication is supported. If using Calibre Content Server with authentication enabled, you must set it to use Basic authentication instead of the default Digest authentication.
 - **Check for updates**: Check for firmware updates over WiFi.
 
 ### 3.6 Sleep Screen
@@ -177,6 +204,15 @@ This feature can be disabled in **[Settings](#35-settings)** to help avoid chang
 * **Return to Home:** Press and **hold** the **Back** button to close the book and return to the **[Home](#31-home-screen)** screen.
 * **Chapter Menu:** Press **Confirm** to open the **[Table of Contents/Chapter Selection](#5-chapter-selection-screen)**.
 
+### Supported Languages
+
+CrossPoint renders text using the following Unicode character blocks, enabling support for a wide range of languages:
+
+*   **Latin Script (Basic, Supplement, Extended-A):** Covers English, German, French, Spanish, Portuguese, Italian, Dutch, Swedish, Norwegian, Danish, Finnish, Polish, Czech, Hungarian, Romanian, Slovak, Slovenian, Turkish, and others.
+*   **Cyrillic Script (Standard and Extended):** Covers Russian, Ukrainian, Belarusian, Bulgarian, Serbian, Macedonian, Kazakh, Kyrgyz, Mongolian, and others.
+
+What is not supported: Chinese, Japanese, Korean, Vietnamese, Hebrew, Arabic, Greek and Farsi.
+
 ---
 
 ## 5. Chapter Selection Screen
@@ -194,3 +230,15 @@ Accessible by pressing **Confirm** while inside a book.
 Please note that this firmware is currently in active development. The following features are **not yet supported** but are planned for future updates:
 
 * **Images:** Embedded images in e-books will not render.
+
+---
+
+## 7. Troubleshooting Issues & Escaping Bootloop
+
+If an issue or crash is encountered while using Crosspoint, feel free to raise an issue ticket and attach the serial monitor logs. The logs can be obtained by connecting the device to a computer and starting a serial monitor. Either [Serial Monitor](https://www.serialmonitor.org/) or the following command can be used:
+
+```
+pio device monitor
+```
+
+If the device is stuck in a bootloop, press and release the Reset button. Then, press and hold on to the configured Back button and the Power Button to boot to the Home Screen.

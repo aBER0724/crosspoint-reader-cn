@@ -66,13 +66,13 @@ bool isCjkCodepoint(const uint32_t cp) {
   if (cp >= 0xFF00 && cp <= 0xFFEF)
     return true;
   // General Punctuation: U+2000 - U+206F (includes smart quotes, ellipsis,
-  // dashes) Common Chinese punctuation: " " ' ' … — –
+  // dashes) Common Chinese punctuation: \u201c \u201d \u2018 \u2019 \u2026 \u2014 \u2013
   if (cp >= 0x2000 && cp <= 0x206F)
     return true;
-  // Number Forms: U+2150 - U+218F (includes Roman numerals Ⅰ Ⅱ Ⅲ etc.)
+  // Number Forms: U+2150 - U+218F (includes Roman numerals \u2160 \u2161 \u2162 etc.)
   if (cp >= 0x2150 && cp <= 0x218F)
     return true;
-  // Enclosed Alphanumerics: U+2460 - U+24FF (includes ① ② ③ etc.)
+  // Enclosed Alphanumerics: U+2460 - U+24FF (includes \u2460 \u2461 \u2462 etc.)
   if (cp >= 0x2460 && cp <= 0x24FF)
     return true;
   // CJK Symbols and Punctuation: U+3000 - U+303F (already covered above)
@@ -122,65 +122,67 @@ bool isUiFont(int fontId) {
 }
 } // namespace
 
-void GfxRenderer::insertFont(const int fontId, EpdFontFamily font) {
-  fontMap.insert({fontId, font});
-}
-
-void GfxRenderer::rotateCoordinates(const int x, const int y, int *rotatedX,
-                                    int *rotatedY) const {
-  switch (orientation) {
-  case Portrait: {
-    // Logical portrait (480x800) → panel (800x480)
-    // Rotation: 90 degrees clockwise
-    *rotatedX = y;
-    *rotatedY = EInkDisplay::DISPLAY_HEIGHT - 1 - x;
-    break;
-  }
-  case LandscapeClockwise: {
-    // Logical landscape (800x480) rotated 180 degrees (swap top/bottom and
-    // left/right)
-    *rotatedX = EInkDisplay::DISPLAY_WIDTH - 1 - x;
-    *rotatedY = EInkDisplay::DISPLAY_HEIGHT - 1 - y;
-    break;
-  }
-  case PortraitInverted: {
-    // Logical portrait (480x800) → panel (800x480)
-    // Rotation: 90 degrees counter-clockwise
-    *rotatedX = EInkDisplay::DISPLAY_WIDTH - 1 - y;
-    *rotatedY = x;
-    break;
-  }
-  case LandscapeCounterClockwise: {
-    // Logical landscape (800x480) aligned with panel orientation
-    *rotatedX = x;
-    *rotatedY = y;
-    break;
-  }
-  }
-}
-
-void GfxRenderer::drawPixel(const int x, const int y, const bool state) const {
-  uint8_t *frameBuffer = einkDisplay.getFrameBuffer();
-
-  // Early return if no framebuffer is set
+void GfxRenderer::begin() {
+  frameBuffer = display.getFrameBuffer();
   if (!frameBuffer) {
     Serial.printf("[%lu] [GFX] !! No framebuffer\n", millis());
-    return;
+    assert(false);
   }
+}
 
-  int rotatedX = 0;
-  int rotatedY = 0;
-  rotateCoordinates(x, y, &rotatedX, &rotatedY);
+void GfxRenderer::insertFont(const int fontId, EpdFontFamily font) { fontMap.insert({fontId, font}); }
+
+// Translate logical (x,y) coordinates to physical panel coordinates based on current orientation
+// This should always be inlined for better performance
+static inline void rotateCoordinates(const GfxRenderer::Orientation orientation, const int x, const int y, int* phyX,
+                                     int* phyY) {
+  switch (orientation) {
+    case GfxRenderer::Portrait: {
+      // Logical portrait (480x800) -> panel (800x480)
+      // Rotation: 90 degrees clockwise
+      *phyX = y;
+      *phyY = HalDisplay::DISPLAY_HEIGHT - 1 - x;
+      break;
+    }
+    case GfxRenderer::LandscapeClockwise: {
+      // Logical landscape (800x480) rotated 180 degrees (swap top/bottom and left/right)
+      *phyX = HalDisplay::DISPLAY_WIDTH - 1 - x;
+      *phyY = HalDisplay::DISPLAY_HEIGHT - 1 - y;
+      break;
+    }
+    case GfxRenderer::PortraitInverted: {
+      // Logical portrait (480x800) -> panel (800x480)
+      // Rotation: 90 degrees counter-clockwise
+      *phyX = HalDisplay::DISPLAY_WIDTH - 1 - y;
+      *phyY = x;
+      break;
+    }
+    case GfxRenderer::LandscapeCounterClockwise: {
+      // Logical landscape (800x480) aligned with panel orientation
+      *phyX = x;
+      *phyY = y;
+      break;
+    }
+  }
+}
+
+// IMPORTANT: This function is in critical rendering path and is called for every pixel. Please keep it as simple and
+// efficient as possible.
+void GfxRenderer::drawPixel(const int x, const int y, const bool state) const {
+  int phyX = 0;
+  int phyY = 0;
+
+  // Note: this call should be inlined for better performance
+  rotateCoordinates(orientation, x, y, &phyX, &phyY);
 
   // Bounds checking against physical panel dimensions
-  if (rotatedX < 0 || rotatedX >= EInkDisplay::DISPLAY_WIDTH || rotatedY < 0 ||
-      rotatedY >= EInkDisplay::DISPLAY_HEIGHT) {
+  if (phyX < 0 || phyX >= HalDisplay::DISPLAY_WIDTH || phyY < 0 || phyY >= HalDisplay::DISPLAY_HEIGHT) {
     // Limit log output to avoid performance issues (log only first few per
     // session)
     static int outsideRangeCount = 0;
     if (outsideRangeCount < 5) {
       Serial.printf("[%lu] [GFX] !! Outside range (%d, %d) -> (%d, %d)\n",
-                    millis(), x, y, rotatedX, rotatedY);
+                    millis(), x, y, phyX, phyY);
       outsideRangeCount++;
       if (outsideRangeCount == 5) {
         Serial.printf("[GFX] !! Suppressing further outside range warnings\n");
@@ -190,9 +192,8 @@ void GfxRenderer::drawPixel(const int x, const int y, const bool state) const {
   }
 
   // Calculate byte position and bit position
-  const uint16_t byteIndex =
-      rotatedY * EInkDisplay::DISPLAY_WIDTH_BYTES + (rotatedX / 8);
-  const uint8_t bitPosition = 7 - (rotatedX % 8); // MSB first
+  const uint16_t byteIndex = phyY * HalDisplay::DISPLAY_WIDTH_BYTES + (phyX / 8);
+  const uint8_t bitPosition = 7 - (phyX % 8);  // MSB first
 
   // In dark mode, invert the pixel state (black <-> white)
   // But NOT in grayscale mode - grayscale rendering uses special pixel marking
@@ -534,28 +535,274 @@ void GfxRenderer::drawLine(int x1, int y1, int x2, int y2,
   }
 }
 
-void GfxRenderer::drawRect(const int x, const int y, const int width,
-                           const int height, const bool state) const {
+void GfxRenderer::drawLine(int x1, int y1, int x2, int y2, const int lineWidth, const bool state) const {
+  for (int i = 0; i < lineWidth; i++) {
+    drawLine(x1, y1 + i, x2, y2 + i, state);
+  }
+}
+
+void GfxRenderer::drawRect(const int x, const int y, const int width, const int height, const bool state) const {
   drawLine(x, y, x + width - 1, y, state);
   drawLine(x + width - 1, y, x + width - 1, y + height - 1, state);
   drawLine(x + width - 1, y + height - 1, x, y + height - 1, state);
   drawLine(x, y, x, y + height - 1, state);
 }
 
-void GfxRenderer::fillRect(const int x, const int y, const int width,
-                           const int height, const bool state) const {
+// Border is inside the rectangle
+void GfxRenderer::drawRect(const int x, const int y, const int width, const int height, const int lineWidth,
+                           const bool state) const {
+  for (int i = 0; i < lineWidth; i++) {
+    drawLine(x + i, y + i, x + width - i, y + i, state);
+    drawLine(x + width - i, y + i, x + width - i, y + height - i, state);
+    drawLine(x + width - i, y + height - i, x + i, y + height - i, state);
+    drawLine(x + i, y + height - i, x + i, y + i, state);
+  }
+}
+
+void GfxRenderer::drawArc(const int maxRadius, const int cx, const int cy, const int xDir, const int yDir,
+                          const int lineWidth, const bool state) const {
+  const int stroke = std::min(lineWidth, maxRadius);
+  const int innerRadius = std::max(maxRadius - stroke, 0);
+  const int outerRadiusSq = maxRadius * maxRadius;
+  const int innerRadiusSq = innerRadius * innerRadius;
+  for (int dy = 0; dy <= maxRadius; ++dy) {
+    for (int dx = 0; dx <= maxRadius; ++dx) {
+      const int distSq = dx * dx + dy * dy;
+      if (distSq > outerRadiusSq || distSq < innerRadiusSq) {
+        continue;
+      }
+      const int px = cx + xDir * dx;
+      const int py = cy + yDir * dy;
+      drawPixel(px, py, state);
+    }
+  }
+};
+
+// Border is inside the rectangle, rounded corners
+void GfxRenderer::drawRoundedRect(const int x, const int y, const int width, const int height, const int lineWidth,
+                                  const int cornerRadius, bool state) const {
+  drawRoundedRect(x, y, width, height, lineWidth, cornerRadius, true, true, true, true, state);
+}
+
+// Border is inside the rectangle, rounded corners
+void GfxRenderer::drawRoundedRect(const int x, const int y, const int width, const int height, const int lineWidth,
+                                  const int cornerRadius, bool roundTopLeft, bool roundTopRight, bool roundBottomLeft,
+                                  bool roundBottomRight, bool state) const {
+  if (lineWidth <= 0 || width <= 0 || height <= 0) {
+    return;
+  }
+
+  const int maxRadius = std::min({cornerRadius, width / 2, height / 2});
+  if (maxRadius <= 0) {
+    drawRect(x, y, width, height, lineWidth, state);
+    return;
+  }
+
+  const int stroke = std::min(lineWidth, maxRadius);
+  const int right = x + width - 1;
+  const int bottom = y + height - 1;
+
+  const int horizontalWidth = width - 2 * maxRadius;
+  if (horizontalWidth > 0) {
+    if (roundTopLeft || roundTopRight) {
+      fillRect(x + maxRadius, y, horizontalWidth, stroke, state);
+    }
+    if (roundBottomLeft || roundBottomRight) {
+      fillRect(x + maxRadius, bottom - stroke + 1, horizontalWidth, stroke, state);
+    }
+  }
+
+  const int verticalHeight = height - 2 * maxRadius;
+  if (verticalHeight > 0) {
+    if (roundTopLeft || roundBottomLeft) {
+      fillRect(x, y + maxRadius, stroke, verticalHeight, state);
+    }
+    if (roundTopRight || roundBottomRight) {
+      fillRect(right - stroke + 1, y + maxRadius, stroke, verticalHeight, state);
+    }
+  }
+
+  if (roundTopLeft) {
+    drawArc(maxRadius, x + maxRadius, y + maxRadius, -1, -1, lineWidth, state);
+  }
+  if (roundTopRight) {
+    drawArc(maxRadius, right - maxRadius, y + maxRadius, 1, -1, lineWidth, state);
+  }
+  if (roundBottomRight) {
+    drawArc(maxRadius, right - maxRadius, bottom - maxRadius, 1, 1, lineWidth, state);
+  }
+  if (roundBottomLeft) {
+    drawArc(maxRadius, x + maxRadius, bottom - maxRadius, -1, 1, lineWidth, state);
+  }
+}
+
+void GfxRenderer::fillRect(const int x, const int y, const int width, const int height, const bool state) const {
   for (int fillY = y; fillY < y + height; fillY++) {
     drawLine(x, fillY, x + width - 1, fillY, state);
   }
 }
 
-void GfxRenderer::drawImage(const uint8_t bitmap[], const int x, const int y,
-                            const int width, const int height) const {
-  // TODO: Rotate bits
+// NOTE: Those are in critical path, and need to be templated to avoid runtime checks for every pixel.
+// Any branching must be done outside the loops to avoid performance degradation.
+template <>
+void GfxRenderer::drawPixelDither<Color::Clear>(const int x, const int y) const {
+  // Do nothing
+}
+
+template <>
+void GfxRenderer::drawPixelDither<Color::Black>(const int x, const int y) const {
+  drawPixel(x, y, true);
+}
+
+template <>
+void GfxRenderer::drawPixelDither<Color::White>(const int x, const int y) const {
+  drawPixel(x, y, false);
+}
+
+template <>
+void GfxRenderer::drawPixelDither<Color::LightGray>(const int x, const int y) const {
+  drawPixel(x, y, x % 2 == 0 && y % 2 == 0);
+}
+
+template <>
+void GfxRenderer::drawPixelDither<Color::DarkGray>(const int x, const int y) const {
+  drawPixel(x, y, (x + y) % 2 == 0);  // TODO: maybe find a better pattern?
+}
+
+void GfxRenderer::fillRectDither(const int x, const int y, const int width, const int height, Color color) const {
+  if (color == Color::Clear) {
+  } else if (color == Color::Black) {
+    fillRect(x, y, width, height, true);
+  } else if (color == Color::White) {
+    fillRect(x, y, width, height, false);
+  } else if (color == Color::LightGray) {
+    for (int fillY = y; fillY < y + height; fillY++) {
+      for (int fillX = x; fillX < x + width; fillX++) {
+        drawPixelDither<Color::LightGray>(fillX, fillY);
+      }
+    }
+  } else if (color == Color::DarkGray) {
+    for (int fillY = y; fillY < y + height; fillY++) {
+      for (int fillX = x; fillX < x + width; fillX++) {
+        drawPixelDither<Color::DarkGray>(fillX, fillY);
+      }
+    }
+  }
+}
+
+template <Color color>
+void GfxRenderer::fillArc(const int maxRadius, const int cx, const int cy, const int xDir, const int yDir) const {
+  const int radiusSq = maxRadius * maxRadius;
+  for (int dy = 0; dy <= maxRadius; ++dy) {
+    for (int dx = 0; dx <= maxRadius; ++dx) {
+      const int distSq = dx * dx + dy * dy;
+      const int px = cx + xDir * dx;
+      const int py = cy + yDir * dy;
+      if (distSq <= radiusSq) {
+        drawPixelDither<color>(px, py);
+      }
+    }
+  }
+}
+
+void GfxRenderer::fillRoundedRect(const int x, const int y, const int width, const int height, const int cornerRadius,
+                                  const Color color) const {
+  fillRoundedRect(x, y, width, height, cornerRadius, true, true, true, true, color);
+}
+
+void GfxRenderer::fillRoundedRect(const int x, const int y, const int width, const int height, const int cornerRadius,
+                                  bool roundTopLeft, bool roundTopRight, bool roundBottomLeft, bool roundBottomRight,
+                                  const Color color) const {
+  if (width <= 0 || height <= 0) {
+    return;
+  }
+
+  const int maxRadius = std::min({cornerRadius, width / 2, height / 2});
+  if (maxRadius <= 0) {
+    fillRectDither(x, y, width, height, color);
+    return;
+  }
+
+  const int horizontalWidth = width - 2 * maxRadius;
+  if (horizontalWidth > 0) {
+    fillRectDither(x + maxRadius + 1, y, horizontalWidth - 2, height, color);
+  }
+
+  const int verticalHeight = height - 2 * maxRadius - 2;
+  if (verticalHeight > 0) {
+    fillRectDither(x, y + maxRadius + 1, maxRadius + 1, verticalHeight, color);
+    fillRectDither(x + width - maxRadius - 1, y + maxRadius + 1, maxRadius + 1, verticalHeight, color);
+  }
+
+  auto fillArcTemplated = [this](int maxRadius, int cx, int cy, int xDir, int yDir, Color color) {
+    switch (color) {
+      case Color::Clear:
+        break;
+      case Color::Black:
+        fillArc<Color::Black>(maxRadius, cx, cy, xDir, yDir);
+        break;
+      case Color::White:
+        fillArc<Color::White>(maxRadius, cx, cy, xDir, yDir);
+        break;
+      case Color::LightGray:
+        fillArc<Color::LightGray>(maxRadius, cx, cy, xDir, yDir);
+        break;
+      case Color::DarkGray:
+        fillArc<Color::DarkGray>(maxRadius, cx, cy, xDir, yDir);
+        break;
+    }
+  };
+
+  if (roundTopLeft) {
+    fillArcTemplated(maxRadius, x + maxRadius, y + maxRadius, -1, -1, color);
+  } else {
+    fillRectDither(x, y, maxRadius + 1, maxRadius + 1, color);
+  }
+
+  if (roundTopRight) {
+    fillArcTemplated(maxRadius, x + width - maxRadius - 1, y + maxRadius, 1, -1, color);
+  } else {
+    fillRectDither(x + width - maxRadius - 1, y, maxRadius + 1, maxRadius + 1, color);
+  }
+
+  if (roundBottomRight) {
+    fillArcTemplated(maxRadius, x + width - maxRadius - 1, y + height - maxRadius - 1, 1, 1, color);
+  } else {
+    fillRectDither(x + width - maxRadius - 1, y + height - maxRadius - 1, maxRadius + 1, maxRadius + 1, color);
+  }
+
+  if (roundBottomLeft) {
+    fillArcTemplated(maxRadius, x + maxRadius, y + height - maxRadius - 1, -1, 1, color);
+  } else {
+    fillRectDither(x, y + height - maxRadius - 1, maxRadius + 1, maxRadius + 1, color);
+  }
+}
+
+void GfxRenderer::drawImage(const uint8_t bitmap[], const int x, const int y, const int width, const int height) const {
   int rotatedX = 0;
   int rotatedY = 0;
-  rotateCoordinates(x, y, &rotatedX, &rotatedY);
-  einkDisplay.drawImage(bitmap, rotatedX, rotatedY, width, height);
+  rotateCoordinates(orientation, x, y, &rotatedX, &rotatedY);
+  // Rotate origin corner
+  switch (orientation) {
+    case Portrait:
+      rotatedY = rotatedY - height;
+      break;
+    case PortraitInverted:
+      rotatedX = rotatedX - width;
+      break;
+    case LandscapeClockwise:
+      rotatedY = rotatedY - height;
+      rotatedX = rotatedX - width;
+      break;
+    case LandscapeCounterClockwise:
+      break;
+  }
+  // TODO: Rotate bits
+  display.drawImage(bitmap, rotatedX, rotatedY, width, height);
+}
+
+void GfxRenderer::drawIcon(const uint8_t bitmap[], const int x, const int y, const int width, const int height) const {
+  display.drawImage(bitmap, y, getScreenWidth() - width - x, height, width);
 }
 
 void GfxRenderer::drawBitmap(const Bitmap &bitmap, const int x, const int y,
@@ -847,74 +1094,78 @@ void GfxRenderer::fillPolygon(const int *xPoints, const int *yPoints,
   free(nodeX);
 }
 
+// For performance measurement (using static to allow "const" methods)
+static unsigned long start_ms = 0;
+
 void GfxRenderer::clearScreen(const uint8_t color) const {
+  start_ms = millis();
   // In dark mode, the default background should be black (0x00)
   // We use bitwise NOT to invert the color parameter for dark mode
   // This means clearScreen(0xFF) becomes clearScreen(0x00) in dark mode
   const uint8_t actualColor = darkMode ? ~color : color;
-  einkDisplay.clearScreen(actualColor);
+  display.clearScreen(actualColor);
 }
 
 void GfxRenderer::invertScreen() const {
-  uint8_t *buffer = einkDisplay.getFrameBuffer();
-  if (!buffer) {
-    Serial.printf("[%lu] [GFX] !! No framebuffer in invertScreen\n", millis());
-    return;
-  }
-  for (int i = 0; i < EInkDisplay::BUFFER_SIZE; i++) {
-    buffer[i] = ~buffer[i];
+  for (int i = 0; i < HalDisplay::BUFFER_SIZE; i++) {
+    frameBuffer[i] = ~frameBuffer[i];
   }
 }
 
-void GfxRenderer::displayBuffer(
-    const EInkDisplay::RefreshMode refreshMode) const {
-  if (darkMode && refreshMode == EInkDisplay::FAST_REFRESH) {
-    // Ensure differential refresh keeps black background solid in dark mode.
-    einkDisplay.forceRedRamInverted();
-  }
-  einkDisplay.displayBuffer(refreshMode);
+void GfxRenderer::displayBuffer(const HalDisplay::RefreshMode refreshMode) const {
+  auto elapsed = millis() - start_ms;
+  Serial.printf("[%lu] [GFX] Time = %lu ms from clearScreen to displayBuffer\n", millis(), elapsed);
+  display.displayBuffer(refreshMode, fadingFix);
 }
 
 std::string GfxRenderer::truncatedText(const int fontId, const char *text,
                                        const int maxWidth,
                                        const EpdFontFamily::Style style) const {
+  if (!text || maxWidth <= 0) return "";
+
   std::string item = text;
-  int itemWidth = getTextWidth(fontId, item.c_str(), style);
-  while (itemWidth > maxWidth && item.length() > 8) {
-    item.replace(item.length() - 5, 5, "...");
-    itemWidth = getTextWidth(fontId, item.c_str(), style);
+  const char* ellipsis = "...";
+  int textWidth = getTextWidth(fontId, item.c_str(), style);
+  if (textWidth <= maxWidth) {
+    // Text fits, return as is
+    return item;
   }
-  return item;
+
+  while (!item.empty() && getTextWidth(fontId, (item + ellipsis).c_str(), style) >= maxWidth) {
+    utf8RemoveLastChar(item);
+  }
+
+  return item.empty() ? ellipsis : item + ellipsis;
 }
 
 // Note: Internal driver treats screen in command orientation; this library
 // exposes a logical orientation
 int GfxRenderer::getScreenWidth() const {
   switch (orientation) {
-  case Portrait:
-  case PortraitInverted:
-    // 480px wide in portrait logical coordinates
-    return EInkDisplay::DISPLAY_HEIGHT;
-  case LandscapeClockwise:
-  case LandscapeCounterClockwise:
-    // 800px wide in landscape logical coordinates
-    return EInkDisplay::DISPLAY_WIDTH;
+    case Portrait:
+    case PortraitInverted:
+      // 480px wide in portrait logical coordinates
+      return HalDisplay::DISPLAY_HEIGHT;
+    case LandscapeClockwise:
+    case LandscapeCounterClockwise:
+      // 800px wide in landscape logical coordinates
+      return HalDisplay::DISPLAY_WIDTH;
   }
-  return EInkDisplay::DISPLAY_HEIGHT;
+  return HalDisplay::DISPLAY_HEIGHT;
 }
 
 int GfxRenderer::getScreenHeight() const {
   switch (orientation) {
-  case Portrait:
-  case PortraitInverted:
-    // 800px tall in portrait logical coordinates
-    return EInkDisplay::DISPLAY_WIDTH;
-  case LandscapeClockwise:
-  case LandscapeCounterClockwise:
-    // 480px tall in landscape logical coordinates
-    return EInkDisplay::DISPLAY_HEIGHT;
+    case Portrait:
+    case PortraitInverted:
+      // 800px tall in portrait logical coordinates
+      return HalDisplay::DISPLAY_WIDTH;
+    case LandscapeClockwise:
+    case LandscapeCounterClockwise:
+      // 480px tall in landscape logical coordinates
+      return HalDisplay::DISPLAY_HEIGHT;
   }
-  return EInkDisplay::DISPLAY_WIDTH;
+  return HalDisplay::DISPLAY_WIDTH;
 }
 
 int GfxRenderer::getSpaceWidth(const int fontId) const {
@@ -932,6 +1183,20 @@ int GfxRenderer::getSpaceWidth(const int fontId) const {
   return fontMap.at(effectiveFontId)
       .getGlyph(' ', EpdFontFamily::REGULAR)
       ->advanceX;
+}
+
+int GfxRenderer::getTextAdvanceX(const int fontId, const char* text) const {
+  if (fontMap.count(fontId) == 0) {
+    Serial.printf("[%lu] [GFX] Font %d not found\n", millis(), fontId);
+    return 0;
+  }
+
+  uint32_t cp;
+  int width = 0;
+  while ((cp = utf8NextCodepoint(reinterpret_cast<const uint8_t**>(&text)))) {
+    width += fontMap.at(fontId).getGlyph(cp, EpdFontFamily::REGULAR)->advanceX;
+  }
+  return width;
 }
 
 int GfxRenderer::getFontAscenderSize(const int fontId) const {
@@ -1153,7 +1418,7 @@ void GfxRenderer::drawTextRotated90CW(const int fontId, const int x,
           const uint8_t height = CjkUiFont20::CJK_UI_FONT_HEIGHT;
           const uint8_t bytesPerRow = CjkUiFont20::CJK_UI_FONT_BYTES_PER_ROW;
 
-          // For 90° clockwise rotation: (glyphX, glyphY) -> (glyphY, -glyphX)
+          // For 90 clockwise rotation: (glyphX, glyphY) -> (glyphY, -glyphX)
           const int startX = x;
           for (uint8_t glyphY = 0; glyphY < height; glyphY++) {
             const int screenX = startX + glyphY;
@@ -1189,7 +1454,7 @@ void GfxRenderer::drawTextRotated90CW(const int fontId, const int x,
     }
   }
 
-  // For 90° clockwise rotation:
+  // For 90 clockwise rotation:
   // Original (glyphX, glyphY) -> Rotated (glyphY, -glyphX)
   // Text reads from bottom to top
 
@@ -1272,7 +1537,7 @@ void GfxRenderer::drawTextRotated90CW(const int fontId, const int x,
         for (int glyphX = 0; glyphX < width; glyphX++) {
           const int pixelPosition = glyphY * width + glyphX;
 
-          // 90° clockwise rotation transformation:
+          // 90 clockwise rotation transformation:
           // screenX = x + (ascender - top + glyphY)
           // screenY = yPos - (left + glyphX)
           const int screenX =
@@ -1309,25 +1574,22 @@ void GfxRenderer::drawTextRotated90CW(const int fontId, const int x,
   }
 }
 
-uint8_t *GfxRenderer::getFrameBuffer() const {
-  return einkDisplay.getFrameBuffer();
-}
+uint8_t* GfxRenderer::getFrameBuffer() const { return frameBuffer; }
 
-size_t GfxRenderer::getBufferSize() { return EInkDisplay::BUFFER_SIZE; }
+size_t GfxRenderer::getBufferSize() { return HalDisplay::BUFFER_SIZE; }
 
-void GfxRenderer::grayscaleRevert() const { einkDisplay.grayscaleRevert(); }
+// unused
+// void GfxRenderer::grayscaleRevert() const { display.grayscaleRevert(); }
 
-void GfxRenderer::copyGrayscaleLsbBuffers() const {
-  einkDisplay.copyGrayscaleLsbBuffers(einkDisplay.getFrameBuffer());
-}
+void GfxRenderer::copyGrayscaleLsbBuffers() const { display.copyGrayscaleLsbBuffers(frameBuffer); }
 
-void GfxRenderer::copyGrayscaleMsbBuffers() const {
-  einkDisplay.copyGrayscaleMsbBuffers(einkDisplay.getFrameBuffer());
-}
+void GfxRenderer::copyGrayscaleMsbBuffers() const { display.copyGrayscaleMsbBuffers(frameBuffer); }
 
 void GfxRenderer::displayGrayBuffer(const bool turnOffScreen,
                                     const bool darkMode) const {
-  einkDisplay.displayGrayBuffer(turnOffScreen, darkMode);
+  // Note: HalDisplay::displayGrayBuffer does not support darkMode parameter directly.
+  // Dark mode grayscale rendering is handled at the pixel level in renderChar.
+  display.displayGrayBuffer(turnOffScreen);
 }
 
 void GfxRenderer::freeBwBufferChunks() {
@@ -1347,12 +1609,6 @@ void GfxRenderer::freeBwBufferChunks() {
  * allocation failed.
  */
 bool GfxRenderer::storeBwBuffer() {
-  const uint8_t *frameBuffer = einkDisplay.getFrameBuffer();
-  if (!frameBuffer) {
-    Serial.printf("[%lu] [GFX] !! No framebuffer in storeBwBuffer\n", millis());
-    return false;
-  }
-
   // Allocate and copy each chunk
   for (size_t i = 0; i < BW_BUFFER_NUM_CHUNKS; i++) {
     // Check if any chunks are already allocated
@@ -1404,14 +1660,6 @@ void GfxRenderer::restoreBwBuffer() {
     return;
   }
 
-  uint8_t *frameBuffer = einkDisplay.getFrameBuffer();
-  if (!frameBuffer) {
-    Serial.printf("[%lu] [GFX] !! No framebuffer in restoreBwBuffer\n",
-                  millis());
-    freeBwBufferChunks();
-    return;
-  }
-
   for (size_t i = 0; i < BW_BUFFER_NUM_CHUNKS; i++) {
     // Check if chunk is missing
     if (!bwBufferChunks[i]) {
@@ -1426,7 +1674,7 @@ void GfxRenderer::restoreBwBuffer() {
     memcpy(frameBuffer + offset, bwBufferChunks[i], BW_BUFFER_CHUNK_SIZE);
   }
 
-  einkDisplay.cleanupGrayscaleBuffers(frameBuffer);
+  display.cleanupGrayscaleBuffers(frameBuffer);
 
   freeBwBufferChunks();
   Serial.printf("[%lu] [GFX] Restored and freed BW buffer chunks\n", millis());
@@ -1437,9 +1685,8 @@ void GfxRenderer::restoreBwBuffer() {
  * Use this when BW buffer was re-rendered instead of stored/restored.
  */
 void GfxRenderer::cleanupGrayscaleWithFrameBuffer() const {
-  uint8_t *frameBuffer = einkDisplay.getFrameBuffer();
   if (frameBuffer) {
-    einkDisplay.cleanupGrayscaleBuffers(frameBuffer);
+    display.cleanupGrayscaleBuffers(frameBuffer);
   }
 }
 

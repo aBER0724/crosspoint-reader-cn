@@ -8,8 +8,8 @@
 #include "XtcParser.h"
 
 #include <FsHelpers.h>
+#include <HalStorage.h>
 #include <HardwareSerial.h>
-#include <SDCardManager.h>
 
 #include <cstring>
 
@@ -34,7 +34,7 @@ XtcError XtcParser::open(const char* filepath) {
   }
 
   // Open file
-  if (!SdMan.openFileForRead("XTC", filepath, m_file)) {
+  if (!Storage.openFileForRead("XTC", filepath, m_file)) {
     m_lastError = XtcError::FILE_NOT_FOUND;
     return m_lastError;
   }
@@ -47,8 +47,21 @@ XtcError XtcParser::open(const char* filepath) {
     return m_lastError;
   }
 
-  // Read title if available
-  readTitle();
+  // Read title & author if available
+  if (m_header.hasMetadata) {
+    m_lastError = readTitle();
+    if (m_lastError != XtcError::OK) {
+      Serial.printf("[%lu] [XTC] Failed to read title: %s\n", millis(), errorToString(m_lastError));
+      m_file.close();
+      return m_lastError;
+    }
+    m_lastError = readAuthor();
+    if (m_lastError != XtcError::OK) {
+      Serial.printf("[%lu] [XTC] Failed to read author: %s\n", millis(), errorToString(m_lastError));
+      m_file.close();
+      return m_lastError;
+    }
+  }
 
   // Read page table
   m_lastError = readPageTable();
@@ -124,21 +137,31 @@ XtcError XtcParser::readHeader() {
 }
 
 XtcError XtcParser::readTitle() {
-  // Title is usually at offset 0x38 (56) for 88-byte headers
-  // Read title as null-terminated UTF-8 string
-  if (m_header.titleOffset == 0) {
-    m_header.titleOffset = 0x38;  // Default offset
-  }
-
-  if (!m_file.seek(m_header.titleOffset)) {
+  constexpr auto titleOffset = 0x38;
+  if (!m_file.seek(titleOffset)) {
     return XtcError::READ_ERROR;
   }
 
   char titleBuf[128] = {0};
-  m_file.read(reinterpret_cast<uint8_t*>(titleBuf), sizeof(titleBuf) - 1);
+  m_file.read(titleBuf, sizeof(titleBuf) - 1);
   m_title = titleBuf;
 
   Serial.printf("[%lu] [XTC] Title: %s\n", millis(), m_title.c_str());
+  return XtcError::OK;
+}
+
+XtcError XtcParser::readAuthor() {
+  // Read author as null-terminated UTF-8 string with max length 64, directly following title
+  constexpr auto authorOffset = 0xB8;
+  if (!m_file.seek(authorOffset)) {
+    return XtcError::READ_ERROR;
+  }
+
+  char authorBuf[64] = {0};
+  m_file.read(authorBuf, sizeof(authorBuf) - 1);
+  m_author = authorBuf;
+
+  Serial.printf("[%lu] [XTC] Author: %s\n", millis(), m_author.c_str());
   return XtcError::OK;
 }
 
@@ -421,7 +444,7 @@ XtcError XtcParser::loadPageStreaming(uint32_t pageIndex,
 
 bool XtcParser::isValidXtcFile(const char* filepath) {
   FsFile file;
-  if (!SdMan.openFileForRead("XTC", filepath, file)) {
+  if (!Storage.openFileForRead("XTC", filepath, file)) {
     return false;
   }
 

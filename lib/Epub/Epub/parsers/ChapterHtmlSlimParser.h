@@ -8,6 +8,8 @@
 
 #include "../ParsedText.h"
 #include "../blocks/TextBlock.h"
+#include "../css/CssParser.h"
+#include "../css/CssStyle.h"
 
 class Page;
 class GfxRenderer;
@@ -18,15 +20,17 @@ class ChapterHtmlSlimParser {
   const std::string& filepath;
   GfxRenderer& renderer;
   std::function<void(std::unique_ptr<Page>)> completePageFn;
-  std::function<void(int)> progressFn;  // Progress callback (0-100)
+  std::function<void()> popupFn;  // Popup callback
   int depth = 0;
   int skipUntilDepth = INT_MAX;
   int boldUntilDepth = INT_MAX;
   int italicUntilDepth = INT_MAX;
+  int underlineUntilDepth = INT_MAX;
   // buffer for building up words from characters, will auto break if longer than this
   // leave one char at end for null pointer
   char partWordBuffer[MAX_WORD_SIZE + 1] = {};
   int partWordBufferIndex = 0;
+  bool nextWordContinues = false;  // true when next flushed word attaches to previous (inline element boundary)
   std::unique_ptr<ParsedText> currentTextBlock = nullptr;
   std::unique_ptr<Page> currentPage = nullptr;
   int16_t currentPageNextY = 0;
@@ -38,8 +42,25 @@ class ChapterHtmlSlimParser {
   uint16_t viewportHeight;
   bool hyphenationEnabled;
   bool firstLineIndent;
+  const CssParser* cssParser;
+  bool embeddedStyle;
 
-  void startNewTextBlock(TextBlock::Style style);
+  // Style tracking (replaces depth-based approach)
+  struct StyleStackEntry {
+    int depth = 0;
+    bool hasBold = false, bold = false;
+    bool hasItalic = false, italic = false;
+    bool hasUnderline = false, underline = false;
+  };
+  std::vector<StyleStackEntry> inlineStyleStack;
+  CssStyle currentCssStyle;
+  bool effectiveBold = false;
+  bool effectiveItalic = false;
+  bool effectiveUnderline = false;
+
+  void updateEffectiveInlineStyle();
+  void startNewTextBlock(const BlockStyle& blockStyle);
+  void flushPartWordBuffer();
   void makePages();
   // XML callbacks
   static void XMLCALL startElement(void* userData, const XML_Char* name, const XML_Char** atts);
@@ -53,7 +74,9 @@ class ChapterHtmlSlimParser {
                                  const uint16_t viewportHeight, const bool hyphenationEnabled,
                                  const bool firstLineIndent,
                                  const std::function<void(std::unique_ptr<Page>)>& completePageFn,
-                                 const std::function<void(int)>& progressFn = nullptr)
+                                 const bool embeddedStyle, const std::function<void()>& popupFn = nullptr,
+                                 const CssParser* cssParser = nullptr)
+
       : filepath(filepath),
         renderer(renderer),
         fontId(fontId),
@@ -65,7 +88,10 @@ class ChapterHtmlSlimParser {
         hyphenationEnabled(hyphenationEnabled),
         firstLineIndent(firstLineIndent),
         completePageFn(completePageFn),
-        progressFn(progressFn) {}
+        popupFn(popupFn),
+        cssParser(cssParser),
+        embeddedStyle(embeddedStyle) {}
+
   ~ChapterHtmlSlimParser() = default;
   bool parseAndBuildPages();
   void addLineToPage(std::shared_ptr<TextBlock> line);
