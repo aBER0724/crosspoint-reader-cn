@@ -274,31 +274,32 @@ int GfxRenderer::getTextWidth(const int fontId, const char *text,
         int width = 0;
         const char *ptr = text;
         const EpdFontFamily &fontFamily = fontMap.at(effectiveFontId);
+        const int cjkAdvance = clampExternalAdvance(extFont->getCharWidth(), cjkSpacing);
         uint32_t cp;
         while ((
             cp = utf8NextCodepoint(reinterpret_cast<const uint8_t **>(&ptr)))) {
+          // Fast path: CJK characters always use charWidth — skip SD card read entirely
+          if (isCjkCodepoint(cp)) {
+            width += cjkAdvance;
+            continue;
+          }
           const uint8_t *bitmap = extFont->getGlyph(cp);
           if (bitmap) {
             uint8_t advanceX = extFont->getCharWidth();
             extFont->getGlyphMetrics(cp, nullptr, &advanceX);
             int spacing = 0;
-            if (isCjkCodepoint(cp)) {
-              spacing = cjkSpacing;
-            } else if (isAsciiDigit(cp)) {
+            if (isAsciiDigit(cp)) {
               spacing = asciiDigitSpacing;
             } else if (isAsciiLetter(cp)) {
               spacing = asciiLetterSpacing;
             }
             width += clampExternalAdvance(advanceX, spacing);
-          } else if (isCjkCodepoint(cp) && CjkUiFont20::hasCjkUiGlyph(cp)) {
-            width += CjkUiFont20::getCjkUiGlyphWidth(cp);
           } else {
             // Fall back to built-in reader font width
             const EpdGlyph *glyph = fontFamily.getGlyph(cp, style);
             if (glyph) {
               width += glyph->advanceX;
             } else {
-              // Glyph not found - use default width
               width += 10;
             }
           }

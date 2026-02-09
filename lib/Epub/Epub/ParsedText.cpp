@@ -6,12 +6,9 @@
 #include <cmath>
 #include <functional>
 #include <iterator>
-#include <limits>
 #include <vector>
 
 #include "hyphenation/Hyphenator.h"
-
-constexpr int MAX_COST = std::numeric_limits<int>::max();
 
 namespace {
 
@@ -99,13 +96,12 @@ void ParsedText::layoutAndExtractLines(const GfxRenderer& renderer, const int fo
   const int pageWidth = viewportWidth;
   const int spaceWidth = renderer.getSpaceWidth(fontId);
 
-  // Calculate CJK indent width when user has enabled firstLineIndent and CSS doesn't define text-indent.
-  // Measure actual CJK character width x2 for standard two-character indent.
-  int indentWidth = 0;
-  if (firstLineIndent && !blockStyle.textIndentDefined &&
+  // CJK fallback: when firstLineIndent is ON but CSS doesn't define text-indent,
+  // calculate a 2-character CJK indent width and inject it as textIndent for layout.
+  if (firstLineIndent && blockStyle.textIndent <= 0 &&
       (blockStyle.alignment == CssTextAlign::Justify || blockStyle.alignment == CssTextAlign::Left)) {
     const int cjkCharWidth = renderer.getTextWidth(fontId, "\xe5\xad\x97", EpdFontFamily::REGULAR);
-    indentWidth = cjkCharWidth > 0 ? cjkCharWidth * 2 : spaceWidth * 6;
+    blockStyle.textIndent = static_cast<int16_t>(cjkCharWidth > 0 ? cjkCharWidth * 2 : spaceWidth * 6);
   }
 
   auto wordWidths = calculateWordWidths(renderer, fontId);
@@ -124,14 +120,14 @@ void ParsedText::layoutAndExtractLines(const GfxRenderer& renderer, const int fo
   if (hyphenationEnabled) {
     // Use greedy layout that can split words mid-loop when a hyphenated prefix fits.
     lineBreakIndices =
-        computeHyphenatedLineBreaks(renderer, fontId, pageWidth, spaceWidth, wordWidths, continuesVec, wordIsCjkVec, indentWidth);
+        computeHyphenatedLineBreaks(renderer, fontId, pageWidth, spaceWidth, wordWidths, continuesVec, wordIsCjkVec);
   } else {
-    lineBreakIndices = computeLineBreaks(renderer, fontId, pageWidth, spaceWidth, wordWidths, continuesVec, wordIsCjkVec, indentWidth);
+    lineBreakIndices = computeLineBreaks(renderer, fontId, pageWidth, spaceWidth, wordWidths, continuesVec, wordIsCjkVec);
   }
   const size_t lineCount = includeLastLine ? lineBreakIndices.size() : lineBreakIndices.size() - 1;
 
   for (size_t i = 0; i < lineCount; ++i) {
-    extractLine(i, pageWidth, spaceWidth, wordWidths, continuesVec, wordIsCjkVec, lineBreakIndices, processLine, indentWidth);
+    extractLine(i, pageWidth, spaceWidth, wordWidths, continuesVec, wordIsCjkVec, lineBreakIndices, processLine);
   }
 }
 
@@ -156,21 +152,17 @@ std::vector<uint16_t> ParsedText::calculateWordWidths(const GfxRenderer& rendere
 
 std::vector<size_t> ParsedText::computeLineBreaks(const GfxRenderer& renderer, const int fontId, const int pageWidth,
                                                   const int spaceWidth, std::vector<uint16_t>& wordWidths,
-                                                  std::vector<bool>& continuesVec, std::vector<bool>& wordIsCjkVec,
-                                                  const int indentWidth) {
+                                                  std::vector<bool>& continuesVec, std::vector<bool>& wordIsCjkVec) {
   if (words.empty()) {
     return {};
   }
 
-  // Calculate first line indent from CSS text-indent (only for left/justified text without extra paragraph spacing)
-  const int cssFirstLineIndent =
-      blockStyle.textIndent > 0 && !extraParagraphSpacing &&
+  // Apply CSS text-indent when firstLineIndent is enabled (user toggle controls CSS indent)
+  const int effectiveIndent =
+      firstLineIndent && blockStyle.textIndent > 0 &&
               (blockStyle.alignment == CssTextAlign::Justify || blockStyle.alignment == CssTextAlign::Left)
           ? blockStyle.textIndent
           : 0;
-
-  // Combined indent: CSS text-indent takes priority, otherwise use CJK user indent
-  const int effectiveIndent = cssFirstLineIndent > 0 ? cssFirstLineIndent : indentWidth;
 
   // Ensure any word that would overflow even as the first entry on a line is split using fallback hyphenation.
   for (size_t i = 0; i < wordWidths.size(); ++i) {
@@ -184,89 +176,44 @@ std::vector<size_t> ParsedText::computeLineBreaks(const GfxRenderer& renderer, c
     }
   }
 
-  const size_t totalWordCount = words.size();
+  // Greedy forward scan — O(n) instead of O(n²) DP
+  std::vector<size_t> lineBreakIndices;
+  size_t currentIndex = 0;
+  bool isFirstLine = true;
 
-  // DP table to store the minimum badness (cost) of lines starting at index i
-  std::vector<int> dp(totalWordCount);
-  // 'ans[i]' stores the index 'j' of the *last word* in the optimal line starting at 'i'
-  std::vector<size_t> ans(totalWordCount);
+  while (currentIndex < wordWidths.size()) {
+    const size_t lineStart = currentIndex;
+    const int effectivePageWidth = isFirstLine ? pageWidth - effectiveIndent : pageWidth;
+    int lineWidth = 0;
 
-  // Base Case
-  dp[totalWordCount - 1] = 0;
-  ans[totalWordCount - 1] = totalWordCount - 1;
+    while (currentIndex < wordWidths.size()) {
+      const bool isFirstWord = currentIndex == lineStart;
+      const bool cjkAdj = !isFirstWord && currentIndex < wordIsCjkVec.size() &&
+                           wordIsCjkVec[currentIndex] && wordIsCjkVec[currentIndex - 1];
+      const int gap = isFirstWord || continuesVec[currentIndex] || cjkAdj ? 0 : spaceWidth;
+      const int candidateWidth = gap + wordWidths[currentIndex];
 
-  for (int i = totalWordCount - 2; i >= 0; --i) {
-    int currlen = 0;
-    dp[i] = MAX_COST;
-
-    // First line has reduced width due to indent
-    const int effectivePageWidth = i == 0 ? pageWidth - effectiveIndent : pageWidth;
-
-    for (size_t j = i; j < totalWordCount; ++j) {
-      // Add space before word j, unless it's the first word on the line, a continuation, or CJK-adjacent
-      const bool cjkAdj = j > static_cast<size_t>(i) && j < wordIsCjkVec.size() &&
-                           wordIsCjkVec[j] && wordIsCjkVec[j - 1];
-      const int gap = j > static_cast<size_t>(i) && !continuesVec[j] && !cjkAdj ? spaceWidth : 0;
-      currlen += wordWidths[j] + gap;
-
-      if (currlen > effectivePageWidth) {
-        break;
-      }
-
-      // Cannot break after word j if the next word attaches to it (continuation group)
-      if (j + 1 < totalWordCount && continuesVec[j + 1]) {
+      if (lineWidth + candidateWidth <= effectivePageWidth) {
+        lineWidth += candidateWidth;
+        ++currentIndex;
         continue;
       }
 
-      int cost;
-      if (j == totalWordCount - 1) {
-        cost = 0;  // Last line
-      } else {
-        const int remainingSpace = effectivePageWidth - currlen;
-        // Use long long for the square to prevent overflow
-        const long long cost_ll = static_cast<long long>(remainingSpace) * remainingSpace + dp[j + 1];
-
-        if (cost_ll > MAX_COST) {
-          cost = MAX_COST;
-        } else {
-          cost = static_cast<int>(cost_ll);
-        }
+      // Word would overflow — force at least one word per line to avoid infinite loop
+      if (currentIndex == lineStart) {
+        ++currentIndex;
       }
-
-      if (cost < dp[i]) {
-        dp[i] = cost;
-        ans[i] = j;  // j is the index of the last word in this optimal line
-      }
+      break;
     }
 
-    // Handle oversized word: if no valid configuration found, force single-word line
-    // This prevents cascade failure where one oversized word breaks all preceding words
-    if (dp[i] == MAX_COST) {
-      ans[i] = i;  // Just this word on its own line
-      // Inherit cost from next word to allow subsequent words to find valid configurations
-      if (i + 1 < static_cast<int>(totalWordCount)) {
-        dp[i] = dp[i + 1];
-      } else {
-        dp[i] = 0;
-      }
-    }
-  }
-
-  // Stores the index of the word that starts the next line (last_word_index + 1)
-  std::vector<size_t> lineBreakIndices;
-  size_t currentWordIndex = 0;
-
-  while (currentWordIndex < totalWordCount) {
-    size_t nextBreakIndex = ans[currentWordIndex] + 1;
-
-    // Safety check: prevent infinite loop if nextBreakIndex doesn't advance
-    if (nextBreakIndex <= currentWordIndex) {
-      // Force advance by at least one word to avoid infinite loop
-      nextBreakIndex = currentWordIndex + 1;
+    // Don't break before a continuation word (e.g., orphaned "?" after "question").
+    // Backtrack to the start of the continuation group so the whole group moves to the next line.
+    while (currentIndex > lineStart + 1 && currentIndex < wordWidths.size() && continuesVec[currentIndex]) {
+      --currentIndex;
     }
 
-    lineBreakIndices.push_back(nextBreakIndex);
-    currentWordIndex = nextBreakIndex;
+    lineBreakIndices.push_back(currentIndex);
+    isFirstLine = false;
   }
 
   return lineBreakIndices;
@@ -278,10 +225,9 @@ void ParsedText::applyParagraphIndent() {
   }
 
   if (firstLineIndent || blockStyle.textIndentDefined) {
-    // CJK firstLineIndent or CSS text-indent: indent is applied as pixel offset during layout.
-    // See layoutAndExtractLines / extractLine for the actual indent logic.
+    // Indent is applied as pixel offset during layout (firstLineIndent toggle or CSS text-indent).
   } else if (blockStyle.alignment == CssTextAlign::Justify || blockStyle.alignment == CssTextAlign::Left) {
-    // No CSS text-indent defined and no CJK firstLineIndent - use EmSpace fallback for visual indent
+    // No indent configured - use EmSpace fallback for visual indent
     words.front().insert(0, "\xe2\x80\x83");
   }
 }
@@ -291,17 +237,13 @@ std::vector<size_t> ParsedText::computeHyphenatedLineBreaks(const GfxRenderer& r
                                                             const int pageWidth, const int spaceWidth,
                                                             std::vector<uint16_t>& wordWidths,
                                                             std::vector<bool>& continuesVec,
-                                                            std::vector<bool>& wordIsCjkVec,
-                                                            const int indentWidth) {
-  // Calculate first line indent from CSS text-indent (only for left/justified text without extra paragraph spacing)
-  const int cssFirstLineIndent =
-      blockStyle.textIndent > 0 && !extraParagraphSpacing &&
+                                                            std::vector<bool>& wordIsCjkVec) {
+  // Apply CSS text-indent when firstLineIndent is enabled (user toggle controls CSS indent)
+  const int effectiveIndent =
+      firstLineIndent && blockStyle.textIndent > 0 &&
               (blockStyle.alignment == CssTextAlign::Justify || blockStyle.alignment == CssTextAlign::Left)
           ? blockStyle.textIndent
           : 0;
-
-  // Combined indent: CSS text-indent takes priority, otherwise use CJK user indent
-  const int effectiveIndent = cssFirstLineIndent > 0 ? cssFirstLineIndent : indentWidth;
 
   std::vector<size_t> lineBreakIndices;
   size_t currentIndex = 0;
@@ -459,22 +401,18 @@ bool ParsedText::hyphenateWordAtIndex(const size_t wordIndex, const int availabl
 void ParsedText::extractLine(const size_t breakIndex, const int pageWidth, const int spaceWidth,
                              const std::vector<uint16_t>& wordWidths, const std::vector<bool>& continuesVec,
                              const std::vector<bool>& wordIsCjkVec, const std::vector<size_t>& lineBreakIndices,
-                             const std::function<void(std::shared_ptr<TextBlock>)>& processLine,
-                             const int indentWidth) {
+                             const std::function<void(std::shared_ptr<TextBlock>)>& processLine) {
   const size_t lineBreak = lineBreakIndices[breakIndex];
   const size_t lastBreakAt = breakIndex > 0 ? lineBreakIndices[breakIndex - 1] : 0;
   const size_t lineWordCount = lineBreak - lastBreakAt;
 
-  // Calculate first line indent from CSS text-indent (only for left/justified text without extra paragraph spacing)
+  // Apply CSS text-indent when firstLineIndent is enabled (user toggle controls CSS indent)
   const bool isFirstLine = breakIndex == 0;
-  const int cssFirstLineIndent =
-      isFirstLine && blockStyle.textIndent > 0 && !extraParagraphSpacing &&
+  const int effectiveIndent =
+      isFirstLine && firstLineIndent && blockStyle.textIndent > 0 &&
               (blockStyle.alignment == CssTextAlign::Justify || blockStyle.alignment == CssTextAlign::Left)
           ? blockStyle.textIndent
           : 0;
-
-  // Combined indent: CSS text-indent takes priority, otherwise use CJK user indent
-  const int effectiveIndent = isFirstLine ? (cssFirstLineIndent > 0 ? cssFirstLineIndent : indentWidth) : 0;
 
   // Calculate total word width for this line and count actual word gaps
   // (continuation words attach to previous word with no gap)
