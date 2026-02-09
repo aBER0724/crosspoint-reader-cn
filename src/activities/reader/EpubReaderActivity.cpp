@@ -294,9 +294,16 @@ void EpubReaderActivity::loop() {
 
 void EpubReaderActivity::onReaderMenuBack(const uint8_t orientation) {
   exitActivity();
-  // Apply the user-selected orientation when the menu is dismissed.
-  // This ensures the menu can be navigated without immediately rotating the screen.
   applyOrientation(orientation);
+  // Force section reload to pick up any layout-affecting setting changes
+  // (firstLineIndent, extraParagraphSpacing, fontSize, lineSpacing, etc.)
+  // loadSectionFile() validates cached parameters — fast path when nothing changed.
+  if (section) {
+    xSemaphoreTake(renderingMutex, portMAX_DELAY);
+    nextPageNumber = section->currentPage;
+    section.reset();
+    xSemaphoreGive(renderingMutex);
+  }
   updateRequired = true;
 }
 

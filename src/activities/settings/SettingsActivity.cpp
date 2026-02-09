@@ -14,6 +14,7 @@
 #include "LanguageSelectActivity.h"
 #include "MappedInputManager.h"
 #include "OtaUpdateActivity.h"
+#include "OrientationHelper.h"
 #include "SettingsList.h"
 #include "components/UITheme.h"
 #include "fontIds.h"
@@ -380,6 +381,12 @@ void SettingsActivity::toggleCurrentSetting() {
   }
 
   SETTINGS.saveToFile();
+
+  // Apply dark mode immediately when color mode setting changes
+  renderer.setDarkMode(SETTINGS.colorMode == CrossPointSettings::COLOR_MODE::DARK_MODE);
+
+  // Apply UI orientation immediately when orientation setting changes
+  OrientationHelper::applyOrientation(renderer, mappedInput, this);
 }
 
 void SettingsActivity::displayTaskLoop() {
