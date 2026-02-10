@@ -1170,15 +1170,27 @@ int GfxRenderer::getScreenHeight() const {
 }
 
 int GfxRenderer::getSpaceWidth(const int fontId) const {
-  // Space width should ALWAYS use built-in font (space is never CJK)
   const int effectiveFontId = getEffectiveFontId(fontId);
   if (fontMap.count(effectiveFontId) == 0) {
     // UI fonts may not be in fontMap (they use built-in CJK font)
     if (isUiFont(fontId)) {
-      return 10; // Default space width for 20px UI font
+      return 10;  // Default space width for 20px UI font
     }
     Serial.printf("[%lu] [GFX] Font %d not found\n", millis(), effectiveFontId);
     return 0;
+  }
+
+  // Use external font's space advance when active — keeps word/space metrics consistent
+  if (isReaderFont(fontId)) {
+    FontManager& fm = FontManager::getInstance();
+    if (fm.isExternalFontEnabled()) {
+      ExternalFont* extFont = fm.getActiveFont();
+      if (extFont && extFont->getGlyph(' ')) {
+        uint8_t advanceX = extFont->getCharWidth();
+        extFont->getGlyphMetrics(' ', nullptr, &advanceX);
+        return clampExternalAdvance(advanceX, 0);
+      }
+    }
   }
 
   return fontMap.at(effectiveFontId)

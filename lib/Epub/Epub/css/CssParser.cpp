@@ -7,137 +7,11 @@
 
 namespace {
 
-// Buffer size for reading CSS files
+// Buffer size for streaming CSS reads
 constexpr size_t READ_BUFFER_SIZE = 512;
-
-// Maximum CSS file size we'll process (prevent memory issues)
-constexpr size_t MAX_CSS_SIZE = 64 * 1024;
 
 // Check if character is CSS whitespace
 bool isCssWhitespace(const char c) { return c == ' ' || c == '\t' || c == '\n' || c == '\r' || c == '\f'; }
-
-// Read entire file into string (with size limit)
-std::string readFileContent(FsFile& file) {
-  std::string content;
-  content.reserve(std::min(static_cast<size_t>(file.size()), MAX_CSS_SIZE));
-
-  char buffer[READ_BUFFER_SIZE];
-  while (file.available() && content.size() < MAX_CSS_SIZE) {
-    const int bytesRead = file.read(buffer, sizeof(buffer));
-    if (bytesRead <= 0) break;
-    content.append(buffer, bytesRead);
-  }
-  return content;
-}
-
-// Remove CSS comments (/* ... */) from content
-std::string stripComments(const std::string& css) {
-  std::string result;
-  result.reserve(css.size());
-
-  size_t pos = 0;
-  while (pos < css.size()) {
-    // Look for start of comment
-    if (pos + 1 < css.size() && css[pos] == '/' && css[pos + 1] == '*') {
-      // Find end of comment
-      const size_t endPos = css.find("*/", pos + 2);
-      if (endPos == std::string::npos) {
-        // Unterminated comment - skip rest of file
-        break;
-      }
-      pos = endPos + 2;
-    } else {
-      result.push_back(css[pos]);
-      ++pos;
-    }
-  }
-  return result;
-}
-
-// Skip @-rules (like @media, @import, @font-face)
-// Returns position after the @-rule
-size_t skipAtRule(const std::string& css, const size_t start) {
-  // Find the end - either semicolon (simple @-rule) or matching brace
-  size_t pos = start + 1;  // Skip the '@'
-
-  // Skip identifier
-  while (pos < css.size() && (std::isalnum(css[pos]) || css[pos] == '-')) {
-    ++pos;
-  }
-
-  // Look for { or ;
-  int braceDepth = 0;
-  while (pos < css.size()) {
-    const char c = css[pos];
-    if (c == '{') {
-      ++braceDepth;
-    } else if (c == '}') {
-      --braceDepth;
-      if (braceDepth == 0) {
-        return pos + 1;
-      }
-    } else if (c == ';' && braceDepth == 0) {
-      return pos + 1;
-    }
-    ++pos;
-  }
-  return css.size();
-}
-
-// Extract next rule from CSS content
-// Returns true if a rule was found, with selector and body filled
-bool extractNextRule(const std::string& css, size_t& pos, std::string& selector, std::string& body) {
-  selector.clear();
-  body.clear();
-
-  // Skip whitespace and @-rules until we find a regular rule
-  while (pos < css.size()) {
-    // Skip whitespace
-    while (pos < css.size() && isCssWhitespace(css[pos])) {
-      ++pos;
-    }
-
-    if (pos >= css.size()) return false;
-
-    // Handle @-rules iteratively (avoids recursion/stack overflow)
-    if (css[pos] == '@') {
-      pos = skipAtRule(css, pos);
-      continue;  // Try again after skipping the @-rule
-    }
-
-    break;  // Found start of a regular rule
-  }
-
-  if (pos >= css.size()) return false;
-
-  // Find opening brace
-  const size_t bracePos = css.find('{', pos);
-  if (bracePos == std::string::npos) return false;
-
-  // Extract selector (everything before the brace)
-  selector = css.substr(pos, bracePos - pos);
-
-  // Find matching closing brace
-  int depth = 1;
-  const size_t bodyStart = bracePos + 1;
-  size_t bodyEnd = bodyStart;
-
-  while (bodyEnd < css.size() && depth > 0) {
-    if (css[bodyEnd] == '{')
-      ++depth;
-    else if (css[bodyEnd] == '}')
-      --depth;
-    ++bodyEnd;
-  }
-
-  // Extract body (between braces)
-  if (bodyEnd > bodyStart) {
-    body = css.substr(bodyStart, bodyEnd - bodyStart - 1);
-  }
-
-  pos = bodyEnd;
-  return true;
-}
 
 }  // anonymous namespace
 
@@ -453,24 +327,108 @@ bool CssParser::loadFromStream(FsFile& source) {
     return false;
   }
 
-  // Read file content
-  const std::string content = readFileContent(source);
-  if (content.empty()) {
-    return true;  // Empty file is valid
+  // Streaming state machine — processes CSS char by char, never loads the whole file
+  // Peak memory: ~READ_BUFFER_SIZE + selector string + body string (typically < 2KB total)
+  enum class S : uint8_t { Scan, Selector, Body, AtRule, Comment };
+
+  S state = S::Scan;
+  S preComment = S::Scan;  // State saved before entering comment
+  std::string selector;
+  std::string body;
+  int braceDepth = 0;
+  int atBraceDepth = 0;
+  char prev = 0;
+
+  char buf[READ_BUFFER_SIZE];
+  while (source.available()) {
+    const int n = source.read(buf, sizeof(buf));
+    if (n <= 0) break;
+
+    for (int i = 0; i < n; i++) {
+      const char c = buf[i];
+
+      // Inside comment — look for */
+      if (state == S::Comment) {
+        if (prev == '*' && c == '/') {
+          state = preComment;
+          prev = 0;
+        } else {
+          prev = c;
+        }
+        continue;
+      }
+
+      // Detect comment start /*
+      if (prev == '/' && c == '*') {
+        // Undo the '/' that was already appended
+        if (state == S::Selector && !selector.empty() && selector.back() == '/') {
+          selector.pop_back();
+        } else if (state == S::Body && !body.empty() && body.back() == '/') {
+          body.pop_back();
+        }
+        preComment = state;
+        state = S::Comment;
+        prev = c;
+        continue;
+      }
+
+      prev = c;
+
+      switch (state) {
+        case S::Scan:
+          if (c == '@') {
+            state = S::AtRule;
+            atBraceDepth = 0;
+          } else if (!isCssWhitespace(c) && c != '}') {
+            selector.clear();
+            selector.push_back(c);
+            state = S::Selector;
+          }
+          break;
+
+        case S::AtRule:
+          if (c == '{') {
+            atBraceDepth++;
+          } else if (c == '}') {
+            if (--atBraceDepth <= 0) state = S::Scan;
+          } else if (c == ';' && atBraceDepth == 0) {
+            state = S::Scan;
+          }
+          break;
+
+        case S::Selector:
+          if (c == '{') {
+            body.clear();
+            braceDepth = 1;
+            state = S::Body;
+          } else {
+            selector.push_back(c);
+          }
+          break;
+
+        case S::Body:
+          if (c == '{') {
+            braceDepth++;
+            body.push_back(c);
+          } else if (c == '}') {
+            if (--braceDepth == 0) {
+              processRuleBlock(selector, body);
+              state = S::Scan;
+            } else {
+              body.push_back(c);
+            }
+          } else {
+            body.push_back(c);
+          }
+          break;
+
+        default:
+          break;
+      }
+    }
   }
 
-  // Remove comments
-  const std::string cleaned = stripComments(content);
-
-  // Parse rules
-  size_t pos = 0;
-  std::string selector, body;
-
-  while (extractNextRule(cleaned, pos, selector, body)) {
-    processRuleBlock(selector, body);
-  }
-
-  Serial.printf("[%lu] [CSS] Parsed %zu rules\n", millis(), rulesBySelector_.size());
+  Serial.printf("[%lu] [CSS] Parsed %zu rules (streaming)\n", millis(), rulesBySelector_.size());
   return true;
 }
 
