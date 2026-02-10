@@ -82,6 +82,7 @@ void BaseTheme::drawButtonHints(GfxRenderer& renderer, const char* btn1, const c
   const GfxRenderer::Orientation orig_orientation = renderer.getOrientation();
   renderer.setOrientation(GfxRenderer::Orientation::Portrait);
 
+  const int pageWidth = renderer.getScreenWidth();
   const int pageHeight = renderer.getScreenHeight();
   constexpr int buttonWidth = 106;
   constexpr int buttonHeight = BaseMetrics::values.buttonHintsHeight;
@@ -89,6 +90,7 @@ void BaseTheme::drawButtonHints(GfxRenderer& renderer, const char* btn1, const c
   constexpr int textYOffset = 7;                                  // Distance from top of button to text baseline
   constexpr int buttonPositions[] = {25, 130, 245, 350};
   const char* labels[] = {btn1, btn2, btn3, btn4};
+  const bool inverted = orig_orientation == GfxRenderer::Orientation::PortraitInverted;
 
   for (int i = 0; i < 4; i++) {
     // Only draw if the label is non-empty
@@ -98,7 +100,15 @@ void BaseTheme::drawButtonHints(GfxRenderer& renderer, const char* btn1, const c
       renderer.drawRect(x, pageHeight - buttonY, buttonWidth, buttonHeight);
       const int textWidth = renderer.getTextWidth(UI_10_FONT_ID, labels[i]);
       const int textX = x + (buttonWidth - 1 - textWidth) / 2;
-      renderer.drawText(UI_10_FONT_ID, textX, pageHeight - buttonY + textYOffset, labels[i]);
+      if (inverted) {
+        const int textHeight = renderer.getTextHeight(UI_10_FONT_ID);
+        renderer.setOrientation(GfxRenderer::Orientation::PortraitInverted);
+        renderer.drawText(UI_10_FONT_ID, pageWidth - textX - textWidth,
+                          buttonY - textYOffset - textHeight, labels[i]);
+        renderer.setOrientation(GfxRenderer::Orientation::Portrait);
+      } else {
+        renderer.drawText(UI_10_FONT_ID, textX, pageHeight - buttonY + textYOffset, labels[i]);
+      }
     }
   }
 
@@ -236,7 +246,11 @@ void BaseTheme::drawHeader(const GfxRenderer& renderer, Rect rect, const char* t
     const auto percentageText = std::to_string(percentage) + "%";
     batteryX -= renderer.getTextWidth(SMALL_FONT_ID, percentageText.c_str());
   }
-  drawBattery(renderer, Rect{batteryX, rect.y + 5, BaseMetrics::values.batteryWidth, BaseMetrics::values.batteryHeight},
+
+  const int batteryY = (renderer.getOrientation() == GfxRenderer::Orientation::PortraitInverted)
+                            ? renderer.getScreenHeight() - BaseMetrics::values.batteryHeight - 35
+                            : rect.y + 5;
+  drawBattery(renderer, Rect{batteryX, batteryY, BaseMetrics::values.batteryWidth, BaseMetrics::values.batteryHeight},
               showBatteryPercentage);
 
   if (title) {

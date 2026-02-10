@@ -111,6 +111,14 @@ MappedInputManager::Labels MappedInputManager::mapLabels(const char* back, const
     return "";
   };
 
+  // PortraitInverted: physical buttons mirror left<->right, and drawButtonHints
+  // still draws rects in Portrait coords (physical position unchanged).  Reverse
+  // the label order so each label sits above the correct physical button.
+  if (effectiveOrientation == Orientation::PortraitInverted) {
+    return {labelForHardware(HalGPIO::BTN_RIGHT), labelForHardware(HalGPIO::BTN_LEFT),
+            labelForHardware(HalGPIO::BTN_CONFIRM), labelForHardware(HalGPIO::BTN_BACK)};
+  }
+
   return {labelForHardware(HalGPIO::BTN_BACK), labelForHardware(HalGPIO::BTN_CONFIRM),
           labelForHardware(HalGPIO::BTN_LEFT), labelForHardware(HalGPIO::BTN_RIGHT)};
 }

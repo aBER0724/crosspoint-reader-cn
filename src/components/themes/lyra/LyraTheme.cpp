@@ -68,8 +68,15 @@ void LyraTheme::drawHeader(const GfxRenderer& renderer, Rect rect, const char* t
     const auto percentageText = std::to_string(percentage) + "%";
     batteryX -= renderer.getTextWidth(SMALL_FONT_ID, percentageText.c_str());
   }
+
+  // In PortraitInverted the header overlaps the button hints at the physical
+  // bottom of the screen.  Move battery to the screen bottom (inverted view)
+  // so it stays visible and out of the way.
+  const int batteryY = (renderer.getOrientation() == GfxRenderer::Orientation::PortraitInverted)
+                            ? renderer.getScreenHeight() - LyraMetrics::values.batteryHeight - 35
+                            : rect.y + 10;
   drawBattery(renderer,
-              Rect{batteryX, rect.y + 10, LyraMetrics::values.batteryWidth, LyraMetrics::values.batteryHeight},
+              Rect{batteryX, batteryY, LyraMetrics::values.batteryWidth, LyraMetrics::values.batteryHeight},
               showBatteryPercentage);
 
   if (title) {
@@ -193,6 +200,7 @@ void LyraTheme::drawButtonHints(GfxRenderer& renderer, const char* btn1, const c
   const GfxRenderer::Orientation orig_orientation = renderer.getOrientation();
   renderer.setOrientation(GfxRenderer::Orientation::Portrait);
 
+  const int pageWidth = renderer.getScreenWidth();
   const int pageHeight = renderer.getScreenHeight();
   constexpr int buttonWidth = 80;
   constexpr int smallButtonHeight = 15;
@@ -201,6 +209,7 @@ void LyraTheme::drawButtonHints(GfxRenderer& renderer, const char* btn1, const c
   constexpr int textYOffset = 7;                                  // Distance from top of button to text baseline
   constexpr int buttonPositions[] = {58, 146, 254, 342};
   const char* labels[] = {btn1, btn2, btn3, btn4};
+  const bool inverted = orig_orientation == GfxRenderer::Orientation::PortraitInverted;
 
   for (int i = 0; i < 4; i++) {
     // Only draw if the label is non-empty
@@ -211,7 +220,18 @@ void LyraTheme::drawButtonHints(GfxRenderer& renderer, const char* btn1, const c
                                false, true);
       const int textWidth = renderer.getTextWidth(SMALL_FONT_ID, labels[i]);
       const int textX = x + (buttonWidth - 1 - textWidth) / 2;
-      renderer.drawText(SMALL_FONT_ID, textX, pageHeight - buttonY + textYOffset, labels[i]);
+      if (inverted) {
+        // Draw text in PortraitInverted so glyphs are right-side-up when viewed
+        // upside down.  Transform Portrait coords → PortraitInverted coords so
+        // text lands on the same physical pixels as the Portrait-drawn button rect.
+        const int textHeight = renderer.getTextHeight(SMALL_FONT_ID);
+        renderer.setOrientation(GfxRenderer::Orientation::PortraitInverted);
+        renderer.drawText(SMALL_FONT_ID, pageWidth - textX - textWidth,
+                          buttonY - textYOffset - textHeight, labels[i]);
+        renderer.setOrientation(GfxRenderer::Orientation::Portrait);
+      } else {
+        renderer.drawText(SMALL_FONT_ID, textX, pageHeight - buttonY + textYOffset, labels[i]);
+      }
     } else {
       renderer.drawRoundedRect(x, pageHeight - smallButtonHeight, buttonWidth, smallButtonHeight, 1, cornerRadius, true,
                                true, false, false, true);
