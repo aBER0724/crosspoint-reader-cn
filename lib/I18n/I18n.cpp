@@ -27,7 +27,7 @@ const char *const I18n::STRINGS_EN[] = {
     "Continue Reading", "No open book", "Start reading below",
 
     // File Browser
-    "Books", "No books found", "No recent books", "Recent", "Files", "SD card",
+    "Books", "No books found", "No recent books", "Recent", "Recent Books", "Files", "SD card",
 
     // Reader
     "Select Chapter", "No chapters", "End of book", "Empty chapter",
@@ -183,6 +183,7 @@ const char *const I18n::STRINGS_ZH[] = {
     "\xE6\x9C\xAA\xE6\x89\xBE\xE5\x88\xB0\xE4\xB9\xA6\xE7\xB1\x8D", // 未找到书籍
     "\xE6\x97\xA0\xE6\x9C\x80\xE8\xBF\x91\xE9\x98\x85\xE9\x98\x85",                 // 无最近阅读
     "\xE6\x9C\x80\xE8\xBF\x91",                                 // 最近
+    "\xE6\x9C\x80\xE8\xBF\x91\xE9\x98\x85\xE8\xAF\xBB",                 // 最近阅读
     "\xE6\x96\x87\xE4\xBB\xB6",                                 // 文件
     "SD\xE5\x8D\xA1",                                           // SD卡
 
@@ -559,6 +560,7 @@ const char *const I18n::STRINGS_JA[] = {
     "\x8A\xE3\x81\xBE\xE3\x81\x9B\xE3\x82\x93", // 本が見つかりません
     "\xE3\x81\xA9\xE3\x81\x8A\xE3\x81\xBE\xE6\xA5\x85\xA6\xE6\x9C\xAC",            // どの本もない
     "\xE6\x9C\x80\xE8\xBF\x91",                                 // 最近
+    "\xE6\x9C\x80\xE8\xBF\x91\xE3\x81\xAE\xE6\x9C\xAC",                 // 最近の本
     "\xE3\x83\x95\xE3\x82\xA1\xE3\x82\xA4\xE3\x83\xAB",                    // ファイル
     "SD\xE3\x82\xAB\xE3\x83\xBC\xE3\x83\x89",                          // SDカード
 
