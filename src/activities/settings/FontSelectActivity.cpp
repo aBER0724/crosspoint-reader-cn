@@ -6,6 +6,7 @@
 
 #include "CrossPointSettings.h"
 #include "MappedInputManager.h"
+#include "components/UITheme.h"
 #include "fontIds.h"
 
 namespace {
@@ -131,15 +132,15 @@ void FontSelectActivity::render() {
   renderer.clearScreen();
 
   const auto pageWidth = renderer.getScreenWidth();
-  constexpr int rowHeight = 30;
+  const auto pageHeight = renderer.getScreenHeight();
+  auto metrics = UITheme::getInstance().getMetrics();
 
   // Title
   const char *title = (mode == SelectMode::Reader) ? TR(EXT_READER_FONT)
                                                    : TR(EXT_UI_FONT);
-  renderer.drawCenteredText(UI_20_FONT_ID, 15, title, true,
-                            EpdFontFamily::BOLD);
+  GUI.drawHeader(renderer, Rect{0, metrics.topPadding, pageWidth, metrics.headerHeight}, title);
 
-  // Current selected font marker
+  // Current active font index (for the ON marker)
   int currentIndex = 0;
   if (mode == SelectMode::Reader) {
     const int currentExternal = FontMgr.getSelectedIndex();
@@ -154,60 +155,44 @@ void FontSelectActivity::render() {
     currentIndex = (currentFont < 0) ? 0 : currentFont + 1;
   }
 
-  // Draw options
-  for (int i = 0; i < totalItems && i < 20; i++) { // Max 20 items
-    const int itemY = 60 + i * rowHeight;
-    const bool isSelected = (i == selectedIndex);
-    const bool isCurrent = (i == currentIndex);
+  // Font list
+  const int contentTop = metrics.topPadding + metrics.headerHeight + metrics.verticalSpacing;
+  const int contentHeight = pageHeight - contentTop - metrics.buttonHintsHeight - metrics.verticalSpacing;
 
-    // Draw selection highlight
-    if (isSelected) {
-      renderer.fillRect(0, itemY - 2, pageWidth - 1, rowHeight);
-    }
-
-    // Draw text
-    if (mode == SelectMode::Reader) {
-      if (i < kBuiltinReaderFontCount) {
-        renderer.drawText(UI_20_FONT_ID, 20, itemY,
-                          I18N.get(kBuiltinReaderFontLabels[i]), !isSelected);
-      } else {
-        const FontInfo *info =
-            FontMgr.getFontInfo(i - kBuiltinReaderFontCount);
-        if (info) {
-          char label[64];
-          snprintf(label, sizeof(label), "%s (%dpt)", info->name, info->size);
-          renderer.drawText(UI_20_FONT_ID, 20, itemY, label, !isSelected);
+  GUI.drawList(
+      renderer, Rect{0, contentTop, pageWidth, contentHeight}, totalItems, selectedIndex,
+      [this](int i) -> std::string {
+        if (mode == SelectMode::Reader) {
+          if (i < kBuiltinReaderFontCount) {
+            return std::string(I18N.get(kBuiltinReaderFontLabels[i]));
+          }
+          const FontInfo *info = FontMgr.getFontInfo(i - kBuiltinReaderFontCount);
+          if (info) {
+            char label[64];
+            snprintf(label, sizeof(label), "%s (%dpt)", info->name, info->size);
+            return std::string(label);
+          }
+        } else {
+          if (i == 0) {
+            return std::string(TR(BUILTIN_DISABLED));
+          }
+          const FontInfo *info = FontMgr.getFontInfo(i - 1);
+          if (info) {
+            char label[64];
+            snprintf(label, sizeof(label), "%s (%dpt)", info->name, info->size);
+            return std::string(label);
+          }
         }
-      }
-    } else {
-      if (i == 0) {
-        // Built-in option
-        renderer.drawText(UI_20_FONT_ID, 20, itemY, TR(BUILTIN_DISABLED),
-                          !isSelected);
-      } else {
-        // External font
-        const FontInfo *info = FontMgr.getFontInfo(i - 1);
-        if (info) {
-          char label[64];
-          snprintf(label, sizeof(label), "%s (%dpt)", info->name, info->size);
-          renderer.drawText(UI_20_FONT_ID, 20, itemY, label, !isSelected);
-        }
-      }
-    }
-
-    // Draw current selection marker
-    if (isCurrent) {
-      const char* marker = TR(ON);
-      const auto width = renderer.getTextWidth(UI_20_FONT_ID, marker);
-      renderer.drawText(UI_20_FONT_ID, pageWidth - 20 - width, itemY,
-                        marker, !isSelected);
-    }
-  }
+        return "";
+      },
+      nullptr, nullptr,
+      [currentIndex](int i) -> std::string {
+        return (i == currentIndex) ? std::string(TR(ON)) : std::string("");
+      });
 
   // Button hints
-  const auto labels = mappedInput.mapLabels(TR(BACK), TR(SELECT), "", "");
-  renderer.drawButtonHints(UI_20_FONT_ID, labels.btn1, labels.btn2, labels.btn3,
-                           labels.btn4);
+  const auto labels = mappedInput.mapLabels(TR(BACK), TR(SELECT), TR(DIR_UP), TR(DIR_DOWN));
+  GUI.drawButtonHints(renderer, labels.btn1, labels.btn2, labels.btn3, labels.btn4);
 
   renderer.displayBuffer();
 }
