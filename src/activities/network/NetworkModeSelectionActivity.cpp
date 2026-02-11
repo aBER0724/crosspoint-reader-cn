@@ -121,7 +121,7 @@ void NetworkModeSelectionActivity::render() const {
     const char* menuDesc;
     switch (i) {
       case 0: menuItem = TR(JOIN_NETWORK); menuDesc = TR(JOIN_DESC); break;
-      case 1: menuItem = "Connect to Calibre"; menuDesc = "Use Calibre wireless device transfers"; break;
+      case 1: menuItem = TR(CONNECT_CALIBRE); menuDesc = TR(CONNECT_CALIBRE_DESC); break;
       case 2: menuItem = TR(CREATE_HOTSPOT); menuDesc = TR(HOTSPOT_DESC); break;
       default: menuItem = ""; menuDesc = ""; break;
     }

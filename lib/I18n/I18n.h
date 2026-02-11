@@ -351,8 +351,25 @@ enum class StrId : uint16_t {
   FETCHING_PROGRESS,   // "Fetching remote progress..." / "获取远程进度中..."
   UPLOADING_PROGRESS,  // "Uploading progress..." / "上传进度中..."
 
+  // === Calibre Connect UI ===
+  CONNECT_CALIBRE,       // "Connect to Calibre" / "连接Calibre"
+  CONNECT_CALIBRE_DESC,  // "Use Calibre wireless device transfers" / "Calibre无线传书"
+  STARTING_CALIBRE,      // "Starting Calibre..." / "正在启动Calibre..."
+  CALIBRE_SETUP_FAILED,  // "Calibre setup failed" / "Calibre启动失败"
+  CALIBRE_NETWORK_LABEL, // "Network" / "网络"
+  CALIBRE_SETUP_LABEL,   // "Setup" / "设置步骤"
+  CALIBRE_STATUS_LABEL,  // "Status" / "状态"
+  CALIBRE_STEP_1,        // "1. Connect to same WiFi" / "1. 连接到相同WiFi"
+  CALIBRE_STEP_2,        // "2. In Calibre: Connect/share" / "2. Calibre中: 连接/共享"
+  CALIBRE_STEP_3,        // "3. Start wireless device" / "3. 启动无线设备连接"
+  CALIBRE_KEEP_OPEN,     // "Keep this screen open" / "请保持此页面"
+
+  // === WiFi Errors ===
+  WIFI_ERROR_GENERAL,    // "Error: General failure" / "错误: 连接失败"
+  WIFI_ERROR_NOT_FOUND,  // "Error: Network not found" / "错误: 找不到网络"
+
   // Sentinel - must be last
-  _COUNT = 290
+  _COUNT = 303
 };
 
 // Language enum

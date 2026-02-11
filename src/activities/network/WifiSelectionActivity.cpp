@@ -268,9 +268,9 @@ void WifiSelectionActivity::checkConnectionStatus() {
   }
 
   if (status == WL_CONNECT_FAILED || status == WL_NO_SSID_AVAIL) {
-    connectionError = "Error: General failure";
+    connectionError = TR(WIFI_ERROR_GENERAL);
     if (status == WL_NO_SSID_AVAIL) {
-      connectionError = "Error: Network not found";
+      connectionError = TR(WIFI_ERROR_NOT_FOUND);
     }
     state = WifiSelectionState::CONNECTION_FAILED;
     updateRequired = true;
@@ -518,7 +518,7 @@ void WifiSelectionActivity::renderNetworkList() const {
     const auto height = renderer.getLineHeight(UI_10_FONT_ID);
     const auto top = (pageHeight - height) / 2;
     renderer.drawCenteredText(UI_10_FONT_ID, top, TR(NO_NETWORKS));
-    renderer.drawCenteredText(SMALL_FONT_ID, top + height + 10, "Press Connect to scan again");
+    renderer.drawCenteredText(SMALL_FONT_ID, top + height + 10, TR(PRESS_OK_SCAN));
   } else {
     // Calculate how many networks we can display
     constexpr int startY = 60;
