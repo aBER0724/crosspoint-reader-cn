@@ -112,6 +112,15 @@ void EpubReaderActivity::onEnter() {
   APP_STATE.saveToFile();
   RECENT_BOOKS.addBook(epub->getPath(), epub->getTitle(), epub->getAuthor(), epub->getThumbBmpPath());
 
+  // Pre-generate cover thumbnail for the current theme's height while the
+  // epub is loaded and the display task hasn't been created yet (more free
+  // heap).  On memory-constrained devices (ESP32-C3 + CJK fonts) the home
+  // screen's deferred generation often fails with OOM because the zip
+  // dictionary alone needs ~32 KB.  generateThumbBmp returns immediately
+  // if the thumbnail already exists on SD.
+  const int coverHeight = UITheme::getInstance().getMetrics().homeCoverHeight;
+  epub->generateThumbBmp(coverHeight);
+
   // Trigger first update
   updateRequired = true;
 

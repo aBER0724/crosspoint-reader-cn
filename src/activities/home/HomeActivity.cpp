@@ -80,8 +80,15 @@ void HomeActivity::loadRecentCovers(int coverHeight) {
           GUI.fillPopupProgress(renderer, popupRect, 10 + progress * (90 / recentBooks.size()));
           bool success = epub.generateThumbBmp(coverHeight);
           if (!success) {
-            RECENT_BOOKS.updateBook(book.path, book.title, book.author, "");
-            book.coverBmpPath = "";
+            // Only permanently clear coverBmpPath when generateThumbBmp wrote
+            // an empty marker file (= permanent failure: non-JPG cover or no
+            // cover image).  If the thumb file was removed (= transient failure
+            // e.g. OOM during JPEG decode), keep the path so we can retry on
+            // the next home visit or reboot.
+            if (Storage.exists(coverPath.c_str())) {
+              RECENT_BOOKS.updateBook(book.path, book.title, book.author, "");
+              book.coverBmpPath = "";
+            }
           }
           coverRendered = false;
           updateRequired = true;
@@ -98,8 +105,11 @@ void HomeActivity::loadRecentCovers(int coverHeight) {
             GUI.fillPopupProgress(renderer, popupRect, 10 + progress * (90 / recentBooks.size()));
             bool success = xtc.generateThumbBmp(coverHeight);
             if (!success) {
-              RECENT_BOOKS.updateBook(book.path, book.title, book.author, "");
-              book.coverBmpPath = "";
+              // Same as epub: only clear path on permanent failures (marker file)
+              if (Storage.exists(coverPath.c_str())) {
+                RECENT_BOOKS.updateBook(book.path, book.title, book.author, "");
+                book.coverBmpPath = "";
+              }
             }
             coverRendered = false;
             updateRequired = true;
@@ -286,6 +296,11 @@ void HomeActivity::render() {
     updateRequired = true;
   } else if (!recentsLoaded && !recentsLoading) {
     recentsLoading = true;
+    // Free the cover buffer before thumbnail generation to reclaim up to
+    // 48 KB of heap.  The JPEG decoder + zip dictionary need ~36 KB and
+    // ESP32-C3 with CJK fonts has very tight heap.  The buffer will be
+    // re-allocated on the next render after covers are loaded.
+    freeCoverBuffer();
     loadRecentCovers(metrics.homeCoverHeight);
   }
 }

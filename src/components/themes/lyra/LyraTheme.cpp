@@ -288,9 +288,11 @@ void LyraTheme::drawRecentBookCover(GfxRenderer& renderer, Rect rect, const std:
 
   // Draw book card regardless, fill with message based on `hasContinueReading`
   // Draw cover image as background if available (inside the box)
-  // Only load from SD on first render, then use stored buffer
+  // Load from SD on first render, then use stored frame buffer.
+  // Also re-load when the buffer could not be restored (e.g. malloc failed
+  // for the 48 KB cover buffer on memory-constrained ESP32-C3).
   if (hasContinueReading) {
-    if (!coverRendered) {
+    if (!coverRendered || !bufferRestored) {
       for (int i = 0; i < std::min(static_cast<int>(recentBooks.size()), LyraMetrics::values.homeRecentBooksCount);
            i++) {
         std::string coverPath = recentBooks[i].coverBmpPath;
@@ -301,7 +303,7 @@ void LyraTheme::drawRecentBookCover(GfxRenderer& renderer, Rect rect, const std:
         } else {
           const std::string coverBmpPath = UITheme::getCoverThumbPath(coverPath, LyraMetrics::values.homeCoverHeight);
 
-          // First time: load cover from SD and render
+          // Load cover from SD and render
           FsFile file;
           if (Storage.openFileForRead("HOME", coverBmpPath, file)) {
             Bitmap bitmap(file);
@@ -313,12 +315,21 @@ void LyraTheme::drawRecentBookCover(GfxRenderer& renderer, Rect rect, const std:
                                       static_cast<float>(LyraMetrics::values.homeCoverHeight);
               float cropX = 1.0f - (tileRatio / ratio);
 
+              // For 1-bit BMPs (home thumbnails), skip cropping so the optimized
+              // drawBitmap1Bit path is used.  The crop is typically <5% and the
+              // scaling path already fits the image into the tile correctly.
+              if (bitmap.is1Bit()) {
+                cropX = 0;
+              }
+
               renderer.drawBitmap(bitmap, tileX + hPaddingInSelection, tileY + hPaddingInSelection,
                                   tileWidth - 2 * hPaddingInSelection, LyraMetrics::values.homeCoverHeight, cropX);
             } else {
               hasCover = false;
             }
             file.close();
+          } else {
+            hasCover = false;
           }
         }
 
