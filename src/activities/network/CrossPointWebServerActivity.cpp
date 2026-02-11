@@ -23,7 +23,7 @@ constexpr const char* AP_SSID = "CrossPoint-Reader";
 constexpr const char* AP_PASSWORD = nullptr;  // Open network for ease of use
 constexpr const char* AP_HOSTNAME = "crosspoint";
 constexpr uint8_t AP_CHANNEL = 1;
-constexpr uint8_t AP_MAX_CONNECTIONS = 4;
+constexpr uint8_t AP_MAX_CONNECTIONS = 1;
 
 // DNS server for captive portal (redirects all DNS queries to our IP)
 DNSServer* dnsServer = nullptr;
@@ -69,7 +69,7 @@ void CrossPointWebServerActivity::onEnter() {
 void CrossPointWebServerActivity::onExit() {
   ActivityWithSubactivity::onExit();
 
-  Serial.printf("[%lu] [WEBACT] [MEM] Free heap at onExit start: %d bytes\n", millis(), ESP.getFreeHeap());
+  Serial.printf("[%lu] [WEBACT] onExit start, free heap: %d\n", millis(), ESP.getFreeHeap());
 
   state = WebServerActivityState::SHUTTING_DOWN;
 
@@ -81,50 +81,28 @@ void CrossPointWebServerActivity::onExit() {
 
   // Stop DNS server if running (AP mode)
   if (dnsServer) {
-    Serial.printf("[%lu] [WEBACT] Stopping DNS server...\n", millis());
     dnsServer->stop();
     delete dnsServer;
     dnsServer = nullptr;
   }
 
-  // Brief wait for LWIP stack to flush pending packets
-  delay(50);
-
-  // Disconnect WiFi gracefully
-  if (isApMode) {
-    Serial.printf("[%lu] [WEBACT] Stopping WiFi AP...\n", millis());
-    WiFi.softAPdisconnect(true);
-  } else {
-    Serial.printf("[%lu] [WEBACT] Disconnecting WiFi (graceful)...\n", millis());
-    WiFi.disconnect(false);  // false = don't erase credentials, send disconnect frame
-  }
-  delay(30);  // Allow disconnect frame to be sent
-
-  Serial.printf("[%lu] [WEBACT] Setting WiFi mode OFF...\n", millis());
+  // Kill WiFi immediately — user explicitly requested exit, no need for
+  // graceful disconnect handshakes that can block for seconds.
   WiFi.mode(WIFI_OFF);
-  delay(30);  // Allow WiFi hardware to power down
+  delay(30);
 
-  Serial.printf("[%lu] [WEBACT] [MEM] Free heap after WiFi disconnect: %d bytes\n", millis(), ESP.getFreeHeap());
+  Serial.printf("[%lu] [WEBACT] WiFi OFF, free heap: %d\n", millis(), ESP.getFreeHeap());
 
-  // Acquire mutex before deleting task
-  Serial.printf("[%lu] [WEBACT] Acquiring rendering mutex before task deletion...\n", millis());
+  // Acquire mutex before deleting task (waits for any in-progress render)
   xSemaphoreTake(renderingMutex, portMAX_DELAY);
-
-  // Delete the display task
-  Serial.printf("[%lu] [WEBACT] Deleting display task...\n", millis());
   if (displayTaskHandle) {
     vTaskDelete(displayTaskHandle);
     displayTaskHandle = nullptr;
-    Serial.printf("[%lu] [WEBACT] Display task deleted\n", millis());
   }
-
-  // Delete the mutex
-  Serial.printf("[%lu] [WEBACT] Deleting mutex...\n", millis());
   vSemaphoreDelete(renderingMutex);
   renderingMutex = nullptr;
-  Serial.printf("[%lu] [WEBACT] Mutex deleted\n", millis());
 
-  Serial.printf("[%lu] [WEBACT] [MEM] Free heap at onExit end: %d bytes\n", millis(), ESP.getFreeHeap());
+  Serial.printf("[%lu] [WEBACT] onExit done, free heap: %d\n", millis(), ESP.getFreeHeap());
 }
 
 void CrossPointWebServerActivity::onNetworkModeSelected(const NetworkMode mode) {
@@ -207,6 +185,16 @@ void CrossPointWebServerActivity::startAccessPoint() {
   WiFi.mode(WIFI_AP);
   delay(100);
 
+  // Explicitly configure AP network parameters BEFORE starting softAP.
+  // Without this, some devices fail to route traffic to the ESP32 after connecting,
+  // because the DHCP server may not advertise the correct gateway.
+  const IPAddress apLocalIP(192, 168, 4, 1);
+  const IPAddress apGateway(192, 168, 4, 1);
+  const IPAddress apSubnet(255, 255, 255, 0);
+  const bool configOk = WiFi.softAPConfig(apLocalIP, apGateway, apSubnet);
+  Serial.printf("[%lu] [WEBACT] softAPConfig(192.168.4.1) => %s\n", millis(), configOk ? "OK" : "FAILED");
+  delay(50);
+
   // Start soft AP
   bool apStarted;
   if (AP_PASSWORD && strlen(AP_PASSWORD) >= 8) {
@@ -235,12 +223,9 @@ void CrossPointWebServerActivity::startAccessPoint() {
   Serial.printf("[%lu] [WEBACT] SSID: %s\n", millis(), AP_SSID);
   Serial.printf("[%lu] [WEBACT] IP: %s\n", millis(), connectedIP.c_str());
 
-  // Start mDNS for hostname resolution
-  if (MDNS.begin(AP_HOSTNAME)) {
-    Serial.printf("[%lu] [WEBACT] mDNS started: http://%s.local/\n", millis(), AP_HOSTNAME);
-  } else {
-    Serial.printf("[%lu] [WEBACT] WARNING: mDNS failed to start\n", millis());
-  }
+  // Start mDNS for hostname resolution (STA mode only — useless in AP mode
+  // where we control DNS and there's no upstream mDNS resolver)
+  Serial.printf("[%lu] [WEBACT] AP mode: skipping mDNS to save memory\n", millis());
 
   // Start DNS server for captive portal behavior
   // This redirects all DNS queries to our IP, making any domain typed resolve to us
@@ -339,27 +324,19 @@ void CrossPointWebServerActivity::loop() {
 
       // Process HTTP requests in tight loop for maximum throughput
       // More iterations = more data processed per main loop cycle
-      constexpr int MAX_ITERATIONS = 500;
+      constexpr int MAX_ITERATIONS = 64;
       for (int i = 0; i < MAX_ITERATIONS && webServer->isRunning(); i++) {
         webServer->handleClient();
-        // Reset watchdog every 32 iterations
-        if ((i & 0x1F) == 0x1F) {
+        // Reset watchdog every 16 iterations
+        if ((i & 0x0F) == 0x0F) {
           esp_task_wdt_reset();
-        }
-        // Yield and check for exit button every 64 iterations
-        if ((i & 0x3F) == 0x3F) {
           yield();
-          // Check for exit button inside loop for responsiveness
-          if (mappedInput.wasPressed(MappedInputManager::Button::Back)) {
-            onGoBack();
-            return;
-          }
         }
       }
       lastHandleClientTime = millis();
     }
 
-    // Handle exit on Back button (also check outside loop)
+    // Handle exit on Back button
     if (mappedInput.wasPressed(MappedInputManager::Button::Back)) {
       onGoBack();
       return;
@@ -440,18 +417,15 @@ void CrossPointWebServerActivity::renderServerRunning() const {
     drawQRCode(renderer, (480 - 6 * 33) / 2, startY + LINE_SPACING * 4, wifiConfig);
 
     startY += 6 * 29 + 3 * LINE_SPACING;
-    // Show primary URL (hostname)
-    std::string hostnameUrl = std::string("http://") + AP_HOSTNAME + ".local/";
-    renderer.drawCenteredText(UI_10_FONT_ID, startY + LINE_SPACING * 3, hostnameUrl.c_str(), true, EpdFontFamily::BOLD);
+    // Show primary URL (IP address — mDNS is skipped in AP mode to save memory)
+    std::string ipUrl = std::string("http://") + connectedIP + "/";
+    renderer.drawCenteredText(UI_10_FONT_ID, startY + LINE_SPACING * 3, ipUrl.c_str(), true, EpdFontFamily::BOLD);
 
-    // Show IP address as fallback
-    std::string ipUrl = std::string(TR(OR_HTTP_PREFIX)) + connectedIP + "/";
-    renderer.drawCenteredText(SMALL_FONT_ID, startY + LINE_SPACING * 4, ipUrl.c_str());
-    renderer.drawCenteredText(SMALL_FONT_ID, startY + LINE_SPACING * 5, TR(OPEN_URL_HINT));
+    renderer.drawCenteredText(SMALL_FONT_ID, startY + LINE_SPACING * 4, TR(OPEN_URL_HINT));
 
     // Show QR code for URL
-    renderer.drawCenteredText(SMALL_FONT_ID, startY + LINE_SPACING * 6, TR(SCAN_QR_HINT));
-    drawQRCode(renderer, (480 - 6 * 33) / 2, startY + LINE_SPACING * 7, hostnameUrl);
+    renderer.drawCenteredText(SMALL_FONT_ID, startY + LINE_SPACING * 5, TR(SCAN_QR_HINT));
+    drawQRCode(renderer, (480 - 6 * 33) / 2, startY + LINE_SPACING * 6, ipUrl);
   } else {
     // STA mode display (original behavior)
     const int startY = 65;

@@ -45,7 +45,10 @@ class CrossPointWebServer {
     std::vector<uint8_t> buffer;
     size_t bufferPos = 0;
 
-    UploadState() { buffer.resize(UPLOAD_BUFFER_SIZE); }
+    // Lazy-allocate buffer on first upload to save ~4KB when idle
+    void ensureBuffer() {
+      if (buffer.empty()) buffer.resize(UPLOAD_BUFFER_SIZE);
+    }
   } upload;
 
   CrossPointWebServer();
@@ -87,7 +90,13 @@ class CrossPointWebServer {
   String formatFileSize(size_t bytes) const;
   bool isEpubFile(const String& filename) const;
 
+  // In AP mode, force Connection: close on every response.
+  // HTTP/1.1 keep-alive connections each hoard ~4-5 KB of TCP buffer memory,
+  // and the ESP32-C3 can't afford to hold multiple idle connections open.
+  void closeConnectionInApMode() const;
+
   // Request handlers
+  void sendLargeHtml_P(const char* html) const;
   void handleRoot() const;
   void handleNotFound() const;
   void handleCaptivePortal() const;

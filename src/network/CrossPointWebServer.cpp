@@ -14,6 +14,7 @@
 #include "SettingsList.h"
 #include "WifiCredentialStore.h"
 #include "html/FilesPageHtml.generated.h"
+#include "html/ApHomePageHtml.generated.h"
 #include "html/HomePageHtml.generated.h"
 #include "html/SettingsPageHtml.generated.h"
 #include "util/StringUtils.h"
@@ -130,13 +131,11 @@ void CrossPointWebServer::begin() {
   }
 
   // Setup routes
-  Serial.printf("[%lu] [WEB] Setting up routes...\n", millis());
+  Serial.printf("[%lu] [WEB] Setting up routes (%s mode)...\n", millis(), apMode ? "AP-lite" : "full");
   server->on("/", HTTP_GET, [this] { handleRoot(); });
-  server->on("/files", HTTP_GET, [this] { handleFileList(); });
 
   server->on("/api/status", HTTP_GET, [this] { handleStatus(); });
   server->on("/api/files", HTTP_GET, [this] { handleFileListData(); });
-  server->on("/download", HTTP_GET, [this] { handleDownload(); });
 
   // Upload endpoint with special handling for multipart form data
   server->on("/upload", HTTP_POST, [this] { handleUploadPost(upload); }, [this] { handleUpload(upload); });
@@ -144,20 +143,8 @@ void CrossPointWebServer::begin() {
   // Create folder endpoint
   server->on("/mkdir", HTTP_POST, [this] { handleCreateFolder(); });
 
-  // Rename file endpoint
-  server->on("/rename", HTTP_POST, [this] { handleRename(); });
-
-  // Move file endpoint
-  server->on("/move", HTTP_POST, [this] { handleMove(); });
-
   // Delete file/folder endpoint
   server->on("/delete", HTTP_POST, [this] { handleDelete(); });
-
-  // WiFi credential management endpoints (work in both modes, but most useful in AP mode)
-  server->on("/api/wifi/scan", HTTP_GET, [this] { handleWifiScan(); });
-  server->on("/api/wifi/save", HTTP_POST, [this] { handleWifiSave(); });
-  server->on("/api/wifi/list", HTTP_GET, [this] { handleWifiList(); });
-  server->on("/api/wifi/delete", HTTP_POST, [this] { handleWifiDelete(); });
 
   // Captive portal detection endpoints — respond correctly so devices
   // recognise the network as "online" and route traffic through it.
@@ -169,27 +156,49 @@ void CrossPointWebServer::begin() {
   server->on("/redirect", HTTP_GET, [this] { handleCaptivePortal(); });              // Windows alt
   server->on("/fwlink", HTTP_GET, [this] { handleCaptivePortal(); });                // Windows alt
 
-  // Settings endpoints
-  server->on("/settings", HTTP_GET, [this] { handleSettingsPage(); });
-  server->on("/api/settings", HTTP_GET, [this] { handleGetSettings(); });
-  server->on("/api/settings", HTTP_POST, [this] { handlePostSettings(); });
+  // Full-feature routes — only in STA mode (AP mode has too little heap)
+  if (!apMode) {
+    server->on("/files", HTTP_GET, [this] { handleFileList(); });
+    server->on("/download", HTTP_GET, [this] { handleDownload(); });
+    server->on("/rename", HTTP_POST, [this] { handleRename(); });
+    server->on("/move", HTTP_POST, [this] { handleMove(); });
+
+    // Settings endpoints
+    server->on("/settings", HTTP_GET, [this] { handleSettingsPage(); });
+    server->on("/api/settings", HTTP_GET, [this] { handleGetSettings(); });
+    server->on("/api/settings", HTTP_POST, [this] { handlePostSettings(); });
+
+    // WiFi credential management endpoints
+    server->on("/api/wifi/scan", HTTP_GET, [this] { handleWifiScan(); });
+    server->on("/api/wifi/save", HTTP_POST, [this] { handleWifiSave(); });
+    server->on("/api/wifi/list", HTTP_GET, [this] { handleWifiList(); });
+    server->on("/api/wifi/delete", HTTP_POST, [this] { handleWifiDelete(); });
+  }
 
   server->onNotFound([this] { handleNotFound(); });
   Serial.printf("[%lu] [WEB] [MEM] Free heap after route setup: %d bytes\n", millis(), ESP.getFreeHeap());
 
   server->begin();
 
-  // Start WebSocket server for fast binary uploads
-  Serial.printf("[%lu] [WEB] Starting WebSocket server on port %d...\n", millis(), wsPort);
-  wsServer.reset(new WebSocketsServer(wsPort));
-  wsInstance = const_cast<CrossPointWebServer*>(this);
-  wsServer->begin();
-  wsServer->onEvent(wsEventCallback);
-  Serial.printf("[%lu] [WEB] WebSocket server started\n", millis());
+  // Start WebSocket server for fast binary uploads (STA mode only).
+  // In AP mode, skip to conserve ~4KB of precious heap — HTTP upload is the fallback.
+  if (!apMode) {
+    Serial.printf("[%lu] [WEB] Starting WebSocket server on port %d...\n", millis(), wsPort);
+    wsServer.reset(new WebSocketsServer(wsPort));
+    wsInstance = const_cast<CrossPointWebServer*>(this);
+    wsServer->begin();
+    wsServer->onEvent(wsEventCallback);
+    Serial.printf("[%lu] [WEB] WebSocket server started\n", millis());
+  } else {
+    Serial.printf("[%lu] [WEB] AP mode: skipping WebSocket server to save memory\n", millis());
+  }
 
-  udpActive = udp.begin(LOCAL_UDP_PORT);
-  Serial.printf("[%lu] [WEB] Discovery UDP %s on port %d\n", millis(), udpActive ? "enabled" : "failed",
-                LOCAL_UDP_PORT);
+  // UDP discovery (STA mode only — in AP mode the device IS the network)
+  if (!apMode) {
+    udpActive = udp.begin(LOCAL_UDP_PORT);
+    Serial.printf("[%lu] [WEB] Discovery UDP %s on port %d\n", millis(), udpActive ? "enabled" : "failed",
+                  LOCAL_UDP_PORT);
+  }
 
   running = true;
 
@@ -203,15 +212,10 @@ void CrossPointWebServer::begin() {
 
 void CrossPointWebServer::stop() {
   if (!running || !server) {
-    Serial.printf("[%lu] [WEB] stop() called but already stopped (running=%d, server=%p)\n", millis(), running,
-                  server.get());
     return;
   }
 
-  Serial.printf("[%lu] [WEB] STOP INITIATED - setting running=false first\n", millis());
-  running = false;  // Set this FIRST to prevent handleClient from using server
-
-  Serial.printf("[%lu] [WEB] [MEM] Free heap before stop: %d bytes\n", millis(), ESP.getFreeHeap());
+  running = false;  // Set FIRST to prevent handleClient from using server
 
   // Close any in-progress WebSocket upload
   if (wsUploadInProgress && wsUploadFile) {
@@ -221,11 +225,9 @@ void CrossPointWebServer::stop() {
 
   // Stop WebSocket server
   if (wsServer) {
-    Serial.printf("[%lu] [WEB] Stopping WebSocket server...\n", millis());
     wsServer->close();
     wsServer.reset();
     wsInstance = nullptr;
-    Serial.printf("[%lu] [WEB] WebSocket server stopped\n", millis());
   }
 
   if (udpActive) {
@@ -233,18 +235,10 @@ void CrossPointWebServer::stop() {
     udpActive = false;
   }
 
-  // Brief delay to allow any in-flight handleClient() calls to complete
-  delay(20);
-
   server->stop();
-  Serial.printf("[%lu] [WEB] [MEM] Free heap after server->stop(): %d bytes\n", millis(), ESP.getFreeHeap());
-
-  // Brief delay before deletion
-  delay(10);
-
   server.reset();
-  Serial.printf("[%lu] [WEB] Web server stopped and deleted\n", millis());
-  Serial.printf("[%lu] [WEB] [MEM] Free heap after delete server: %d bytes\n", millis(), ESP.getFreeHeap());
+
+  Serial.printf("[%lu] [WEB] Server stopped\n", millis());
 
   // Note: Static upload variables (uploadFileName, uploadPath, uploadError) are declared
   // later in the file and will be cleared when they go out of scope or on next upload
@@ -313,18 +307,51 @@ CrossPointWebServer::WsUploadStatus CrossPointWebServer::getWsUploadStatus() con
   return status;
 }
 
+void CrossPointWebServer::closeConnectionInApMode() const {
+  if (apMode) {
+    server->sendHeader("Connection", "close");
+  }
+}
+
+// Send a large PROGMEM HTML page in small chunks to avoid overwhelming the
+// TCP send buffer.  In AP mode the WiFi throughput is limited and writing
+// the entire payload at once causes EAGAIN errors that drop the response.
+void CrossPointWebServer::sendLargeHtml_P(const char* html) const {
+  closeConnectionInApMode();
+  const size_t totalLen = strlen_P(html);
+  server->setContentLength(totalLen);
+  server->send(200, "text/html", "");
+
+  constexpr size_t CHUNK = 1024;
+  for (size_t offset = 0; offset < totalLen; offset += CHUNK) {
+    const size_t remaining = totalLen - offset;
+    const size_t thisChunk = (remaining < CHUNK) ? remaining : CHUNK;
+    server->sendContent_P(html + offset, thisChunk);
+    esp_task_wdt_reset();
+    yield();
+  }
+}
+
 void CrossPointWebServer::handleRoot() const {
-  server->send_P(200, "text/html", HomePageHtml);
-  Serial.printf("[%lu] [WEB] Served root page\n", millis());
+  if (apMode) {
+    // AP mode: serve lightweight page to avoid TCP buffer exhaustion on memory-constrained ESP32
+    sendLargeHtml_P(ApHomePageHtml);
+    Serial.printf("[%lu] [WEB] Served AP root page (%d bytes)\n", millis(), strlen_P(ApHomePageHtml));
+  } else {
+    sendLargeHtml_P(HomePageHtml);
+    Serial.printf("[%lu] [WEB] Served root page\n", millis());
+  }
 }
 
 void CrossPointWebServer::handleNotFound() const {
-  // In AP mode, redirect unknown URLs to our root page (captive portal behavior).
-  // This catches any captive-portal probe we didn't explicitly register.
+  closeConnectionInApMode();
+  // In AP mode, serve a simple page for unknown URLs instead of redirect.
+  // Heavy redirects trigger captive portal detection and waste limited TCP buffers.
   if (apMode) {
     const String ip = WiFi.softAPIP().toString();
-    server->sendHeader("Location", "http://" + ip + "/", true);
-    server->send(302, "text/plain", "");
+    const String body = "<html><body><p>Visit <a href='http://" + ip + "/'>http://" + ip +
+                        "/</a></p></body></html>";
+    server->send(200, "text/html", body);
     return;
   }
   String message = "404 Not Found\n\n";
@@ -333,8 +360,30 @@ void CrossPointWebServer::handleNotFound() const {
 }
 
 void CrossPointWebServer::handleCaptivePortal() const {
-  // Redirect captive portal detection probes to our root page.
-  // This makes iOS/Android/Windows recognise the network and open our page.
+  closeConnectionInApMode();
+  // In AP mode, return OS-expected "success" responses so the phone treats
+  // our WiFi as a normal network (no captive portal interception).
+  // The user navigates to the device IP manually via the QR code on screen.
+  if (apMode) {
+    const String uri = server->uri();
+    if (uri == "/generate_204" || uri == "/gen_204") {
+      // Android: expects 204 No Content
+      server->send(204);
+    } else if (uri == "/hotspot-detect.html" || uri == "/library/test/success.html") {
+      // iOS/macOS: expects this exact body
+      server->send(200, "text/html",
+                   "<HTML><HEAD><TITLE>Success</TITLE></HEAD><BODY>Success</BODY></HTML>");
+    } else if (uri == "/connecttest.txt") {
+      // Windows: expects this exact body
+      server->send(200, "text/plain", "Microsoft Connect Test");
+    } else {
+      server->send(200, "text/plain", "");
+    }
+    Serial.printf("[%lu] [WEB] Captive portal probe answered (AP mode): %s\n", millis(), uri.c_str());
+    return;
+  }
+
+  // STA mode: redirect to our root page for captive portal experience
   const String ip = WiFi.softAPIP().toString();
   const String redirectUrl = "http://" + ip + "/";
   server->sendHeader("Location", redirectUrl, true);
@@ -343,6 +392,7 @@ void CrossPointWebServer::handleCaptivePortal() const {
 }
 
 void CrossPointWebServer::handleStatus() const {
+  closeConnectionInApMode();
   // Get correct IP based on AP vs STA mode
   const String ipAddr = apMode ? WiFi.softAPIP().toString() : WiFi.localIP().toString();
 
@@ -423,9 +473,13 @@ bool CrossPointWebServer::isEpubFile(const String& filename) const {
   return lower.endsWith(".epub");
 }
 
-void CrossPointWebServer::handleFileList() const { server->send_P(200, "text/html", FilesPageHtml); }
+void CrossPointWebServer::handleFileList() const {
+  sendLargeHtml_P(FilesPageHtml);
+  Serial.printf("[%lu] [WEB] Served files page\n", millis());
+}
 
 void CrossPointWebServer::handleFileListData() const {
+  closeConnectionInApMode();
   // Get current path from query string (default to root)
   String currentPath = "/";
   if (server->hasArg("path")) {
@@ -477,6 +531,7 @@ void CrossPointWebServer::handleFileListData() const {
 }
 
 void CrossPointWebServer::handleDownload() const {
+  closeConnectionInApMode();
   if (!server->hasArg("path")) {
     server->send(400, "text/plain", "Missing path");
     return;
@@ -589,6 +644,7 @@ void CrossPointWebServer::handleUpload(UploadState& state) const {
     uploadStartTime = millis();
     lastLoggedSize = 0;
     state.bufferPos = 0;
+    state.ensureBuffer();  // Lazy-allocate upload buffer on first upload
     totalWriteTime = 0;
     writeCount = 0;
 
@@ -713,6 +769,7 @@ void CrossPointWebServer::handleUpload(UploadState& state) const {
 }
 
 void CrossPointWebServer::handleUploadPost(UploadState& state) const {
+  closeConnectionInApMode();
   if (state.success) {
     server->send(200, "text/plain", "File uploaded successfully: " + state.fileName);
   } else {
@@ -722,6 +779,7 @@ void CrossPointWebServer::handleUploadPost(UploadState& state) const {
 }
 
 void CrossPointWebServer::handleCreateFolder() const {
+  closeConnectionInApMode();
   // Get folder name from form data
   if (!server->hasArg("name")) {
     server->send(400, "text/plain", "Missing folder name");
@@ -772,6 +830,7 @@ void CrossPointWebServer::handleCreateFolder() const {
 }
 
 void CrossPointWebServer::handleRename() const {
+  closeConnectionInApMode();
   if (!server->hasArg("path") || !server->hasArg("name")) {
     server->send(400, "text/plain", "Missing path or new name");
     return;
@@ -854,6 +913,7 @@ void CrossPointWebServer::handleRename() const {
 }
 
 void CrossPointWebServer::handleMove() const {
+  closeConnectionInApMode();
   if (!server->hasArg("path") || !server->hasArg("dest")) {
     server->send(400, "text/plain", "Missing path or destination");
     return;
@@ -947,6 +1007,7 @@ void CrossPointWebServer::handleMove() const {
 }
 
 void CrossPointWebServer::handleDelete() const {
+  closeConnectionInApMode();
   // Get path from form data
   if (!server->hasArg("path")) {
     server->send(400, "text/plain", "Missing path");
@@ -1029,11 +1090,12 @@ void CrossPointWebServer::handleDelete() const {
 }
 
 void CrossPointWebServer::handleSettingsPage() const {
-  server->send(200, "text/html", SettingsPageHtml);
+  sendLargeHtml_P(SettingsPageHtml);
   Serial.printf("[%lu] [WEB] Served settings page\n", millis());
 }
 
 void CrossPointWebServer::handleGetSettings() const {
+  closeConnectionInApMode();
   auto settings = getSettingsList();
 
   server->setContentLength(CONTENT_LENGTH_UNKNOWN);
@@ -1117,6 +1179,7 @@ void CrossPointWebServer::handleGetSettings() const {
 }
 
 void CrossPointWebServer::handlePostSettings() {
+  closeConnectionInApMode();
   if (!server->hasArg("plain")) {
     server->send(400, "text/plain", "Missing JSON body");
     return;
@@ -1343,6 +1406,7 @@ void CrossPointWebServer::onWebSocketEvent(uint8_t num, WStype_t type, uint8_t* 
 // --- WiFi credential management API handlers ---
 
 void CrossPointWebServer::handleWifiScan() const {
+  closeConnectionInApMode();
   Serial.printf("[%lu] [WEB] WiFi scan requested\n", millis());
 
   // In AP mode we need to briefly enable STA to scan, without tearing down the AP.
@@ -1403,6 +1467,7 @@ void CrossPointWebServer::handleWifiScan() const {
 }
 
 void CrossPointWebServer::handleWifiSave() const {
+  closeConnectionInApMode();
   // Expect JSON body: {"ssid": "...", "password": "..."}
   if (!server->hasArg("plain")) {
     server->send(400, "application/json", "{\"error\":\"Missing request body\"}");
@@ -1442,6 +1507,7 @@ void CrossPointWebServer::handleWifiSave() const {
 }
 
 void CrossPointWebServer::handleWifiList() const {
+  closeConnectionInApMode();
   WIFI_STORE.loadFromFile();
   const auto& creds = WIFI_STORE.getCredentials();
 
@@ -1462,6 +1528,7 @@ void CrossPointWebServer::handleWifiList() const {
 }
 
 void CrossPointWebServer::handleWifiDelete() const {
+  closeConnectionInApMode();
   if (!server->hasArg("plain")) {
     server->send(400, "application/json", "{\"error\":\"Missing request body\"}");
     return;
