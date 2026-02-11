@@ -4,6 +4,7 @@
 #include <I18n.h>
 
 #include "MappedInputManager.h"
+#include "components/UITheme.h"
 #include "fontIds.h"
 
 void LanguageSelectActivity::taskTrampoline(void *param) {
@@ -97,11 +98,11 @@ void LanguageSelectActivity::render() {
   renderer.clearScreen();
 
   const auto pageWidth = renderer.getScreenWidth();
-  constexpr int rowHeight = 30;
+  const auto pageHeight = renderer.getScreenHeight();
+  auto metrics = UITheme::getInstance().getMetrics();
 
   // Title
-  renderer.drawCenteredText(UI_20_FONT_ID, 15, TR(LANGUAGE), true,
-                            EpdFontFamily::BOLD);
+  GUI.drawHeader(renderer, Rect{0, metrics.topPadding, pageWidth, metrics.headerHeight}, TR(LANGUAGE));
 
   // Current language marker
   const int currentLang = static_cast<int>(I18N.getLanguage());
@@ -113,30 +114,23 @@ void LanguageSelectActivity::render() {
     "\xE6\x97\xA5\xE6\x9C\xAC\xE8\xAA\x9E"               // 日本語
   };
 
-  for (int i = 0; i < totalItems; i++) {
-    const int itemY = 60 + i * rowHeight;
-    const bool isSelected = (i == selectedIndex);
-    const bool isCurrent = (i == currentLang);
+  // Language list
+  const int contentTop = metrics.topPadding + metrics.headerHeight + metrics.verticalSpacing;
+  const int contentHeight = pageHeight - contentTop - metrics.buttonHintsHeight - metrics.verticalSpacing;
 
-    if (isSelected) {
-      renderer.fillRect(0, itemY - 2, pageWidth - 1, rowHeight);
-    }
-
-    renderer.drawText(UI_20_FONT_ID, 20, itemY, langNames[i], !isSelected);
-
-    // Draw current selection marker
-    if (isCurrent) {
-      const char *marker = "[ON]";
-      const auto width = renderer.getTextWidth(UI_20_FONT_ID, marker);
-      renderer.drawText(UI_20_FONT_ID, pageWidth - 20 - width, itemY, marker,
-                        !isSelected);
-    }
-  }
+  GUI.drawList(
+      renderer, Rect{0, contentTop, pageWidth, contentHeight}, totalItems, selectedIndex,
+      [&langNames](int i) -> std::string {
+        return std::string(langNames[i]);
+      },
+      nullptr, nullptr,
+      [currentLang](int i) -> std::string {
+        return (i == currentLang) ? std::string(TR(ON)) : std::string("");
+      });
 
   // Button hints
-  const auto labels = mappedInput.mapLabels(TR(BACK), TR(SELECT), "", "");
-  renderer.drawButtonHints(UI_20_FONT_ID, labels.btn1, labels.btn2, labels.btn3,
-                           labels.btn4);
+  const auto labels = mappedInput.mapLabels(TR(BACK), TR(SELECT), TR(DIR_UP), TR(DIR_DOWN));
+  GUI.drawButtonHints(renderer, labels.btn1, labels.btn2, labels.btn3, labels.btn4);
 
   renderer.displayBuffer();
 }
