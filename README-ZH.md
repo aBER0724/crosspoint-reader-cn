@@ -76,10 +76,9 @@
 ### 网页刷写 (推荐)
 
 1. 使用 USB-C 连接 Xteink X4 到电脑
-2. 访问 [发布页面](https://github.com/aBER0724/crosspoint-reader-cjk/releases) 下载最新固件
-3. 访问 https://xteink.dve.al/ 并使用 "OTA fast flash controls" 刷写固件
+2. 访问 https://xteink-flasher-cjk.vercel.app/ 并点击 **"Flash CrossPoint CJK firmware"** 即可直接刷入最新 CJK 固件
 
-> **提示**：恢复官方固件可访问同一网址刷写, 或在 https://xteink.dve.al/debug 切换启动分区
+> **提示**：恢复官方固件或原版 CrossPoint 固件可在同一页面操作. 切换启动分区请访问 https://xteink-flasher-cjk.vercel.app/debug
 
 ### 手动编译
 

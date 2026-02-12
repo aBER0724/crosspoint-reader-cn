@@ -76,10 +76,9 @@ For detailed operation instructions, please refer to the [User Guide](./USER_GUI
 ### Web Flashing (Recommended)
 
 1. Connect the Xteink X4 to your computer via USB-C.
-2. Visit the [Releases page](https://github.com/aBER0724/crosspoint-reader-cjk/releases) to download the latest firmware.
-3. Visit https://xteink.dve.al/ and use the "OTA fast flash controls" to flash the firmware.
+2. Visit https://xteink-flasher-cjk.vercel.app/ and click **"Flash CrossPoint CJK firmware"** to flash the latest CJK firmware directly.
 
-> **Tip**: To restore official firmware, visit the same URL or switch the boot partition at https://xteink.dve.al/debug.
+> **Tip**: To restore official firmware or the original CrossPoint firmware, use the same page. To switch the boot partition, visit https://xteink-flasher-cjk.vercel.app/debug.
 
 ### Manual Compilation
 

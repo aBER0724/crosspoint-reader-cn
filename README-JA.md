@@ -76,10 +76,9 @@
 ### Web 書き込み (推奨)
 
 1. USB-C ケーブルで Xteink X4 を PC に接続します。
-2. [リリースページ](https://github.com/aBER0724/crosspoint-reader-cjk/releases) にアクセスし、最新のファームウェアをダウンロードします。
-3. https://xteink.dve.al/ にアクセスし、"OTA fast flash controls" を使用してファームウェアを書き込みます。
+2. https://xteink-flasher-cjk.vercel.app/ にアクセスし、**「Flash CrossPoint CJK firmware」** をクリックして最新の CJK ファームウェアを直接書き込みます。
 
-> **ヒント**：公式ファームウェアに戻す場合は、同じ URL から書き込むか、https://xteink.dve.al/debug で起動パーティションを切り替えてください。
+> **ヒント**：公式ファームウェアやオリジナル CrossPoint ファームウェアへの復元も同じページで行えます。起動パーティションの切り替えは https://xteink-flasher-cjk.vercel.app/debug をご利用ください。
 
 ### 手動ビルド
 
