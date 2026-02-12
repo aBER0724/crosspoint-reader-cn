@@ -31,13 +31,16 @@ This project adapts the original CrossPoint Reader for CJK support, featuring a 
 
 ### 🎨 Themes & Display
 
+- **Lyra Theme**: A modern UI theme with rounded selection highlights, scrollbar pagination, and refined layout metrics — fully adapted for CJK pages.
 - **Dark/Light Mode Switching**: Applies to both reader and UI.
 - Smooth theme switching without full refresh.
 
 ### 📖 Reading Layout
 
-- **First Line Indent**: Toggle paragraph indentation for improved readability.
+- **First Line Indent**: Toggle paragraph indentation via CSS `text-indent` for improved readability.
 - Indent width calculated based on actual CJK character width.
+- **Streaming CSS Parser**: Handles large stylesheets without running out of memory.
+- **CJK Word Spacing Fix**: Removes spurious gaps between adjacent CJK characters.
 
 ## 📦 Feature List
 
@@ -62,6 +65,9 @@ This project adapts the original CrossPoint Reader for CJK support, featuring a 
   - [x] UI Interface Rotation (Portrait, Inverted)
 - [x] Calibre Wireless Connection & Web Library Integration
 - [x] Cover Image Display
+- [x] Lyra Theme (with full CJK page adaptation)
+- [x] KOReader Reading Progress Sync
+- [x] Streaming CSS Parser (prevents OOM on large EPUB stylesheets)
 
 For detailed operation instructions, please refer to the [User Guide](./USER_GUIDE.md).
 
@@ -131,9 +137,11 @@ Examples:
 
 ## ℹ️ FAQ
 
-1. If a chapter has many pages, the number of unindexed characters may increase, leading to longer indexing times.
+1. For chapters with many pages, indexing may take longer on first open. This has been significantly improved with the streaming CSS parser, but very large chapters may still require a few seconds.
     > If the device remains stuck indexing after a reboot and fails to complete for a long time, preventing you from returning to other pages, please re-flash the firmware.
 2. If stuck on a specific interface, try restarting the device.
+3. The ESP32-C3 has very limited memory. Using large CJK font files for both UI and reading fonts simultaneously may cause out-of-memory crashes. It is recommended to keep UI fonts at 20pt or below.
+4. When opening the home screen for the first time after adding new books, the device will generate cover thumbnails. A "Loading" popup may appear for a few seconds — this is normal, not a freeze.
 
 ## 📜 Credits
 
