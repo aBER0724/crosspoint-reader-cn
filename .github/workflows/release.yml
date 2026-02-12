@@ -54,8 +54,10 @@ jobs:
 
             ### 📥 安装方式
 
-            1. 下载 \`firmware.bin\`
-            2. 访问 https://xteink.dve.al/ 使用 OTA 刷入
+            1. 使用 USB-C 连接设备到电脑
+            2. 访问 https://xteink-flasher-cjk.vercel.app/ 点击 **"Flash CrossPoint CJK firmware"** 一键刷入
+
+            > 也可下载下方 \`firmware.bin\` 后使用 "Flash firmware from file" 手动刷入
 
             ### 📝 详细说明
 
