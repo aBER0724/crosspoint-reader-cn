@@ -1,10 +1,11 @@
 #include "KeyboardEntryActivity.h"
 
 #include <GfxRenderer.h>
-#include<I18n.h>
+#include <I18n.h>
 
 #include <algorithm>
 #include <string>
+
 #include "MappedInputManager.h"
 #include "fontIds.h"
 

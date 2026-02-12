@@ -24,8 +24,7 @@ class ParsedText {
   std::vector<size_t> computeLineBreaks(const GfxRenderer& renderer, int fontId, int pageWidth, int spaceWidth,
                                         std::vector<uint16_t>& wordWidths, int indentWidth);
   std::vector<size_t> computeHyphenatedLineBreaks(const GfxRenderer& renderer, int fontId, int pageWidth,
-                                                  int spaceWidth, std::vector<uint16_t>& wordWidths,
-                                                  int indentWidth);
+                                                  int spaceWidth, std::vector<uint16_t>& wordWidths, int indentWidth);
   bool hyphenateWordAtIndex(size_t wordIndex, int availableWidth, const GfxRenderer& renderer, int fontId,
                             std::vector<uint16_t>& wordWidths, bool allowFallbackBreaks);
   void extractLine(size_t breakIndex, int pageWidth, int spaceWidth, const std::vector<uint16_t>& wordWidths,
@@ -36,7 +35,10 @@ class ParsedText {
  public:
   explicit ParsedText(const TextBlock::Style style, const bool extraParagraphSpacing,
                       const bool hyphenationEnabled = false, const bool firstLineIndent = false)
-      : style(style), extraParagraphSpacing(extraParagraphSpacing), firstLineIndent(firstLineIndent), hyphenationEnabled(hyphenationEnabled) {}
+      : style(style),
+        extraParagraphSpacing(extraParagraphSpacing),
+        firstLineIndent(firstLineIndent),
+        hyphenationEnabled(hyphenationEnabled) {}
   ~ParsedText() = default;
 
   void addWord(std::string word, EpdFontFamily::Style fontStyle);

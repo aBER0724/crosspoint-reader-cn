@@ -456,7 +456,7 @@ void TxtReaderActivity::renderPage() {
     pagesUntilFullRefresh--;
   }
 
-  const FontManager &fm = FontManager::getInstance();
+  const FontManager& fm = FontManager::getInstance();
   const bool useExternalFont = fm.isExternalFontEnabled();
   if (SETTINGS.textAntiAliasing && !useExternalFont) {
     // Save BW buffer for restoration after grayscale pass

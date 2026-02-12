@@ -456,7 +456,8 @@ void CalibreWirelessActivity::handleCommand(const OpCode opcode, const std::stri
 
 void CalibreWirelessActivity::handleGetInitializationInfo(const std::string& data) {
   setState(WirelessState::WAITING);
-  setStatus(std::string(TR(CALIBRE_CONNECTED_TO)) + calibreHostname + "\n" + TR(CALIBRE_WAITING_TRANSFER) + "\n\n" + TR(CALIBRE_TRANSFER_HINT));
+  setStatus(std::string(TR(CALIBRE_CONNECTED_TO)) + calibreHostname + "\n" + TR(CALIBRE_WAITING_TRANSFER) + "\n\n" +
+            TR(CALIBRE_TRANSFER_HINT));
 
   // Build response with device capabilities
   // Format must match what Calibre expects from a smart device

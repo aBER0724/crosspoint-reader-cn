@@ -104,8 +104,7 @@ MappedInputManager::Labels MappedInputManager::mapLabels(const char* back, const
   // (0↔3, 1↔2) so that visual top = labels[3]. To make physical top = previous
   // (user expectation: up = previous page), we swap previous↔next in the label
   // assignment so that after drawButtonHints' reversal the labels match.
-  const bool swapPrevNext =
-      effectiveOrientation == Orientation::LandscapeCounterClockwise;
+  const bool swapPrevNext = effectiveOrientation == Orientation::LandscapeCounterClockwise;
   const char* prev = swapPrevNext ? next : previous;
   const char* nxt = swapPrevNext ? previous : next;
 

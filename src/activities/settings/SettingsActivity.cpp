@@ -13,15 +13,17 @@ namespace {
 constexpr int displaySettingsCount = 8;
 const SettingInfo displaySettings[displaySettingsCount] = {
     // Should match with SLEEP_SCREEN_MODE
-    SettingInfo::Enum(StrId::SLEEP_SCREEN, &CrossPointSettings::sleepScreen, {StrId::DARK, StrId::LIGHT, StrId::CUSTOM, StrId::COVER, StrId::NONE}),
+    SettingInfo::Enum(StrId::SLEEP_SCREEN, &CrossPointSettings::sleepScreen,
+                      {StrId::DARK, StrId::LIGHT, StrId::CUSTOM, StrId::COVER, StrId::NONE}),
     SettingInfo::Enum(StrId::SLEEP_COVER_MODE, &CrossPointSettings::sleepScreenCoverMode, {StrId::FIT, StrId::CROP}),
     SettingInfo::Enum(StrId::COLOR_MODE, &CrossPointSettings::colorMode, {StrId::LIGHT, StrId::DARK}),
-    SettingInfo::Enum(StrId::STATUS_BAR, &CrossPointSettings::statusBar, {StrId::NONE, StrId::NO_PROGRESS, StrId::FULL}),
-    SettingInfo::Enum(StrId::HIDE_BATTERY, &CrossPointSettings::hideBatteryPercentage, {StrId::NEVER, StrId::IN_READER, StrId::ALWAYS}),
+    SettingInfo::Enum(StrId::STATUS_BAR, &CrossPointSettings::statusBar,
+                      {StrId::NONE, StrId::NO_PROGRESS, StrId::FULL}),
+    SettingInfo::Enum(StrId::HIDE_BATTERY, &CrossPointSettings::hideBatteryPercentage,
+                      {StrId::NEVER, StrId::IN_READER, StrId::ALWAYS}),
     SettingInfo::Enum(StrId::REFRESH_FREQ, &CrossPointSettings::refreshFrequency,
                       {StrId::PAGES_1, StrId::PAGES_5, StrId::PAGES_10, StrId::PAGES_15, StrId::PAGES_30}),
-    SettingInfo::Enum(StrId::UI_ORIENTATION, &CrossPointSettings::uiOrientation,
-                      {StrId::PORTRAIT, StrId::INVERTED}),
+    SettingInfo::Enum(StrId::UI_ORIENTATION, &CrossPointSettings::uiOrientation, {StrId::PORTRAIT, StrId::INVERTED}),
     SettingInfo::Action(StrId::EXT_UI_FONT)};
 
 constexpr int readerSettingsCount = 10;
@@ -29,7 +31,8 @@ const SettingInfo readerSettings[readerSettingsCount] = {
     SettingInfo::Action(StrId::EXT_READER_FONT),
     SettingInfo::Enum(StrId::FONT_SIZE, &CrossPointSettings::fontSize,
                       {StrId::SMALL, StrId::MEDIUM, StrId::LARGE, StrId::X_LARGE}),
-    SettingInfo::Enum(StrId::LINE_SPACING, &CrossPointSettings::lineSpacing, {StrId::TIGHT, StrId::NORMAL, StrId::WIDE}),
+    SettingInfo::Enum(StrId::LINE_SPACING, &CrossPointSettings::lineSpacing,
+                      {StrId::TIGHT, StrId::NORMAL, StrId::WIDE}),
     SettingInfo::Value(StrId::SCREEN_MARGIN, &CrossPointSettings::screenMargin, {5, 40, 5}),
     SettingInfo::Enum(StrId::PARA_ALIGNMENT, &CrossPointSettings::paragraphAlignment,
                       {StrId::JUSTIFY, StrId::LEFT, StrId::CENTER, StrId::RIGHT}),
@@ -42,20 +45,23 @@ const SettingInfo readerSettings[readerSettingsCount] = {
 
 constexpr int controlsSettingsCount = 4;
 const SettingInfo controlsSettings[controlsSettingsCount] = {
-    SettingInfo::Enum(StrId::FRONT_BTN_LAYOUT, &CrossPointSettings::frontButtonLayout,
-                      {StrId::FRONT_LAYOUT_BCLR, StrId::FRONT_LAYOUT_LRBC, StrId::FRONT_LAYOUT_LBCR,
-                       StrId::FRONT_LAYOUT_BCRL}),
+    SettingInfo::Enum(
+        StrId::FRONT_BTN_LAYOUT, &CrossPointSettings::frontButtonLayout,
+        {StrId::FRONT_LAYOUT_BCLR, StrId::FRONT_LAYOUT_LRBC, StrId::FRONT_LAYOUT_LBCR, StrId::FRONT_LAYOUT_BCRL}),
     SettingInfo::Enum(StrId::SIDE_BTN_LAYOUT, &CrossPointSettings::sideButtonLayout,
                       {StrId::PREV_NEXT, StrId::NEXT_PREV}),
     SettingInfo::Toggle(StrId::LONG_PRESS_SKIP, &CrossPointSettings::longPressChapterSkip),
-    SettingInfo::Enum(StrId::SHORT_PWR_BTN, &CrossPointSettings::shortPwrBtn, {StrId::IGNORE, StrId::SLEEP, StrId::PAGE_TURN})};
+    SettingInfo::Enum(StrId::SHORT_PWR_BTN, &CrossPointSettings::shortPwrBtn,
+                      {StrId::IGNORE, StrId::SLEEP, StrId::PAGE_TURN})};
 
 constexpr int systemSettingsCount = 6;
 const SettingInfo systemSettings[systemSettingsCount] = {
     SettingInfo::Enum(StrId::TIME_TO_SLEEP, &CrossPointSettings::sleepTimeout,
                       {StrId::MIN_1, StrId::MIN_5, StrId::MIN_10, StrId::MIN_15, StrId::MIN_30}),
     SettingInfo::Action(StrId::LANGUAGE),
-    SettingInfo::Action(StrId::KOREADER_SYNC), SettingInfo::Action(StrId::CALIBRE_SETTINGS), SettingInfo::Action(StrId::CLEAR_READING_CACHE),
+    SettingInfo::Action(StrId::KOREADER_SYNC),
+    SettingInfo::Action(StrId::CALIBRE_SETTINGS),
+    SettingInfo::Action(StrId::CLEAR_READING_CACHE),
     SettingInfo::Action(StrId::CHECK_UPDATES)};
 }  // namespace
 
@@ -139,9 +145,8 @@ void SettingsActivity::enterCategory(int categoryIndex) {
   int settingsCount = 0;
 
   // Category StrIds for dynamic translation
-  static constexpr StrId categoryStrIds[categoryCount] = {
-    StrId::CAT_DISPLAY, StrId::CAT_READER, StrId::CAT_CONTROLS, StrId::CAT_SYSTEM
-  };
+  static constexpr StrId categoryStrIds[categoryCount] = {StrId::CAT_DISPLAY, StrId::CAT_READER, StrId::CAT_CONTROLS,
+                                                          StrId::CAT_SYSTEM};
 
   switch (categoryIndex) {
     case 0:  // Display
@@ -164,9 +169,9 @@ void SettingsActivity::enterCategory(int categoryIndex) {
 
   enterNewActivity(new CategorySettingsActivity(renderer, mappedInput, I18N.get(categoryStrIds[categoryIndex]),
                                                 settingsList, settingsCount, [this] {
-                                                   exitActivity();
-                                                   updateRequired = true;
-                                                 }));
+                                                  exitActivity();
+                                                  updateRequired = true;
+                                                }));
   xSemaphoreGive(renderingMutex);
 }
 

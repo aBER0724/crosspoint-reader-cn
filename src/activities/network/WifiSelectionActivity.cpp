@@ -42,8 +42,8 @@ void WifiSelectionActivity::onEnter() {
   uint8_t mac[6];
   WiFi.macAddress(mac);
   char macStr[64];
-  snprintf(macStr, sizeof(macStr), "%s %02x-%02x-%02x-%02x-%02x-%02x", TR(MAC_ADDRESS),
-          mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
+  snprintf(macStr, sizeof(macStr), "%s %02x-%02x-%02x-%02x-%02x-%02x", TR(MAC_ADDRESS), mac[0], mac[1], mac[2], mac[3],
+           mac[4], mac[5]);
   cachedMacAddress = std::string(macStr);
 
   // Trigger first update to show scanning message
@@ -663,7 +663,8 @@ void WifiSelectionActivity::renderSavePrompt() const {
 
   // Draw "No" button
   if (savePromptSelection == 1) {
-    renderer.drawText(UI_20_FONT_ID, startX + buttonWidth + buttonSpacing, buttonY, (std::string("[") + TR(NO) + "]").c_str());
+    renderer.drawText(UI_20_FONT_ID, startX + buttonWidth + buttonSpacing, buttonY,
+                      (std::string("[") + TR(NO) + "]").c_str());
   } else {
     renderer.drawText(UI_20_FONT_ID, startX + buttonWidth + buttonSpacing + 4, buttonY, TR(NO));
   }
@@ -713,7 +714,8 @@ void WifiSelectionActivity::renderForgetPrompt() const {
 
   // Draw "No" button
   if (forgetPromptSelection == 1) {
-    renderer.drawText(UI_20_FONT_ID, startX + buttonWidth + buttonSpacing, buttonY, (std::string("[") + TR(NO) + "]").c_str());
+    renderer.drawText(UI_20_FONT_ID, startX + buttonWidth + buttonSpacing, buttonY,
+                      (std::string("[") + TR(NO) + "]").c_str());
   } else {
     renderer.drawText(UI_20_FONT_ID, startX + buttonWidth + buttonSpacing + 4, buttonY, TR(NO));
   }

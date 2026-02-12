@@ -116,13 +116,13 @@ void CrossPointWebServer::begin() {
 
   // Captive portal detection endpoints — respond correctly so devices
   // recognise the network as "online" and route traffic through it.
-  server->on("/generate_204", HTTP_GET, [this] { handleCaptivePortal(); });          // Android
-  server->on("/gen_204", HTTP_GET, [this] { handleCaptivePortal(); });               // Android alt
-  server->on("/hotspot-detect.html", HTTP_GET, [this] { handleCaptivePortal(); });   // iOS / macOS
-  server->on("/library/test/success.html", HTTP_GET, [this] { handleCaptivePortal(); }); // iOS alt
-  server->on("/connecttest.txt", HTTP_GET, [this] { handleCaptivePortal(); });       // Windows
-  server->on("/redirect", HTTP_GET, [this] { handleCaptivePortal(); });              // Windows alt
-  server->on("/fwlink", HTTP_GET, [this] { handleCaptivePortal(); });                // Windows alt
+  server->on("/generate_204", HTTP_GET, [this] { handleCaptivePortal(); });               // Android
+  server->on("/gen_204", HTTP_GET, [this] { handleCaptivePortal(); });                    // Android alt
+  server->on("/hotspot-detect.html", HTTP_GET, [this] { handleCaptivePortal(); });        // iOS / macOS
+  server->on("/library/test/success.html", HTTP_GET, [this] { handleCaptivePortal(); });  // iOS alt
+  server->on("/connecttest.txt", HTTP_GET, [this] { handleCaptivePortal(); });            // Windows
+  server->on("/redirect", HTTP_GET, [this] { handleCaptivePortal(); });                   // Windows alt
+  server->on("/fwlink", HTTP_GET, [this] { handleCaptivePortal(); });                     // Windows alt
 
   server->onNotFound([this] { handleNotFound(); });
   Serial.printf("[%lu] [WEB] [MEM] Free heap after route setup: %d bytes\n", millis(), ESP.getFreeHeap());
@@ -246,7 +246,8 @@ void CrossPointWebServer::handleCaptivePortal() const {
   const String redirectUrl = "http://" + ip + "/";
   server->sendHeader("Location", redirectUrl, true);
   server->send(302, "text/html", "");
-  Serial.printf("[%lu] [WEB] Captive portal redirect: %s -> %s\n", millis(), server->uri().c_str(), redirectUrl.c_str());
+  Serial.printf("[%lu] [WEB] Captive portal redirect: %s -> %s\n", millis(), server->uri().c_str(),
+                redirectUrl.c_str());
 }
 
 void CrossPointWebServer::handleStatus() const {

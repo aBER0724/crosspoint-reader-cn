@@ -1,12 +1,12 @@
 #include "EpubReaderChapterSelectionActivity.h"
 
 #include <GfxRenderer.h>
+#include <I18n.h>
 
 #include "KOReaderCredentialStore.h"
 #include "KOReaderSyncActivity.h"
 #include "MappedInputManager.h"
 #include "fontIds.h"
-#include <I18n.h>
 
 namespace {
 // Time threshold for treating a long press as a page-up/page-down

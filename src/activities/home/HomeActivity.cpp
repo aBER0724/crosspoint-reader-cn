@@ -308,8 +308,6 @@ void HomeActivity::render() {
         renderer.fillPolygon(xPoints, yPoints, 5, !bookSelected);
       }
     }
-
-
   }
 
   if (hasContinueReading) {

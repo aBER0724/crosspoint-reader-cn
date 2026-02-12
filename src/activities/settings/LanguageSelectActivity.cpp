@@ -6,8 +6,8 @@
 #include "MappedInputManager.h"
 #include "fontIds.h"
 
-void LanguageSelectActivity::taskTrampoline(void *param) {
-  auto *self = static_cast<LanguageSelectActivity *>(param);
+void LanguageSelectActivity::taskTrampoline(void* param) {
+  auto* self = static_cast<LanguageSelectActivity*>(param);
   self->displayTaskLoop();
 }
 
@@ -21,8 +21,7 @@ void LanguageSelectActivity::onEnter() {
 
   updateRequired = false;  // Don't trigger render immediately to avoid race with parent activity
 
-  xTaskCreate(&LanguageSelectActivity::taskTrampoline, "LanguageSelectTask",
-              4096, this, 1, &displayTaskHandle);
+  xTaskCreate(&LanguageSelectActivity::taskTrampoline, "LanguageSelectTask", 4096, this, 1, &displayTaskHandle);
 }
 
 void LanguageSelectActivity::onExit() {
@@ -100,17 +99,16 @@ void LanguageSelectActivity::render() {
   constexpr int rowHeight = 30;
 
   // Title
-  renderer.drawCenteredText(UI_20_FONT_ID, 15, TR(LANGUAGE), true,
-                            EpdFontFamily::BOLD);
+  renderer.drawCenteredText(UI_20_FONT_ID, 15, TR(LANGUAGE), true, EpdFontFamily::BOLD);
 
   // Current language marker
   const int currentLang = static_cast<int>(I18N.getLanguage());
 
   // Language names in their native language
-  const char *langNames[] = {
-    "English",
-    "\xE7\xAE\x80\xE4\xBD\x93\xE4\xB8\xAD\xE6\x96\x87",  // 简体中文
-    "\xE6\x97\xA5\xE6\x9C\xAC\xE8\xAA\x9E"               // 日本語
+  const char* langNames[] = {
+      "English",
+      "\xE7\xAE\x80\xE4\xBD\x93\xE4\xB8\xAD\xE6\x96\x87",  // 简体中文
+      "\xE6\x97\xA5\xE6\x9C\xAC\xE8\xAA\x9E"               // 日本語
   };
 
   for (int i = 0; i < totalItems; i++) {
@@ -126,17 +124,15 @@ void LanguageSelectActivity::render() {
 
     // Draw current selection marker
     if (isCurrent) {
-      const char *marker = "[ON]";
+      const char* marker = "[ON]";
       const auto width = renderer.getTextWidth(UI_20_FONT_ID, marker);
-      renderer.drawText(UI_20_FONT_ID, pageWidth - 20 - width, itemY, marker,
-                        !isSelected);
+      renderer.drawText(UI_20_FONT_ID, pageWidth - 20 - width, itemY, marker, !isSelected);
     }
   }
 
   // Button hints
   const auto labels = mappedInput.mapLabels(TR(BACK), TR(SELECT), "", "");
-  renderer.drawButtonHints(UI_20_FONT_ID, labels.btn1, labels.btn2, labels.btn3,
-                           labels.btn4);
+  renderer.drawButtonHints(UI_20_FONT_ID, labels.btn1, labels.btn2, labels.btn3, labels.btn4);
 
   renderer.displayBuffer();
 }

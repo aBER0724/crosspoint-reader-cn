@@ -11,11 +11,9 @@
 namespace {
 constexpr int kBuiltinReaderFontCount = 3;
 constexpr CrossPointSettings::FONT_FAMILY kBuiltinReaderFonts[kBuiltinReaderFontCount] = {
-    CrossPointSettings::BOOKERLY,
-    CrossPointSettings::NOTOSANS,
-    CrossPointSettings::OPENDYSLEXIC};
-constexpr StrId kBuiltinReaderFontLabels[kBuiltinReaderFontCount] = {
-    StrId::BOOKERLY, StrId::NOTO_SANS, StrId::OPEN_DYSLEXIC};
+    CrossPointSettings::BOOKERLY, CrossPointSettings::NOTOSANS, CrossPointSettings::OPENDYSLEXIC};
+constexpr StrId kBuiltinReaderFontLabels[kBuiltinReaderFontCount] = {StrId::BOOKERLY, StrId::NOTO_SANS,
+                                                                     StrId::OPEN_DYSLEXIC};
 }  // namespace
 
 void FontSelectActivity::onEnter() {
@@ -90,8 +88,7 @@ void FontSelectActivity::loop() {
 }
 
 void FontSelectActivity::handleSelection() {
-  Serial.printf("[FONT_SELECT] handleSelection: mode=%d, selectedIndex=%d\n",
-                static_cast<int>(mode), selectedIndex);
+  Serial.printf("[FONT_SELECT] handleSelection: mode=%d, selectedIndex=%d\n", static_cast<int>(mode), selectedIndex);
 
   if (mode == SelectMode::Reader) {
     if (selectedIndex < kBuiltinReaderFontCount) {
@@ -120,8 +117,8 @@ void FontSelectActivity::handleSelection() {
     }
   }
 
-  Serial.printf("[FONT_SELECT] After selection: readerIndex=%d, uiIndex=%d\n",
-                FontMgr.getSelectedIndex(), FontMgr.getUiSelectedIndex());
+  Serial.printf("[FONT_SELECT] After selection: readerIndex=%d, uiIndex=%d\n", FontMgr.getSelectedIndex(),
+                FontMgr.getUiSelectedIndex());
 
   // Return to previous page
   onBack();
@@ -134,10 +131,8 @@ void FontSelectActivity::render() {
   constexpr int rowHeight = 30;
 
   // Title
-  const char *title = (mode == SelectMode::Reader) ? TR(EXT_READER_FONT)
-                                                   : TR(EXT_UI_FONT);
-  renderer.drawCenteredText(UI_20_FONT_ID, 15, title, true,
-                            EpdFontFamily::BOLD);
+  const char* title = (mode == SelectMode::Reader) ? TR(EXT_READER_FONT) : TR(EXT_UI_FONT);
+  renderer.drawCenteredText(UI_20_FONT_ID, 15, title, true, EpdFontFamily::BOLD);
 
   // Current selected font marker
   int currentIndex = 0;
@@ -155,7 +150,7 @@ void FontSelectActivity::render() {
   }
 
   // Draw options
-  for (int i = 0; i < totalItems && i < 20; i++) { // Max 20 items
+  for (int i = 0; i < totalItems && i < 20; i++) {  // Max 20 items
     const int itemY = 60 + i * rowHeight;
     const bool isSelected = (i == selectedIndex);
     const bool isCurrent = (i == currentIndex);
@@ -168,11 +163,9 @@ void FontSelectActivity::render() {
     // Draw text
     if (mode == SelectMode::Reader) {
       if (i < kBuiltinReaderFontCount) {
-        renderer.drawText(UI_20_FONT_ID, 20, itemY,
-                          I18N.get(kBuiltinReaderFontLabels[i]), !isSelected);
+        renderer.drawText(UI_20_FONT_ID, 20, itemY, I18N.get(kBuiltinReaderFontLabels[i]), !isSelected);
       } else {
-        const FontInfo *info =
-            FontMgr.getFontInfo(i - kBuiltinReaderFontCount);
+        const FontInfo* info = FontMgr.getFontInfo(i - kBuiltinReaderFontCount);
         if (info) {
           char label[64];
           snprintf(label, sizeof(label), "%s (%dpt)", info->name, info->size);
@@ -182,11 +175,10 @@ void FontSelectActivity::render() {
     } else {
       if (i == 0) {
         // Built-in option
-        renderer.drawText(UI_20_FONT_ID, 20, itemY, TR(BUILTIN_DISABLED),
-                          !isSelected);
+        renderer.drawText(UI_20_FONT_ID, 20, itemY, TR(BUILTIN_DISABLED), !isSelected);
       } else {
         // External font
-        const FontInfo *info = FontMgr.getFontInfo(i - 1);
+        const FontInfo* info = FontMgr.getFontInfo(i - 1);
         if (info) {
           char label[64];
           snprintf(label, sizeof(label), "%s (%dpt)", info->name, info->size);
@@ -199,15 +191,13 @@ void FontSelectActivity::render() {
     if (isCurrent) {
       const char* marker = TR(ON);
       const auto width = renderer.getTextWidth(UI_20_FONT_ID, marker);
-      renderer.drawText(UI_20_FONT_ID, pageWidth - 20 - width, itemY,
-                        marker, !isSelected);
+      renderer.drawText(UI_20_FONT_ID, pageWidth - 20 - width, itemY, marker, !isSelected);
     }
   }
 
   // Button hints
   const auto labels = mappedInput.mapLabels(TR(BACK), TR(SELECT), "", "");
-  renderer.drawButtonHints(UI_20_FONT_ID, labels.btn1, labels.btn2, labels.btn3,
-                           labels.btn4);
+  renderer.drawButtonHints(UI_20_FONT_ID, labels.btn1, labels.btn2, labels.btn3, labels.btn4);
 
   renderer.displayBuffer();
 }

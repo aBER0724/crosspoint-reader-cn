@@ -154,8 +154,7 @@ void CategorySettingsActivity::toggleCurrentSetting() {
     return;
   }
 
-  if (setting.valuePtr == &CrossPointSettings::fontFamily ||
-      setting.valuePtr == &CrossPointSettings::fontSize) {
+  if (setting.valuePtr == &CrossPointSettings::fontFamily || setting.valuePtr == &CrossPointSettings::fontSize) {
     renderer.setReaderFallbackFontId(SETTINGS.getBuiltInReaderFontId());
   }
 
@@ -242,7 +241,7 @@ void CategorySettingsActivity::render() const {
 
 bool CategorySettingsActivity::isSettingVisible(const SettingInfo& setting) const {
   if (setting.nameId == StrId::FONT_SIZE) {
-    const FontManager &fm = FontManager::getInstance();
+    const FontManager& fm = FontManager::getInstance();
     return !fm.isExternalFontEnabled();
   }
   return true;

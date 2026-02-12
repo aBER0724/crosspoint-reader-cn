@@ -1,6 +1,7 @@
 #include "ExternalFont.h"
 
 #include <HardwareSerial.h>
+
 #include <algorithm>
 #include <cstring>
 #include <vector>
@@ -31,11 +32,11 @@ void ExternalFont::unload() {
   }
 }
 
-bool ExternalFont::parseFilename(const char *filepath) {
+bool ExternalFont::parseFilename(const char* filepath) {
   // Extract filename from path
-  const char *filename = strrchr(filepath, '/');
+  const char* filename = strrchr(filepath, '/');
   if (filename) {
-    filename++; // Skip '/'
+    filename++;  // Skip '/'
   } else {
     filename = filepath;
   }
@@ -48,7 +49,7 @@ bool ExternalFont::parseFilename(const char *filepath) {
   nameCopy[sizeof(nameCopy) - 1] = '\0';
 
   // Remove .bin extension
-  char *ext = strstr(nameCopy, ".bin");
+  char* ext = strstr(nameCopy, ".bin");
   if (!ext) {
     Serial.printf("[EXT_FONT] Invalid filename: no .bin extension\n");
     return false;
@@ -56,7 +57,7 @@ bool ExternalFont::parseFilename(const char *filepath) {
   *ext = '\0';
 
   // Find _WxH part from the end
-  char *lastUnderscore = strrchr(nameCopy, '_');
+  char* lastUnderscore = strrchr(nameCopy, '_');
   if (!lastUnderscore) {
     Serial.printf("[EXT_FONT] Invalid filename format\n");
     return false;
@@ -96,18 +97,17 @@ bool ExternalFont::parseFilename(const char *filepath) {
   _bytesPerChar = _bytesPerRow * _charHeight;
 
   if (_bytesPerChar > MAX_GLYPH_BYTES) {
-    Serial.printf("[EXT_FONT] Glyph too large: %d bytes (max %d)\n",
-                  _bytesPerChar, MAX_GLYPH_BYTES);
+    Serial.printf("[EXT_FONT] Glyph too large: %d bytes (max %d)\n", _bytesPerChar, MAX_GLYPH_BYTES);
     return false;
   }
 
-  Serial.printf("[EXT_FONT] Parsed: name=%s, size=%d, %dx%d, %d bytes/char\n",
-                _fontName, _fontSize, _charWidth, _charHeight, _bytesPerChar);
+  Serial.printf("[EXT_FONT] Parsed: name=%s, size=%d, %dx%d, %d bytes/char\n", _fontName, _fontSize, _charWidth,
+                _charHeight, _bytesPerChar);
 
   return true;
 }
 
-bool ExternalFont::load(const char *filepath) {
+bool ExternalFont::load(const char* filepath) {
   unload();
 
   if (!parseFilename(filepath)) {
@@ -160,7 +160,7 @@ int ExternalFont::getLruSlot() {
   return lruIndex;
 }
 
-bool ExternalFont::readGlyphFromSD(uint32_t codepoint, uint8_t *buffer) {
+bool ExternalFont::readGlyphFromSD(uint32_t codepoint, uint8_t* buffer) {
   if (!_fontFile) {
     return false;
   }
@@ -196,7 +196,7 @@ bool ExternalFont::readGlyphFromSD(uint32_t codepoint, uint8_t *buffer) {
   return true;
 }
 
-const uint8_t *ExternalFont::getGlyph(uint32_t codepoint) {
+const uint8_t* ExternalFont::getGlyph(uint32_t codepoint) {
   if (!_isLoaded) {
     return nullptr;
   }
@@ -252,10 +252,8 @@ const uint8_t *ExternalFont::getGlyph(uint32_t codepoint) {
         int bitIndex = 7 - (x % 8);
         if ((_cache[slot].bitmap[byteIndex] >> bitIndex) & 1) {
           isEmpty = false;
-          if (x < minX)
-            minX = x;
-          if (x > maxX)
-            maxX = x;
+          if (x < minX) minX = x;
+          if (x > maxX) maxX = x;
         }
       }
     }
@@ -320,20 +318,17 @@ const uint8_t *ExternalFont::getGlyph(uint32_t codepoint) {
   return _cache[slot].bitmap;
 }
 
-bool ExternalFont::getGlyphMetrics(uint32_t codepoint, uint8_t *outMinX,
-                                   uint8_t *outAdvanceX) {
+bool ExternalFont::getGlyphMetrics(uint32_t codepoint, uint8_t* outMinX, uint8_t* outAdvanceX) {
   int idx = findInCache(codepoint);
   if (idx >= 0 && !_cache[idx].notFound) {
-    if (outMinX)
-      *outMinX = _cache[idx].minX;
-    if (outAdvanceX)
-      *outAdvanceX = _cache[idx].advanceX;
+    if (outMinX) *outMinX = _cache[idx].minX;
+    if (outAdvanceX) *outAdvanceX = _cache[idx].advanceX;
     return true;
   }
   return false;
 }
 
-void ExternalFont::preloadGlyphs(const uint32_t *codepoints, size_t count) {
+void ExternalFont::preloadGlyphs(const uint32_t* codepoints, size_t count) {
   if (!_isLoaded || !codepoints || count == 0) {
     return;
   }
@@ -367,7 +362,6 @@ void ExternalFont::preloadGlyphs(const uint32_t *codepoints, size_t count) {
     loaded++;
   }
 
-  Serial.printf(
-      "[EXT_FONT] Preload done: %zu loaded, %zu already cached, took %lums\n",
-      loaded, skipped, millis() - startTime);
+  Serial.printf("[EXT_FONT] Preload done: %zu loaded, %zu already cached, took %lums\n", loaded, skipped,
+                millis() - startTime);
 }

@@ -1,10 +1,10 @@
 #include "XtcReaderChapterSelectionActivity.h"
 
 #include <GfxRenderer.h>
+#include <I18n.h>
 
 #include "MappedInputManager.h"
 #include "fontIds.h"
-#include <I18n.h>
 
 namespace {
 constexpr int SKIP_PAGE_MS = 700;

@@ -1,8 +1,8 @@
-#include"MyLibraryActivity.h"
+#include "MyLibraryActivity.h"
 
-#include<GfxRenderer.h>
-#include<I18n.h>
-#include<SDCardManager.h>
+#include <GfxRenderer.h>
+#include <I18n.h>
+#include <SDCardManager.h>
 
 #include <algorithm>
 
