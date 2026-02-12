@@ -103,8 +103,7 @@ void BaseTheme::drawButtonHints(GfxRenderer& renderer, const char* btn1, const c
       if (inverted) {
         const int textHeight = renderer.getTextHeight(UI_10_FONT_ID);
         renderer.setOrientation(GfxRenderer::Orientation::PortraitInverted);
-        renderer.drawText(UI_10_FONT_ID, pageWidth - textX - textWidth,
-                          buttonY - textYOffset - textHeight, labels[i]);
+        renderer.drawText(UI_10_FONT_ID, pageWidth - textX - textWidth, buttonY - textYOffset - textHeight, labels[i]);
         renderer.setOrientation(GfxRenderer::Orientation::Portrait);
       } else {
         renderer.drawText(UI_10_FONT_ID, textX, pageHeight - buttonY + textYOffset, labels[i]);
@@ -248,8 +247,8 @@ void BaseTheme::drawHeader(const GfxRenderer& renderer, Rect rect, const char* t
   }
 
   const int batteryY = (renderer.getOrientation() == GfxRenderer::Orientation::PortraitInverted)
-                            ? renderer.getScreenHeight() - BaseMetrics::values.batteryHeight - 35
-                            : rect.y + 5;
+                           ? renderer.getScreenHeight() - BaseMetrics::values.batteryHeight - 35
+                           : rect.y + 5;
   drawBattery(renderer, Rect{batteryX, batteryY, BaseMetrics::values.batteryWidth, BaseMetrics::values.batteryHeight},
               showBatteryPercentage);
 

@@ -50,21 +50,27 @@ bool isSingleCjkWord(const std::string& word) {
   const auto* p = reinterpret_cast<const uint8_t*>(word.c_str());
   uint32_t cp;
   int len;
-  if ((*p & 0x80) == 0) { cp = *p; len = 1; }
-  else if ((*p & 0xE0) == 0xC0) { cp = *p & 0x1F; len = 2; }
-  else if ((*p & 0xF0) == 0xE0) { cp = *p & 0x0F; len = 3; }
-  else if ((*p & 0xF8) == 0xF0) { cp = *p & 0x07; len = 4; }
-  else return false;
+  if ((*p & 0x80) == 0) {
+    cp = *p;
+    len = 1;
+  } else if ((*p & 0xE0) == 0xC0) {
+    cp = *p & 0x1F;
+    len = 2;
+  } else if ((*p & 0xF0) == 0xE0) {
+    cp = *p & 0x0F;
+    len = 3;
+  } else if ((*p & 0xF8) == 0xF0) {
+    cp = *p & 0x07;
+    len = 4;
+  } else
+    return false;
   for (int i = 1; i < len; i++) {
     if ((p[i] & 0xC0) != 0x80) return false;
     cp = (cp << 6) | (p[i] & 0x3F);
   }
   if (static_cast<int>(word.size()) != len) return false;
-  return (cp >= 0x2E80 && cp <= 0x9FFF) ||
-         (cp >= 0x3000 && cp <= 0x30FF) ||
-         (cp >= 0x3400 && cp <= 0x4DBF) ||
-         (cp >= 0xF900 && cp <= 0xFAFF) ||
-         (cp >= 0xFF00 && cp <= 0xFFEF);
+  return (cp >= 0x2E80 && cp <= 0x9FFF) || (cp >= 0x3000 && cp <= 0x30FF) || (cp >= 0x3400 && cp <= 0x4DBF) ||
+         (cp >= 0xF900 && cp <= 0xFAFF) || (cp >= 0xFF00 && cp <= 0xFFEF);
 }
 
 }  // namespace
@@ -122,7 +128,8 @@ void ParsedText::layoutAndExtractLines(const GfxRenderer& renderer, const int fo
     lineBreakIndices =
         computeHyphenatedLineBreaks(renderer, fontId, pageWidth, spaceWidth, wordWidths, continuesVec, wordIsCjkVec);
   } else {
-    lineBreakIndices = computeLineBreaks(renderer, fontId, pageWidth, spaceWidth, wordWidths, continuesVec, wordIsCjkVec);
+    lineBreakIndices =
+        computeLineBreaks(renderer, fontId, pageWidth, spaceWidth, wordWidths, continuesVec, wordIsCjkVec);
   }
   const size_t lineCount = includeLastLine ? lineBreakIndices.size() : lineBreakIndices.size() - 1;
 
@@ -188,8 +195,8 @@ std::vector<size_t> ParsedText::computeLineBreaks(const GfxRenderer& renderer, c
 
     while (currentIndex < wordWidths.size()) {
       const bool isFirstWord = currentIndex == lineStart;
-      const bool cjkAdj = !isFirstWord && currentIndex < wordIsCjkVec.size() &&
-                           wordIsCjkVec[currentIndex] && wordIsCjkVec[currentIndex - 1];
+      const bool cjkAdj = !isFirstWord && currentIndex < wordIsCjkVec.size() && wordIsCjkVec[currentIndex] &&
+                          wordIsCjkVec[currentIndex - 1];
       const int gap = isFirstWord || continuesVec[currentIndex] || cjkAdj ? 0 : spaceWidth;
       const int candidateWidth = gap + wordWidths[currentIndex];
 
@@ -258,8 +265,8 @@ std::vector<size_t> ParsedText::computeHyphenatedLineBreaks(const GfxRenderer& r
     // Consume as many words as possible for current line, splitting when prefixes fit
     while (currentIndex < wordWidths.size()) {
       const bool isFirstWord = currentIndex == lineStart;
-      const bool cjkAdj = !isFirstWord && currentIndex < wordIsCjkVec.size() &&
-                           wordIsCjkVec[currentIndex] && wordIsCjkVec[currentIndex - 1];
+      const bool cjkAdj = !isFirstWord && currentIndex < wordIsCjkVec.size() && wordIsCjkVec[currentIndex] &&
+                          wordIsCjkVec[currentIndex - 1];
       const int spacing = isFirstWord || continuesVec[currentIndex] || cjkAdj ? 0 : spaceWidth;
       const int candidateWidth = spacing + wordWidths[currentIndex];
 

@@ -1,9 +1,8 @@
 #include "KOReaderAuthActivity.h"
 
 #include <GfxRenderer.h>
-#include <WiFi.h>
-
 #include <I18n.h>
+#include <WiFi.h>
 
 #include "KOReaderCredentialStore.h"
 #include "KOReaderSyncClient.h"

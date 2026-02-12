@@ -40,16 +40,16 @@ bool isWhitespace(const char c) { return c == ' ' || c == '\r' || c == '\n' || c
 
 // Check if a Unicode codepoint is an invisible/zero-width character that should be skipped
 bool isInvisibleCodepoint(const uint32_t cp) {
-  if (cp == 0xFEFF) return true;   // BOM / Zero Width No-Break Space
-  if (cp == 0x200B) return true;   // Zero Width Space
-  if (cp == 0x200C) return true;   // Zero Width Non-Joiner
-  if (cp == 0x200D) return true;   // Zero Width Joiner
-  if (cp == 0x200E) return true;   // Left-to-Right Mark
-  if (cp == 0x200F) return true;   // Right-to-Left Mark
-  if (cp == 0x2060) return true;   // Word Joiner
-  if (cp == 0x00AD) return true;   // Soft Hyphen
-  if (cp == 0x034F) return true;   // Combining Grapheme Joiner
-  if (cp == 0x061C) return true;   // Arabic Letter Mark
+  if (cp == 0xFEFF) return true;                  // BOM / Zero Width No-Break Space
+  if (cp == 0x200B) return true;                  // Zero Width Space
+  if (cp == 0x200C) return true;                  // Zero Width Non-Joiner
+  if (cp == 0x200D) return true;                  // Zero Width Joiner
+  if (cp == 0x200E) return true;                  // Left-to-Right Mark
+  if (cp == 0x200F) return true;                  // Right-to-Left Mark
+  if (cp == 0x2060) return true;                  // Word Joiner
+  if (cp == 0x00AD) return true;                  // Soft Hyphen
+  if (cp == 0x034F) return true;                  // Combining Grapheme Joiner
+  if (cp == 0x061C) return true;                  // Arabic Letter Mark
   if (cp >= 0x2066 && cp <= 0x2069) return true;  // Directional isolates
   if (cp >= 0x202A && cp <= 0x202E) return true;  // Directional formatting
   return false;
@@ -77,11 +77,11 @@ bool isCjkCodepointForSplit(const uint32_t cp) {
 
 // Get UTF-8 byte length for a lead byte
 int getUtf8ByteLength(unsigned char leadByte) {
-  if ((leadByte & 0x80) == 0) return 1;       // ASCII: 0xxxxxxx
-  if ((leadByte & 0xE0) == 0xC0) return 2;    // 2-byte: 110xxxxx
-  if ((leadByte & 0xF0) == 0xE0) return 3;    // 3-byte: 1110xxxx
-  if ((leadByte & 0xF8) == 0xF0) return 4;    // 4-byte: 11110xxx
-  return 1;  // Invalid, treat as single byte
+  if ((leadByte & 0x80) == 0) return 1;     // ASCII: 0xxxxxxx
+  if ((leadByte & 0xE0) == 0xC0) return 2;  // 2-byte: 110xxxxx
+  if ((leadByte & 0xF0) == 0xE0) return 3;  // 3-byte: 1110xxxx
+  if ((leadByte & 0xF8) == 0xF0) return 4;  // 4-byte: 11110xxx
+  return 1;                                 // Invalid, treat as single byte
 }
 
 // Decode UTF-8 codepoint from bytes
@@ -435,8 +435,7 @@ void XMLCALL ChapterHtmlSlimParser::characterData(void* userData, const XML_Char
     }
     const size_t freeHeap = ESP.getFreeHeap();
     const bool tooManyWords = wordCount >= MAX_WORDS_BEFORE_FLUSH;
-    const bool lowHeapWithBuffer =
-        freeHeap < LOW_FREE_HEAP_BEFORE_FLUSH && wordCount >= MIN_WORDS_BEFORE_FLUSH;
+    const bool lowHeapWithBuffer = freeHeap < LOW_FREE_HEAP_BEFORE_FLUSH && wordCount >= MIN_WORDS_BEFORE_FLUSH;
     const bool criticalHeap = freeHeap < CRITICAL_FREE_HEAP_BEFORE_FLUSH;
 
     if (!(tooManyWords || lowHeapWithBuffer || criticalHeap)) {
@@ -444,8 +443,7 @@ void XMLCALL ChapterHtmlSlimParser::characterData(void* userData, const XML_Char
     }
 
     const bool includeLastLine = criticalHeap;
-    Serial.printf("[%lu] [EHP] Flushing text block (words=%u, free=%u)\n", millis(),
-                  static_cast<unsigned>(wordCount),
+    Serial.printf("[%lu] [EHP] Flushing text block (words=%u, free=%u)\n", millis(), static_cast<unsigned>(wordCount),
                   static_cast<unsigned>(freeHeap));
     self->currentTextBlock->layoutAndExtractLines(
         self->renderer, self->fontId, self->viewportWidth,

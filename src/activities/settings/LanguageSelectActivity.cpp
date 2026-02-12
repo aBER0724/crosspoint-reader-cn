@@ -7,8 +7,8 @@
 #include "components/UITheme.h"
 #include "fontIds.h"
 
-void LanguageSelectActivity::taskTrampoline(void *param) {
-  auto *self = static_cast<LanguageSelectActivity *>(param);
+void LanguageSelectActivity::taskTrampoline(void* param) {
+  auto* self = static_cast<LanguageSelectActivity*>(param);
   self->displayTaskLoop();
 }
 
@@ -22,8 +22,7 @@ void LanguageSelectActivity::onEnter() {
 
   updateRequired = false;  // Don't trigger render immediately to avoid race with parent activity
 
-  xTaskCreate(&LanguageSelectActivity::taskTrampoline, "LanguageSelectTask",
-              4096, this, 1, &displayTaskHandle);
+  xTaskCreate(&LanguageSelectActivity::taskTrampoline, "LanguageSelectTask", 4096, this, 1, &displayTaskHandle);
 }
 
 void LanguageSelectActivity::onExit() {
@@ -108,10 +107,10 @@ void LanguageSelectActivity::render() {
   const int currentLang = static_cast<int>(I18N.getLanguage());
 
   // Language names in their native language
-  const char *langNames[] = {
-    "English",
-    "\xE7\xAE\x80\xE4\xBD\x93\xE4\xB8\xAD\xE6\x96\x87",  // 简体中文
-    "\xE6\x97\xA5\xE6\x9C\xAC\xE8\xAA\x9E"               // 日本語
+  const char* langNames[] = {
+      "English",
+      "\xE7\xAE\x80\xE4\xBD\x93\xE4\xB8\xAD\xE6\x96\x87",  // 简体中文
+      "\xE6\x97\xA5\xE6\x9C\xAC\xE8\xAA\x9E"               // 日本語
   };
 
   // Language list
@@ -120,13 +119,8 @@ void LanguageSelectActivity::render() {
 
   GUI.drawList(
       renderer, Rect{0, contentTop, pageWidth, contentHeight}, totalItems, selectedIndex,
-      [&langNames](int i) -> std::string {
-        return std::string(langNames[i]);
-      },
-      nullptr, nullptr,
-      [currentLang](int i) -> std::string {
-        return (i == currentLang) ? std::string(TR(ON)) : std::string("");
-      });
+      [&langNames](int i) -> std::string { return std::string(langNames[i]); }, nullptr, nullptr,
+      [currentLang](int i) -> std::string { return (i == currentLang) ? std::string(TR(ON)) : std::string(""); });
 
   // Button hints
   const auto labels = mappedInput.mapLabels(TR(BACK), TR(SELECT), TR(DIR_UP), TR(DIR_DOWN));

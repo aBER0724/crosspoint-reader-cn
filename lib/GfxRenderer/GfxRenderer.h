@@ -15,17 +15,17 @@ class ExternalFont;
 enum Color : uint8_t { Clear = 0x00, White = 0x01, LightGray = 0x05, DarkGray = 0x0A, Black = 0x10 };
 
 class GfxRenderer {
-public:
+ public:
   enum RenderMode { BW, GRAYSCALE_LSB, GRAYSCALE_MSB };
 
   // Logical screen orientation from the perspective of callers
   enum Orientation {
-    Portrait,                 // 480x800 logical coordinates (current default)
-    LandscapeClockwise,       // 800x480 logical coordinates, rotated 180° (swap
-                              // top/bottom)
-    PortraitInverted,         // 480x800 logical coordinates, inverted
-    LandscapeCounterClockwise // 800x480 logical coordinates, native panel
-                              // orientation
+    Portrait,                  // 480x800 logical coordinates (current default)
+    LandscapeClockwise,        // 800x480 logical coordinates, rotated 180° (swap
+                               // top/bottom)
+    PortraitInverted,          // 480x800 logical coordinates, inverted
+    LandscapeCounterClockwise  // 800x480 logical coordinates, native panel
+                               // orientation
   };
 
  private:
@@ -52,15 +52,12 @@ public:
   int readerFallbackFontId = 0;
   // Skip dark mode inversion for images (cover art should not be inverted)
   mutable bool skipDarkModeForImages = false;
-  void renderChar(int fontId, const EpdFontFamily &fontFamily, uint32_t cp,
-                  int *x, const int *y, bool pixelState,
+  void renderChar(int fontId, const EpdFontFamily& fontFamily, uint32_t cp, int* x, const int* y, bool pixelState,
                   EpdFontFamily::Style style) const;
-  void renderExternalGlyph(const uint8_t *bitmap, ExternalFont *font, int *x,
-                           int y, bool pixelState,
-                           int advanceOverride = -1,
-                           int minX = 0) const;
+  void renderExternalGlyph(const uint8_t* bitmap, ExternalFont* font, int* x, int y, bool pixelState,
+                           int advanceOverride = -1, int minX = 0) const;
   // Render CJK character using built-in UI font (from PROGMEM)
-  void renderBuiltinCjkGlyph(uint32_t cp, int *x, int y, bool pixelState) const;
+  void renderBuiltinCjkGlyph(uint32_t cp, int* x, int y, bool pixelState) const;
   // Check if fontId is a reader font (should use external Chinese font)
   static bool isReaderFont(int fontId);
   // Get effective font ID, handling fallback for external reader font IDs
@@ -142,44 +139,37 @@ public:
   void fillPolygon(const int* xPoints, const int* yPoints, int numPoints, bool state = true) const;
 
   // Text
-  int getTextWidth(int fontId, const char *text,
-                   EpdFontFamily::Style style = EpdFontFamily::REGULAR) const;
-  void
-  drawCenteredText(int fontId, int y, const char *text, bool black = true,
-                   EpdFontFamily::Style style = EpdFontFamily::REGULAR) const;
-  void drawText(int fontId, int x, int y, const char *text, bool black = true,
+  int getTextWidth(int fontId, const char* text, EpdFontFamily::Style style = EpdFontFamily::REGULAR) const;
+  void drawCenteredText(int fontId, int y, const char* text, bool black = true,
+                        EpdFontFamily::Style style = EpdFontFamily::REGULAR) const;
+  void drawText(int fontId, int x, int y, const char* text, bool black = true,
                 EpdFontFamily::Style style = EpdFontFamily::REGULAR) const;
   int getSpaceWidth(int fontId) const;
   int getTextAdvanceX(int fontId, const char* text) const;
   int getFontAscenderSize(int fontId) const;
   int getLineHeight(int fontId) const;
-  std::string
-  truncatedText(int fontId, const char *text, int maxWidth,
-                EpdFontFamily::Style style = EpdFontFamily::REGULAR) const;
+  std::string truncatedText(int fontId, const char* text, int maxWidth,
+                            EpdFontFamily::Style style = EpdFontFamily::REGULAR) const;
 
   // UI Components
-  void drawButtonHints(int fontId, const char *btn1, const char *btn2,
-                       const char *btn3, const char *btn4);
-  void drawSideButtonHints(int fontId, const char *topBtn,
-                           const char *bottomBtn) const;
+  void drawButtonHints(int fontId, const char* btn1, const char* btn2, const char* btn3, const char* btn4);
+  void drawSideButtonHints(int fontId, const char* topBtn, const char* bottomBtn) const;
 
   // Helper for drawing rotated text (90 degrees clockwise, for side buttons)
-  void drawTextRotated90CW(
-      int fontId, int x, int y, const char *text, bool black = true,
-      EpdFontFamily::Style style = EpdFontFamily::REGULAR) const;
+  void drawTextRotated90CW(int fontId, int x, int y, const char* text, bool black = true,
+                           EpdFontFamily::Style style = EpdFontFamily::REGULAR) const;
   int getTextHeight(int fontId) const;
 
   // Grayscale functions
   void setRenderMode(const RenderMode mode) { this->renderMode = mode; }
   void copyGrayscaleLsbBuffers() const;
   void copyGrayscaleMsbBuffers() const;
-  void displayGrayBuffer(bool turnOffScreen = false,
-                         bool darkMode = false) const;
-  bool storeBwBuffer();   // Returns true if buffer was stored successfully
-  void restoreBwBuffer(); // Restore and free the stored buffer
+  void displayGrayBuffer(bool turnOffScreen = false, bool darkMode = false) const;
+  bool storeBwBuffer();    // Returns true if buffer was stored successfully
+  void restoreBwBuffer();  // Restore and free the stored buffer
   void cleanupGrayscaleWithFrameBuffer() const;
 
   // Low level functions
-  uint8_t *getFrameBuffer() const;
+  uint8_t* getFrameBuffer() const;
   static size_t getBufferSize();
 };

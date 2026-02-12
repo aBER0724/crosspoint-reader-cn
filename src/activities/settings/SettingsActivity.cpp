@@ -7,14 +7,14 @@
 
 #include "ButtonRemapActivity.h"
 #include "CalibreSettingsActivity.h"
-#include "FontSelectActivity.h"
 #include "ClearCacheActivity.h"
 #include "CrossPointSettings.h"
+#include "FontSelectActivity.h"
 #include "KOReaderSettingsActivity.h"
 #include "LanguageSelectActivity.h"
 #include "MappedInputManager.h"
-#include "OtaUpdateActivity.h"
 #include "OrientationHelper.h"
+#include "OtaUpdateActivity.h"
 #include "SettingsList.h"
 #include "components/UITheme.h"
 #include "fontIds.h"
@@ -300,11 +300,10 @@ void SettingsActivity::toggleCurrentSetting() {
     if (strcmp(setting.name, "Font Family") == 0) {
       xSemaphoreTake(renderingMutex, portMAX_DELAY);
       exitActivity();
-      enterNewActivity(new FontSelectActivity(renderer, mappedInput,
-          FontSelectActivity::SelectMode::Reader, [this] {
-            exitActivity();
-            updateRequired = true;
-          }));
+      enterNewActivity(new FontSelectActivity(renderer, mappedInput, FontSelectActivity::SelectMode::Reader, [this] {
+        exitActivity();
+        updateRequired = true;
+      }));
       xSemaphoreGive(renderingMutex);
       return;
     }
@@ -369,11 +368,10 @@ void SettingsActivity::toggleCurrentSetting() {
     } else if (strcmp(setting.name, "UI Font") == 0) {
       xSemaphoreTake(renderingMutex, portMAX_DELAY);
       exitActivity();
-      enterNewActivity(new FontSelectActivity(renderer, mappedInput,
-          FontSelectActivity::SelectMode::UI, [this] {
-            exitActivity();
-            updateRequired = true;
-          }));
+      enterNewActivity(new FontSelectActivity(renderer, mappedInput, FontSelectActivity::SelectMode::UI, [this] {
+        exitActivity();
+        updateRequired = true;
+      }));
       xSemaphoreGive(renderingMutex);
     }
   } else {
@@ -427,8 +425,7 @@ void SettingsActivity::render() const {
            pageHeight - (metrics.topPadding + metrics.headerHeight + metrics.tabBarHeight + metrics.buttonHintsHeight +
                          metrics.verticalSpacing * 2)},
       settingsCount, selectedSettingIndex - 1,
-      [&settings](int index) { return std::string(translateSettingName(settings[index].name)); },
-      nullptr, nullptr,
+      [&settings](int index) { return std::string(translateSettingName(settings[index].name)); }, nullptr, nullptr,
       [&settings](int i) {
         std::string valueText = "";
         if (settings[i].type == SettingType::TOGGLE && settings[i].valuePtr != nullptr) {
@@ -439,7 +436,7 @@ void SettingsActivity::render() const {
           if (strcmp(settings[i].name, "Font Family") == 0 && FontMgr.isExternalFontEnabled()) {
             const FontInfo* info = FontMgr.getFontInfo(FontMgr.getSelectedIndex());
             valueText = info ? info->name : "External";
-          // Font Size: show actual pixel size when external font is active
+            // Font Size: show actual pixel size when external font is active
           } else if (strcmp(settings[i].name, "Font Size") == 0 && FontMgr.isExternalFontEnabled()) {
             const FontInfo* info = FontMgr.getFontInfo(FontMgr.getSelectedIndex());
             valueText = info ? (std::to_string(info->size) + "pt") : "—";

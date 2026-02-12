@@ -1,11 +1,10 @@
 #include "KOReaderSettingsActivity.h"
 
 #include <GfxRenderer.h>
+#include <I18n.h>
 
 #include <cstring>
 #include <string>
-
-#include <I18n.h>
 
 #include "KOReaderAuthActivity.h"
 #include "KOReaderCredentialStore.h"
@@ -185,7 +184,8 @@ void KOReaderSettingsActivity::render() {
   renderer.fillRect(0, 60 + selectedIndex * 30 - 2, pageWidth - 1, 30);
 
   // Draw menu items
-  const char* menuNames[MENU_ITEMS] = {TR(USERNAME), TR(PASSWORD), TR(SYNC_SERVER_URL), TR(DOCUMENT_MATCHING), TR(AUTHENTICATE)};
+  const char* menuNames[MENU_ITEMS] = {TR(USERNAME), TR(PASSWORD), TR(SYNC_SERVER_URL), TR(DOCUMENT_MATCHING),
+                                       TR(AUTHENTICATE)};
   for (int i = 0; i < MENU_ITEMS; i++) {
     const int settingY = 60 + i * 30;
     const bool isSelected = (i == selectedIndex);
@@ -195,13 +195,17 @@ void KOReaderSettingsActivity::render() {
     // Draw status for each item
     std::string statusStr;
     if (i == 0) {
-      statusStr = KOREADER_STORE.getUsername().empty() ? std::string("[") + TR(NOT_SET) + "]" : std::string("[") + TR(SET) + "]";
+      statusStr = KOREADER_STORE.getUsername().empty() ? std::string("[") + TR(NOT_SET) + "]"
+                                                       : std::string("[") + TR(SET) + "]";
     } else if (i == 1) {
-      statusStr = KOREADER_STORE.getPassword().empty() ? std::string("[") + TR(NOT_SET) + "]" : std::string("[") + TR(SET) + "]";
+      statusStr = KOREADER_STORE.getPassword().empty() ? std::string("[") + TR(NOT_SET) + "]"
+                                                       : std::string("[") + TR(SET) + "]";
     } else if (i == 2) {
       statusStr = KOREADER_STORE.getServerUrl().empty() ? "[Default]" : "[Custom]";
     } else if (i == 3) {
-      statusStr = KOREADER_STORE.getMatchMethod() == DocumentMatchMethod::FILENAME ? std::string("[") + TR(FILENAME) + "]" : std::string("[") + TR(BINARY) + "]";
+      statusStr = KOREADER_STORE.getMatchMethod() == DocumentMatchMethod::FILENAME
+                      ? std::string("[") + TR(FILENAME) + "]"
+                      : std::string("[") + TR(BINARY) + "]";
     } else if (i == 4) {
       statusStr = KOREADER_STORE.hasCredentials() ? "" : std::string("[") + TR(SET_CREDENTIALS_FIRST) + "]";
     }

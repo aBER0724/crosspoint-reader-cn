@@ -3,7 +3,6 @@
 #include <GfxRenderer.h>
 #include <HalStorage.h>
 #include <HardwareSerial.h>
-
 #include <I18n.h>
 
 #include "MappedInputManager.h"
@@ -63,8 +62,7 @@ void ClearCacheActivity::render() {
 
   if (state == WARNING) {
     renderer.drawCenteredText(UI_10_FONT_ID, pageHeight / 2 - 60, TR(CLEAR_CACHE_WARNING_1), true);
-    renderer.drawCenteredText(UI_10_FONT_ID, pageHeight / 2 - 30, TR(CLEAR_CACHE_WARNING_2), true,
-                              EpdFontFamily::BOLD);
+    renderer.drawCenteredText(UI_10_FONT_ID, pageHeight / 2 - 30, TR(CLEAR_CACHE_WARNING_2), true, EpdFontFamily::BOLD);
     renderer.drawCenteredText(UI_10_FONT_ID, pageHeight / 2 + 10, TR(CLEAR_CACHE_WARNING_3), true);
     renderer.drawCenteredText(UI_10_FONT_ID, pageHeight / 2 + 30, TR(CLEAR_CACHE_WARNING_4), true);
 

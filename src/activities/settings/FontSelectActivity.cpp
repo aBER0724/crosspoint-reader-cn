@@ -12,11 +12,9 @@
 namespace {
 constexpr int kBuiltinReaderFontCount = 3;
 constexpr CrossPointSettings::FONT_FAMILY kBuiltinReaderFonts[kBuiltinReaderFontCount] = {
-    CrossPointSettings::BOOKERLY,
-    CrossPointSettings::NOTOSANS,
-    CrossPointSettings::OPENDYSLEXIC};
-constexpr StrId kBuiltinReaderFontLabels[kBuiltinReaderFontCount] = {
-    StrId::BOOKERLY, StrId::NOTO_SANS, StrId::OPEN_DYSLEXIC};
+    CrossPointSettings::BOOKERLY, CrossPointSettings::NOTOSANS, CrossPointSettings::OPENDYSLEXIC};
+constexpr StrId kBuiltinReaderFontLabels[kBuiltinReaderFontCount] = {StrId::BOOKERLY, StrId::NOTO_SANS,
+                                                                     StrId::OPEN_DYSLEXIC};
 }  // namespace
 
 void FontSelectActivity::onEnter() {
@@ -91,8 +89,7 @@ void FontSelectActivity::loop() {
 }
 
 void FontSelectActivity::handleSelection() {
-  Serial.printf("[FONT_SELECT] handleSelection: mode=%d, selectedIndex=%d\n",
-                static_cast<int>(mode), selectedIndex);
+  Serial.printf("[FONT_SELECT] handleSelection: mode=%d, selectedIndex=%d\n", static_cast<int>(mode), selectedIndex);
 
   if (mode == SelectMode::Reader) {
     if (selectedIndex < kBuiltinReaderFontCount) {
@@ -121,8 +118,8 @@ void FontSelectActivity::handleSelection() {
     }
   }
 
-  Serial.printf("[FONT_SELECT] After selection: readerIndex=%d, uiIndex=%d\n",
-                FontMgr.getSelectedIndex(), FontMgr.getUiSelectedIndex());
+  Serial.printf("[FONT_SELECT] After selection: readerIndex=%d, uiIndex=%d\n", FontMgr.getSelectedIndex(),
+                FontMgr.getUiSelectedIndex());
 
   // Return to previous page
   onBack();
@@ -136,8 +133,7 @@ void FontSelectActivity::render() {
   auto metrics = UITheme::getInstance().getMetrics();
 
   // Title
-  const char *title = (mode == SelectMode::Reader) ? TR(EXT_READER_FONT)
-                                                   : TR(EXT_UI_FONT);
+  const char* title = (mode == SelectMode::Reader) ? TR(EXT_READER_FONT) : TR(EXT_UI_FONT);
   GUI.drawHeader(renderer, Rect{0, metrics.topPadding, pageWidth, metrics.headerHeight}, title);
 
   // Current active font index (for the ON marker)
@@ -166,7 +162,7 @@ void FontSelectActivity::render() {
           if (i < kBuiltinReaderFontCount) {
             return std::string(I18N.get(kBuiltinReaderFontLabels[i]));
           }
-          const FontInfo *info = FontMgr.getFontInfo(i - kBuiltinReaderFontCount);
+          const FontInfo* info = FontMgr.getFontInfo(i - kBuiltinReaderFontCount);
           if (info) {
             char label[64];
             snprintf(label, sizeof(label), "%s (%dpt)", info->name, info->size);
@@ -176,7 +172,7 @@ void FontSelectActivity::render() {
           if (i == 0) {
             return std::string(TR(BUILTIN_DISABLED));
           }
-          const FontInfo *info = FontMgr.getFontInfo(i - 1);
+          const FontInfo* info = FontMgr.getFontInfo(i - 1);
           if (info) {
             char label[64];
             snprintf(label, sizeof(label), "%s (%dpt)", info->name, info->size);
@@ -186,9 +182,7 @@ void FontSelectActivity::render() {
         return "";
       },
       nullptr, nullptr,
-      [currentIndex](int i) -> std::string {
-        return (i == currentIndex) ? std::string(TR(ON)) : std::string("");
-      });
+      [currentIndex](int i) -> std::string { return (i == currentIndex) ? std::string(TR(ON)) : std::string(""); });
 
   // Button hints
   const auto labels = mappedInput.mapLabels(TR(BACK), TR(SELECT), TR(DIR_UP), TR(DIR_DOWN));

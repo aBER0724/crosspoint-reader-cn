@@ -1,6 +1,7 @@
 #pragma once
 
 #include <SDCardManager.h>
+
 #include <cstddef>
 #include <cstdint>
 
@@ -15,7 +16,7 @@
  * - 1-bit black/white bitmap, MSB first
  */
 class ExternalFont {
-public:
+ public:
   ExternalFont() {
     // Initialize cache and hash table
     for (int i = 0; i < CACHE_SIZE; i++) {
@@ -30,8 +31,8 @@ public:
   ~ExternalFont();
 
   // Disable copy
-  ExternalFont(const ExternalFont &) = delete;
-  ExternalFont &operator=(const ExternalFont &) = delete;
+  ExternalFont(const ExternalFont&) = delete;
+  ExternalFont& operator=(const ExternalFont&) = delete;
 
   /**
    * Load font from .bin file
@@ -39,14 +40,14 @@ public:
    * "/fonts/KingHwaOldSong_38_33x39.bin")
    * @return true on success
    */
-  bool load(const char *filepath);
+  bool load(const char* filepath);
 
   /**
    * Get glyph bitmap data (with LRU cache)
    * @param codepoint Unicode codepoint
    * @return Bitmap data pointer, nullptr if char not found
    */
-  const uint8_t *getGlyph(uint32_t codepoint);
+  const uint8_t* getGlyph(uint32_t codepoint);
 
   /**
    * Preload multiple glyphs at once (optimized for batch SD reads)
@@ -54,14 +55,14 @@ public:
    * @param codepoints Array of unicode codepoints to preload
    * @param count Number of codepoints in the array
    */
-  void preloadGlyphs(const uint32_t *codepoints, size_t count);
+  void preloadGlyphs(const uint32_t* codepoints, size_t count);
 
   // Font properties
   uint8_t getCharWidth() const { return _charWidth; }
   uint8_t getCharHeight() const { return _charHeight; }
   uint8_t getBytesPerRow() const { return _bytesPerRow; }
   uint16_t getBytesPerChar() const { return _bytesPerChar; }
-  const char *getFontName() const { return _fontName; }
+  const char* getFontName() const { return _fontName; }
   uint8_t getFontSize() const { return _fontSize; }
   size_t getCacheCapacity() const { return CACHE_SIZE; }
 
@@ -76,9 +77,9 @@ public:
    * @param outAdvanceX Advance width for cursor positioning
    * @return true if metrics found in cache, false otherwise
    */
-  bool getGlyphMetrics(uint32_t cp, uint8_t *outMinX, uint8_t *outAdvanceX);
+  bool getGlyphMetrics(uint32_t cp, uint8_t* outMinX, uint8_t* outAdvanceX);
 
-private:
+ private:
   // Font file handle (keep open to avoid repeated open/close)
   FsFile _fontFile;
   bool _isLoaded = false;
@@ -93,20 +94,19 @@ private:
 
   // LRU cache - 256 glyphs for better Chinese text performance
   // Memory: ~52KB (256 * 204 bytes per entry)
-  static constexpr int CACHE_SIZE = 256; // 256 glyphs
-  static constexpr int MAX_GLYPH_BYTES =
-      200; // Max 200 bytes per glyph (enough for 33x39)
+  static constexpr int CACHE_SIZE = 256;       // 256 glyphs
+  static constexpr int MAX_GLYPH_BYTES = 200;  // Max 200 bytes per glyph (enough for 33x39)
 
   // Flag to mark cached "non-existent" glyphs (avoid repeated SD reads)
   static constexpr uint8_t GLYPH_NOT_FOUND_MARKER = 0xFE;
 
   struct CacheEntry {
-    uint32_t codepoint = 0xFFFFFFFF; // Invalid marker
+    uint32_t codepoint = 0xFFFFFFFF;  // Invalid marker
     uint8_t bitmap[MAX_GLYPH_BYTES];
     uint32_t lastUsed = 0;
-    bool notFound = false; // True if glyph doesn't exist in font
-    uint8_t minX = 0;      // Cached rendering metrics
-    uint8_t advanceX = 0;  // Cached advance width
+    bool notFound = false;  // True if glyph doesn't exist in font
+    uint8_t minX = 0;       // Cached rendering metrics
+    uint8_t advanceX = 0;   // Cached advance width
   };
   CacheEntry _cache[CACHE_SIZE];
   uint32_t _accessCounter = 0;
@@ -123,13 +123,13 @@ private:
   /**
    * Read glyph data from SD card
    */
-  bool readGlyphFromSD(uint32_t codepoint, uint8_t *buffer);
+  bool readGlyphFromSD(uint32_t codepoint, uint8_t* buffer);
 
   /**
    * Parse filename to get font parameters
    * Format: FontName_size_WxH.bin
    */
-  bool parseFilename(const char *filename);
+  bool parseFilename(const char* filename);
 
   /**
    * Find glyph in cache

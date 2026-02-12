@@ -2,6 +2,7 @@
 
 #include <GfxRenderer.h>
 #include <HalStorage.h>
+#include <I18n.h>
 
 #include <algorithm>
 
@@ -10,8 +11,6 @@
 #include "components/UITheme.h"
 #include "fontIds.h"
 #include "util/StringUtils.h"
-
-#include <I18n.h>
 
 namespace {
 constexpr unsigned long GO_HOME_MS = 1000;

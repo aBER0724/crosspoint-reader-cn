@@ -28,8 +28,7 @@ inline MappedInputManager::Orientation toInputOrientation(GfxRenderer::Orientati
 // UI activities use SETTINGS.uiOrientation (Portrait or Inverted only).
 // Also syncs the effective orientation to MappedInputManager so button
 // mapping matches the actual screen direction.
-inline void applyOrientation(GfxRenderer& renderer, MappedInputManager& input,
-                             const Activity* activity) {
+inline void applyOrientation(GfxRenderer& renderer, MappedInputManager& input, const Activity* activity) {
   const auto readerSetting = static_cast<CrossPointSettings::ORIENTATION>(SETTINGS.orientation);
   const auto uiSetting = static_cast<CrossPointSettings::UI_ORIENTATION>(SETTINGS.uiOrientation);
   GfxRenderer::Orientation target;
@@ -53,9 +52,8 @@ inline void applyOrientation(GfxRenderer& renderer, MappedInputManager& input,
     }
   } else {
     // UI: only Portrait or Inverted
-    target = (uiSetting == CrossPointSettings::UI_ORIENTATION::UI_INVERTED)
-                 ? GfxRenderer::Orientation::PortraitInverted
-                 : GfxRenderer::Orientation::Portrait;
+    target = (uiSetting == CrossPointSettings::UI_ORIENTATION::UI_INVERTED) ? GfxRenderer::Orientation::PortraitInverted
+                                                                            : GfxRenderer::Orientation::Portrait;
   }
 
   renderer.setOrientation(target);

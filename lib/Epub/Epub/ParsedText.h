@@ -27,12 +27,10 @@ class ParsedText {
                                         std::vector<bool>& wordIsCjkVec);
   std::vector<size_t> computeHyphenatedLineBreaks(const GfxRenderer& renderer, int fontId, int pageWidth,
                                                   int spaceWidth, std::vector<uint16_t>& wordWidths,
-                                                  std::vector<bool>& continuesVec,
-                                                  std::vector<bool>& wordIsCjkVec);
+                                                  std::vector<bool>& continuesVec, std::vector<bool>& wordIsCjkVec);
   bool hyphenateWordAtIndex(size_t wordIndex, int availableWidth, const GfxRenderer& renderer, int fontId,
                             std::vector<uint16_t>& wordWidths, bool allowFallbackBreaks,
-                            std::vector<bool>* continuesVec = nullptr,
-                            std::vector<bool>* wordIsCjkVec = nullptr);
+                            std::vector<bool>* continuesVec = nullptr, std::vector<bool>* wordIsCjkVec = nullptr);
   void extractLine(size_t breakIndex, int pageWidth, int spaceWidth, const std::vector<uint16_t>& wordWidths,
                    const std::vector<bool>& continuesVec, const std::vector<bool>& wordIsCjkVec,
                    const std::vector<size_t>& lineBreakIndices,
@@ -40,11 +38,9 @@ class ParsedText {
   std::vector<uint16_t> calculateWordWidths(const GfxRenderer& renderer, int fontId);
 
  public:
-  explicit ParsedText(const bool hyphenationEnabled = false,
-                      const BlockStyle& blockStyle = BlockStyle(), const bool firstLineIndent = false)
-      : blockStyle(blockStyle),
-        firstLineIndent(firstLineIndent),
-        hyphenationEnabled(hyphenationEnabled) {}
+  explicit ParsedText(const bool hyphenationEnabled = false, const BlockStyle& blockStyle = BlockStyle(),
+                      const bool firstLineIndent = false)
+      : blockStyle(blockStyle), firstLineIndent(firstLineIndent), hyphenationEnabled(hyphenationEnabled) {}
   ~ParsedText() = default;
 
   void addWord(std::string word, EpdFontFamily::Style fontStyle, bool underline = false, bool attachToPrevious = false);

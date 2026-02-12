@@ -73,10 +73,9 @@ void LyraTheme::drawHeader(const GfxRenderer& renderer, Rect rect, const char* t
   // bottom of the screen.  Move battery to the screen bottom (inverted view)
   // so it stays visible and out of the way.
   const int batteryY = (renderer.getOrientation() == GfxRenderer::Orientation::PortraitInverted)
-                            ? renderer.getScreenHeight() - LyraMetrics::values.batteryHeight - 35
-                            : rect.y + 10;
-  drawBattery(renderer,
-              Rect{batteryX, batteryY, LyraMetrics::values.batteryWidth, LyraMetrics::values.batteryHeight},
+                           ? renderer.getScreenHeight() - LyraMetrics::values.batteryHeight - 35
+                           : rect.y + 10;
+  drawBattery(renderer, Rect{batteryX, batteryY, LyraMetrics::values.batteryWidth, LyraMetrics::values.batteryHeight},
               showBatteryPercentage);
 
   if (title) {
@@ -226,8 +225,7 @@ void LyraTheme::drawButtonHints(GfxRenderer& renderer, const char* btn1, const c
         // text lands on the same physical pixels as the Portrait-drawn button rect.
         const int textHeight = renderer.getTextHeight(SMALL_FONT_ID);
         renderer.setOrientation(GfxRenderer::Orientation::PortraitInverted);
-        renderer.drawText(SMALL_FONT_ID, pageWidth - textX - textWidth,
-                          buttonY - textYOffset - textHeight, labels[i]);
+        renderer.drawText(SMALL_FONT_ID, pageWidth - textX - textWidth, buttonY - textYOffset - textHeight, labels[i]);
         renderer.setOrientation(GfxRenderer::Orientation::Portrait);
       } else {
         renderer.drawText(SMALL_FONT_ID, textX, pageHeight - buttonY + textYOffset, labels[i]);

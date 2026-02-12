@@ -13,8 +13,8 @@
 #include "CrossPointSettings.h"
 #include "SettingsList.h"
 #include "WifiCredentialStore.h"
-#include "html/FilesPageHtml.generated.h"
 #include "html/ApHomePageHtml.generated.h"
+#include "html/FilesPageHtml.generated.h"
 #include "html/HomePageHtml.generated.h"
 #include "html/SettingsPageHtml.generated.h"
 #include "util/StringUtils.h"
@@ -148,13 +148,13 @@ void CrossPointWebServer::begin() {
 
   // Captive portal detection endpoints — respond correctly so devices
   // recognise the network as "online" and route traffic through it.
-  server->on("/generate_204", HTTP_GET, [this] { handleCaptivePortal(); });          // Android
-  server->on("/gen_204", HTTP_GET, [this] { handleCaptivePortal(); });               // Android alt
-  server->on("/hotspot-detect.html", HTTP_GET, [this] { handleCaptivePortal(); });   // iOS / macOS
-  server->on("/library/test/success.html", HTTP_GET, [this] { handleCaptivePortal(); }); // iOS alt
-  server->on("/connecttest.txt", HTTP_GET, [this] { handleCaptivePortal(); });       // Windows
-  server->on("/redirect", HTTP_GET, [this] { handleCaptivePortal(); });              // Windows alt
-  server->on("/fwlink", HTTP_GET, [this] { handleCaptivePortal(); });                // Windows alt
+  server->on("/generate_204", HTTP_GET, [this] { handleCaptivePortal(); });               // Android
+  server->on("/gen_204", HTTP_GET, [this] { handleCaptivePortal(); });                    // Android alt
+  server->on("/hotspot-detect.html", HTTP_GET, [this] { handleCaptivePortal(); });        // iOS / macOS
+  server->on("/library/test/success.html", HTTP_GET, [this] { handleCaptivePortal(); });  // iOS alt
+  server->on("/connecttest.txt", HTTP_GET, [this] { handleCaptivePortal(); });            // Windows
+  server->on("/redirect", HTTP_GET, [this] { handleCaptivePortal(); });                   // Windows alt
+  server->on("/fwlink", HTTP_GET, [this] { handleCaptivePortal(); });                     // Windows alt
 
   // Full-feature routes — only in STA mode (AP mode has too little heap)
   if (!apMode) {
@@ -349,8 +349,7 @@ void CrossPointWebServer::handleNotFound() const {
   // Heavy redirects trigger captive portal detection and waste limited TCP buffers.
   if (apMode) {
     const String ip = WiFi.softAPIP().toString();
-    const String body = "<html><body><p>Visit <a href='http://" + ip + "/'>http://" + ip +
-                        "/</a></p></body></html>";
+    const String body = "<html><body><p>Visit <a href='http://" + ip + "/'>http://" + ip + "/</a></p></body></html>";
     server->send(200, "text/html", body);
     return;
   }
@@ -371,8 +370,7 @@ void CrossPointWebServer::handleCaptivePortal() const {
       server->send(204);
     } else if (uri == "/hotspot-detect.html" || uri == "/library/test/success.html") {
       // iOS/macOS: expects this exact body
-      server->send(200, "text/html",
-                   "<HTML><HEAD><TITLE>Success</TITLE></HEAD><BODY>Success</BODY></HTML>");
+      server->send(200, "text/html", "<HTML><HEAD><TITLE>Success</TITLE></HEAD><BODY>Success</BODY></HTML>");
     } else if (uri == "/connecttest.txt") {
       // Windows: expects this exact body
       server->send(200, "text/plain", "Microsoft Connect Test");
@@ -388,7 +386,8 @@ void CrossPointWebServer::handleCaptivePortal() const {
   const String redirectUrl = "http://" + ip + "/";
   server->sendHeader("Location", redirectUrl, true);
   server->send(302, "text/html", "");
-  Serial.printf("[%lu] [WEB] Captive portal redirect: %s -> %s\n", millis(), server->uri().c_str(), redirectUrl.c_str());
+  Serial.printf("[%lu] [WEB] Captive portal redirect: %s -> %s\n", millis(), server->uri().c_str(),
+                redirectUrl.c_str());
 }
 
 void CrossPointWebServer::handleStatus() const {

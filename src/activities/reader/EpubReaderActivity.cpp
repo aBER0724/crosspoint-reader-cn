@@ -696,8 +696,8 @@ void EpubReaderActivity::renderContents(std::unique_ptr<Page> page, const int or
                                         const int orientedMarginRight, const int orientedMarginBottom,
                                         const int orientedMarginLeft) {
   // Page-level glyph preloading for better SD card performance
-  FontManager &fm = FontManager::getInstance();
-  ExternalFont *extFont = nullptr;
+  FontManager& fm = FontManager::getInstance();
+  ExternalFont* extFont = nullptr;
   if (fm.isExternalFontEnabled()) {
     extFont = fm.getActiveFont();
   }

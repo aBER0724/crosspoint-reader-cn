@@ -120,10 +120,22 @@ void NetworkModeSelectionActivity::render() const {
     const char* menuItem;
     const char* menuDesc;
     switch (i) {
-      case 0: menuItem = TR(JOIN_NETWORK); menuDesc = TR(JOIN_DESC); break;
-      case 1: menuItem = TR(CONNECT_CALIBRE); menuDesc = TR(CONNECT_CALIBRE_DESC); break;
-      case 2: menuItem = TR(CREATE_HOTSPOT); menuDesc = TR(HOTSPOT_DESC); break;
-      default: menuItem = ""; menuDesc = ""; break;
+      case 0:
+        menuItem = TR(JOIN_NETWORK);
+        menuDesc = TR(JOIN_DESC);
+        break;
+      case 1:
+        menuItem = TR(CONNECT_CALIBRE);
+        menuDesc = TR(CONNECT_CALIBRE_DESC);
+        break;
+      case 2:
+        menuItem = TR(CREATE_HOTSPOT);
+        menuDesc = TR(HOTSPOT_DESC);
+        break;
+      default:
+        menuItem = "";
+        menuDesc = "";
+        break;
     }
 
     // Draw text: black=false (white text) when selected (on black background)

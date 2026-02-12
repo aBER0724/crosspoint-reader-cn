@@ -316,7 +316,7 @@ int CrossPointSettings::getRefreshFrequency() const {
 }
 
 int CrossPointSettings::getReaderFontId() const {
-  const FontManager &fm = FontManager::getInstance();
+  const FontManager& fm = FontManager::getInstance();
   if (fm.isExternalFontEnabled()) {
     return -(fm.getSelectedIndex() + 1000);
   }

@@ -8,11 +8,11 @@
  * Font information structure
  */
 struct FontInfo {
-  char filename[64]; // Full filename
-  char name[32];     // Font name
-  uint8_t size;      // Font size (pt)
-  uint8_t width;     // Character width
-  uint8_t height;    // Character height
+  char filename[64];  // Full filename
+  char name[32];      // Font name
+  uint8_t size;       // Font size (pt)
+  uint8_t width;      // Character width
+  uint8_t height;     // Character height
 };
 
 /**
@@ -22,12 +22,12 @@ struct FontInfo {
  * menus/titles)
  */
 class FontManager {
-public:
-  static FontManager &getInstance();
+ public:
+  static FontManager& getInstance();
 
   // Disable copy
-  FontManager(const FontManager &) = delete;
-  FontManager &operator=(const FontManager &) = delete;
+  FontManager(const FontManager&) = delete;
+  FontManager& operator=(const FontManager&) = delete;
 
   /**
    * Scan /fonts/ directory to get available font list
@@ -43,7 +43,7 @@ public:
    * Get font info
    * @param index Font index (0 to getFontCount()-1)
    */
-  const FontInfo *getFontInfo(int index) const;
+  const FontInfo* getFontInfo(int index) const;
 
   /**
    * Select reader font (for book content)
@@ -74,20 +74,18 @@ public:
    * Get currently active reader font
    * @return Font pointer, nullptr if not enabled
    */
-  ExternalFont *getActiveFont();
+  ExternalFont* getActiveFont();
 
   /**
    * Get currently active UI font
    * @return Font pointer, nullptr if not enabled (will fallback to reader font)
    */
-  ExternalFont *getActiveUiFont();
+  ExternalFont* getActiveUiFont();
 
   /**
    * Check if external reader font is enabled
    */
-  bool isExternalFontEnabled() const {
-    return _selectedIndex >= 0 && _activeFont.isLoaded();
-  }
+  bool isExternalFontEnabled() const { return _selectedIndex >= 0 && _activeFont.isLoaded(); }
 
   /**
    * Check if external UI font is enabled
@@ -112,7 +110,7 @@ public:
    */
   void loadSettings();
 
-private:
+ private:
   FontManager() {
     // Initialize font array
     for (int i = 0; i < MAX_FONTS; i++) {
@@ -125,21 +123,19 @@ private:
   }
 
   static constexpr int MAX_FONTS = 16;
-  static constexpr const char *FONTS_DIR = "/fonts";
-  static constexpr const char *SETTINGS_FILE = "/.crosspoint/font_settings.bin";
-  static constexpr uint8_t SETTINGS_VERSION = 2; // Bumped for UI font support
+  static constexpr const char* FONTS_DIR = "/fonts";
+  static constexpr const char* SETTINGS_FILE = "/.crosspoint/font_settings.bin";
+  static constexpr uint8_t SETTINGS_VERSION = 2;  // Bumped for UI font support
 
   FontInfo _fonts[MAX_FONTS];
   int _fontCount = 0;
-  int _selectedIndex = -1;   // -1 = built-in font (reader)
-  int _selectedUiIndex = -1; // -1 = fallback to reader font
+  int _selectedIndex = -1;    // -1 = built-in font (reader)
+  int _selectedUiIndex = -1;  // -1 = fallback to reader font
 
-  ExternalFont _activeFont;   // Reader font
-  ExternalFont _activeUiFont; // UI font
+  ExternalFont _activeFont;    // Reader font
+  ExternalFont _activeUiFont;  // UI font
 
-  bool isUiSharingReaderFont() const {
-    return _selectedUiIndex >= 0 && _selectedUiIndex == _selectedIndex;
-  }
+  bool isUiSharingReaderFont() const { return _selectedUiIndex >= 0 && _selectedUiIndex == _selectedIndex; }
 
   /**
    * Load selected reader font file
